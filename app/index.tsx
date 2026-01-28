@@ -8,7 +8,7 @@ export default function HomeScreen() {
     <ImageBackground
       source={require('@/assets/images/welcome-bg.png')}
       style={styles.background}
-      resizeMode="stretch" // Changed from "cover" to "stretch"
+      resizeMode="stretch"
     >
       <View style={styles.container}>
 
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'transparent',
   },
 
   // Illustration Area
