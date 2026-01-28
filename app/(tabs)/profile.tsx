@@ -1,9 +1,9 @@
 import { Text, View } from 'react-native';
 
-export default function DonorProfile() {
+export default function Profile() {
   return (
     <View>
-      <Text>Donor Profile</Text>
+      <Text>Profile Screen</Text>
     </View>
   );
 }

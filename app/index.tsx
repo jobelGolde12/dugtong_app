@@ -1,7 +1,5 @@
 import React from 'react';
-import { Dimensions, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   return (
@@ -14,9 +12,7 @@ export default function HomeScreen() {
 
         {/* Top Illustration Area */}
         <View style={styles.illustrationWrapper}>
-          <View style={styles.cardMock}>
-            <Text style={styles.bloodIcon}>🩸</Text>
-          </View>
+          <Text style={styles.bloodIcon}>🩸</Text>
         </View>
 
         {/* Text Content */}
@@ -45,9 +41,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   background: {
-    flex: 1,
-    width: width,
-    height: height,
+    flex: 1, // This makes it take full screen
   },
   container: {
     flex: 1,
@@ -56,36 +50,26 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
 
   // Illustration Area
   illustrationWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
-  },
-  cardMock: {
-    width: 140,
-    height: 180,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
+    marginTop: 40,
   },
   bloodIcon: {
-    fontSize: 64,
+    fontSize: 120,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 10,
   },
 
   // Text Section
   textContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: 20,
   },
   title: {
     fontSize: 26,
@@ -93,13 +77,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.95)',
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 
   // Buttons
@@ -110,6 +100,11 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     marginTop: 30,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
   primaryButtonText: {
     color: '#1E3A8A',
@@ -120,10 +115,13 @@ const styles = StyleSheet.create({
   // Secondary Links
   secondaryLinks: {
     alignItems: 'center',
-    gap: 10,
+    gap: 5,
   },
   link: {
     color: '#E0E7FF',
     fontSize: 14,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 });
