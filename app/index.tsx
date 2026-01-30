@@ -1,5 +1,5 @@
 import React from 'react';
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   return (
@@ -30,8 +30,12 @@ export default function HomeScreen() {
 
         {/* Secondary Links */}
         <View style={styles.secondaryLinks}>
-          <Text style={styles.link}>Register as Donor</Text>
-          <Text style={styles.link}>Login (Authorized Personnel)</Text>
+          <TouchableOpacity>
+            <Text style={styles.link}>Register as Donor</Text>
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <Text style={styles.link}>Login (Authorized Personnel)</Text>
+          </TouchableOpacity>
         </View>
 
       </View>
@@ -41,7 +45,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   background: {
-    flex: 1, // This makes it take full screen
+    flex: 1, 
   },
   container: {
     flex: 1,
@@ -72,11 +76,14 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 28,
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 12,
+    // Modernistic Font Settings
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    fontFamily: Platform.OS === 'ios' ? 'AvenirNext-Bold' : 'sans-serif-condensed',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
@@ -85,8 +92,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: 'rgba(255,255,255,0.95)',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
     paddingHorizontal: 10,
+    // Modernistic Font Settings
+    fontWeight: '400',
+    letterSpacing: 0.2,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir' : 'sans-serif-light',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
@@ -109,17 +120,27 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#1E3A8A',
     fontSize: 16,
-    fontWeight: '600',
+    // Modernistic Font Settings
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
   },
 
   // Secondary Links
   secondaryLinks: {
     alignItems: 'center',
-    gap: 5,
+    gap: 12,
+    marginTop: -20, 
+    marginBottom: 20,
   },
   link: {
     color: '#E0E7FF',
     fontSize: 14,
+    textDecorationLine: 'underline',
+    // Modernistic Font Settings
+    fontWeight: '500',
+    letterSpacing: 0.3,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,

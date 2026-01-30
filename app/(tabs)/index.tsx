@@ -1,9 +1,12 @@
 import React from 'react';
 import { Dimensions, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <ImageBackground
       source={require('@/assets/images/welcome-bg.png')}
@@ -30,13 +33,38 @@ export default function HomeScreen() {
         </View>
 
         {/* Main Button */}
-        <TouchableOpacity style={styles.primaryButton}>
+        <TouchableOpacity 
+          style={styles.primaryButton}
+          onPress={() => router.push('/register')}
+        >
           <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+
+        {/* Test Error Buttons (for development only) */}
+        <TouchableOpacity 
+          style={[styles.primaryButton, { backgroundColor: '#FF6B6B', marginTop: 10 }]}
+          onPress={() => {
+            throw new Error('Test error to verify error handling is working');
+          }}
+        >
+          <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>Test Error Handling</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.primaryButton, { backgroundColor: '#FF9F40', marginTop: 10 }]}
+          onPress={() => {
+            // Test type casting issues
+            Promise.reject('String rejection to test type handling');
+          }}
+        >
+          <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>Test String Rejection</Text>
         </TouchableOpacity>
 
         {/* Secondary Links */}
         <View style={styles.secondaryLinks}>
-          <Text style={styles.link}>Register as Donor</Text>
+          <TouchableOpacity onPress={() => router.push('/register')}>
+            <Text style={styles.link}>Register as Donor</Text>
+          </TouchableOpacity>
           <Text style={styles.link}>Login (Authorized Personnel)</Text>
         </View>
 

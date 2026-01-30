@@ -32,21 +32,7 @@ Goal: Organize app flow.
 
 TODO:
 
-Install React Navigation:
-
-Stack Navigator (main screens)
-
-Bottom Tabs (for logged-in personnel)
-
-Main Routes:
-
-Welcome
-
-Donor Registration
-
-Donor Search
-
-Login
+Login page
 
 Dashboard (Authorized Users)
 
@@ -90,7 +76,7 @@ Contact number format check
 
 Required fields cannot be empty
 
-Submit button → Send data to backend API (Node/Express)
+Submit button → Send data to localStorage only and session
 
 Show success message: “Thank you for registering as a voluntary donor!”
 
@@ -354,12 +340,12 @@ Show user-friendly alerts
 
 Goal: Limit features properly.
 
-Feature	Public User	Authorized Personnel
-Search Donors	✅	✅
-View Donor	✅	✅
-Register Donor	✅	✅ (manual add)
-Edit Donor	❌	✅
-View Reports	❌	✅
+Feature Public User Authorized Personnel
+Search Donors ✅ ✅
+View Donor ✅ ✅
+Register Donor ✅ ✅ (manual add)
+Edit Donor ❌ ✅
+View Reports ❌ ✅
 1️⃣9️⃣ Testing Phase
 
 TODO:
