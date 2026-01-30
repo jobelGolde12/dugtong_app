@@ -32,7 +32,7 @@ Goal: Organize app flow.
 
 TODO:
 
-Login page
+Login page: edit the login.tsx add a form to that using the full name and contact number found in register.tsx add also a default dummy data in that login page that redirect to dashboard for testing purpose.
 
 Dashboard (Authorized Users)
 
