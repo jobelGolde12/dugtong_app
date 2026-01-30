@@ -80,25 +80,81 @@ Submit button → Send data to localStorage only and session
 
 Show success message: “Thank you for registering as a voluntary donor!”
 
-4️⃣ Donor Search Screen (For Patients & Staff)
+4️⃣ Feature: Donor Search Screen (For Patients & Staff)
 
-Goal: Search donors by blood type and location.
+Objective:
+Build a production-ready, senior-level Donor Search Screen that allows users to search blood donors by blood type and location. The implementation must follow clean architecture, modular structure, reusable components, and maintainable code practices — NO messy, beginner-style code.
 
-TODO:
+🧠 Engineering Standards (VERY IMPORTANT)
 
-Filters:
+The code must:
 
-Blood Type (required)
+Follow senior-level React Native best practices
 
-Municipality (optional)
+Be modular and scalable
 
-Availability Status (Available only by default)
+Use clean separation of concerns
 
-Search button triggers API request
+Avoid inline logic clutter
 
-Display results in a FlatList
+Avoid hardcoded values (use constants/configs)
 
-Each donor card shows:
+Use proper state management
+
+Handle loading, empty state, and error state
+
+Use reusable components (SearchBar, FilterSection, DonorCard, etc.)
+
+Follow proper naming conventions
+
+Be easy to extend in the future
+
+🎯 Functional Requirements
+4.1 Filters Section
+
+Create a clean filter UI with:
+
+Blood Type Selector (Required)
+
+Municipality Selector (Optional)
+
+Availability Status Filter
+
+Default: Available Only = true
+
+Filters must be managed in a structured state object.
+
+4.2 Search Action
+
+A Search Button triggers an API request
+
+API call must:
+
+Be in a separate service file
+
+Use async/await
+
+Handle errors gracefully
+
+Show loading indicator while fetching
+
+4.3 Results Display
+
+Use a FlatList
+
+Must be optimized:
+
+keyExtractor
+
+memoized renderItem
+
+Empty state UI
+
+Loading state UI
+
+4.4 Donor Card Component
+
+Each donor card must be a reusable component and display:
 
 Name
 
@@ -108,7 +164,68 @@ Municipality
 
 Availability Status
 
-Tap card → Go to Donor Profile Details Screen
+UI should be clean, structured, and not overcrowded.
+
+4.5 Navigation
+
+Tapping a donor card navigates to:
+Donor Profile Details Screen
+
+Pass donor ID as param
+
+Navigation logic must not be embedded inside UI components
+
+🏗 Architecture Requirements
+
+The structure must look like this:
+
+/screens
+DonorSearchScreen.tsx
+
+/components
+DonorCard.tsx
+SearchFilters.tsx
+EmptyState.tsx
+LoadingIndicator.tsx
+
+/services
+donorService.ts
+
+/types
+donor.types.ts
+
+/constants
+filters.constants.ts
+
+⚙️ Technical Expectations
+
+Functional components only
+
+Hooks (useState, useEffect, useCallback, useMemo)
+
+Type-safe (TypeScript preferred)
+
+No inline styles — use StyleSheet
+
+No business logic inside UI components
+
+Proper error boundaries
+
+🚫 DO NOT
+
+Put API logic inside the screen file
+
+Write one giant component
+
+Hardcode sample data inside UI
+
+Skip loading/error states
+
+Use messy nested ternaries
+
+🏁 Expected Outcome
+
+A clean, professional, senior-level implementation of a Donor Search feature that looks like it belongs in a real healthcare application — maintainable, readable, and scalable.
 
 5️⃣ Donor Profile Details Screen
 

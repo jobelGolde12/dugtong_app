@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { router } from 'expo-router';
 
 export default function DashboardScreen() {
   const handleLogout = () => {
@@ -13,6 +14,10 @@ export default function DashboardScreen() {
     );
   };
 
+  const handleNavigateToSearch = () => {
+    router.push('/search');
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -21,18 +26,23 @@ export default function DashboardScreen() {
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
-      
+
       <ScrollView style={styles.content}>
+        <TouchableOpacity style={styles.card} onPress={handleNavigateToSearch}>
+          <Text style={styles.cardTitle}>Find Donor</Text>
+          <Text style={styles.cardDescription}>Search for blood donors by blood type and location</Text>
+        </TouchableOpacity>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Donor Management</Text>
           <Text style={styles.cardDescription}>Manage registered donors and their profiles</Text>
         </View>
-        
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Reports</Text>
           <Text style={styles.cardDescription}>View statistics and reports</Text>
         </View>
-        
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Notifications</Text>
           <Text style={styles.cardDescription}>Send notifications to donors</Text>
