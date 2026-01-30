@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import React from 'react';
 import { ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -30,12 +31,16 @@ export default function HomeScreen() {
 
         {/* Secondary Links */}
         <View style={styles.secondaryLinks}>
-          <TouchableOpacity>
-            <Text style={styles.link}>Register as Donor</Text>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Text style={styles.link}>Login (Authorized Personnel)</Text>
-          </TouchableOpacity>
+          <Link href="/register" asChild>
+            <TouchableOpacity>
+              <Text style={styles.link}>Register as Donor</Text>
+            </TouchableOpacity>
+          </Link>
+          <Link href="/login" asChild>
+            <TouchableOpacity>
+              <Text style={styles.link}>Login (Authorized Personnel)</Text>
+            </TouchableOpacity>
+          </Link>
         </View>
 
       </View>
