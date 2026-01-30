@@ -54,6 +54,7 @@ interface Errors {
   bloodType?: string;
   contactNumber?: string;
   municipality?: string;
+  availabilityStatus?: string;
 }
 
 interface ImageDimensions {
@@ -162,8 +163,12 @@ export default function RegisterScreen() {
       case 'municipality':
         if (!value) error = 'Municipality is required';
         break;
+
+      case 'availabilityStatus':
+        if (!value) error = 'Availability Status is required';
+        break;
     }
-    
+
     return error;
   };
 
@@ -172,8 +177,9 @@ export default function RegisterScreen() {
     let isValid = true;
 
     (Object.keys(formData) as Array<keyof FormData>).forEach(field => {
-      if (field === 'availabilityStatus') return; // Skip validation for this field
-      
+      // Only skip synced field, validate all others including availabilityStatus
+      if (field === 'synced') return;
+
       const error = validateField(field, formData[field]);
       if (error) {
         newErrors[field] = error;
@@ -451,16 +457,20 @@ export default function RegisterScreen() {
 
                 {/* Availability Status */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Availability Status</Text>
+                  <Text style={styles.label}>Availability Status *</Text>
                   <View style={styles.radioGroup}>
                     {['Available', 'Temporarily Unavailable'].map((option) => (
                       <TouchableOpacity
                         key={option}
                         style={[
                           styles.radioButton,
-                          formData.availabilityStatus === option && styles.radioButtonSelected
+                          formData.availabilityStatus === option && styles.radioButtonSelected,
+                          errors.availabilityStatus && styles.radioButtonError
                         ]}
-                        onPress={() => handleInputChange('availabilityStatus', option)}
+                        onPress={() => {
+                          handleInputChange('availabilityStatus', option);
+                          if (errors.availabilityStatus) setErrors(prev => ({ ...prev, availabilityStatus: '' }));
+                        }}
                       >
                         <Text style={[
                           styles.radioText,
@@ -471,6 +481,7 @@ export default function RegisterScreen() {
                       </TouchableOpacity>
                     ))}
                   </View>
+                  {errors.availabilityStatus ? <Text style={styles.errorText}>{errors.availabilityStatus}</Text> : null}
                 </View>
 
                 {/* Submit Button */}
@@ -625,13 +636,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioButtonSelected: {
-    backgroundColor: 'rgba(30, 144, 255, 0.4)',
-    borderColor: '#1E90FF',
-    shadowColor: '#1E90FF',
+    backgroundColor: 'rgba(40, 167, 69, 0.2)', // Light green background
+    borderColor: '#28a745',
+    shadowColor: '#28a745',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   radioButtonError: {
     borderColor: '#FF6B6B',
