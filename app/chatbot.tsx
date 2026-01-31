@@ -12,6 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing
+} from 'react-native-reanimated';
 import { useTheme } from '../contexts/ThemeContext';
 import DashboardLayout from './components/DashboardLayout';
 
@@ -31,6 +38,29 @@ export default function ChatbotScreen() {
       sender: 'bot',
     },
   ]);
+
+  // Animation values for microphone
+  const micScale = useSharedValue(1);
+  const [isListening, setIsListening] = useState(false);
+
+  const animatedMicStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: micScale.value }],
+    };
+  });
+
+  const startMicAnimation = () => {
+    micScale.value = withRepeat(
+      withTiming(1.1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+      -1,  // Repeat infinitely
+      true  // Reverse direction on repeat
+    );
+  };
+
+  const stopMicAnimation = () => {
+    micScale.value = withTiming(1, { duration: 200 });
+  };
+
   const styles = createStyles(colors);
 
   const speakMessage = async (text: string) => {
@@ -45,19 +75,90 @@ export default function ChatbotScreen() {
     }
   };
 
+  // Array of more human-like responses
+  const getHumanLikeResponse = (input: string = ''): string => {
+    const greetings = [
+      "Hey there! How can I assist you today?",
+      "Hi! I'm here to help. What do you need?",
+      "Hello! What can I do for you?",
+      "Good to hear from you! How can I help?",
+      "Hi there! What brings you here today?"
+    ];
+
+    const acknowledgments = [
+      "That makes sense. Tell me more!",
+      "I understand. What else can I help with?",
+      "Thanks for sharing that with me.",
+      "Got it! Is there anything else?",
+      "I see. How else can I assist you?"
+    ];
+
+    const helpfulResponses = [
+      "I'd be happy to help you with that!",
+      "Sure thing! Let me see what I can do.",
+      "Absolutely! I'm here for that.",
+      "Great question! Let me think...",
+      "I'm glad you asked about that."
+    ];
+
+    const fallbackResponses = [
+      "I'm still learning, but I'm here to help in any way I can!",
+      "Hmm, let me see if I can assist with that.",
+      "I appreciate you reaching out. How else can I help?",
+      "I'm working on improving every day. What else would you like to know?",
+      "Thanks for your patience as I continue to learn and grow!"
+    ];
+
+    // Check for greeting keywords
+    const lowerInput = input.toLowerCase();
+    if (lowerInput.includes('hi') || lowerInput.includes('hello') || lowerInput.includes('hey')) {
+      return greetings[Math.floor(Math.random() * greetings.length)];
+    }
+
+    // Check for thank you keywords
+    if (lowerInput.includes('thank') || lowerInput.includes('thanks')) {
+      return "You're welcome! Is there anything else I can help with?";
+    }
+
+    // Check for question keywords
+    if (lowerInput.includes('?') || lowerInput.includes('what') || lowerInput.includes('how') || lowerInput.includes('when')) {
+      return helpfulResponses[Math.floor(Math.random() * helpfulResponses.length)];
+    }
+
+    // Default to acknowledgment or fallback
+    if (Math.random() > 0.5) {
+      return acknowledgments[Math.floor(Math.random() * acknowledgments.length)];
+    } else {
+      return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+    }
+  };
+
   const handleMicPress = async () => {
-    const unavailableMessage = 'Dugtong Bot is not available right now';
-    
-    // Speak the message
-    await speakMessage(unavailableMessage);
-    
-    // Add bot response as text
-    const botResponse: MessageType = {
-      id: Date.now().toString(),
-      text: unavailableMessage,
-      sender: 'bot',
-    };
-    setMessages(prev => [...prev, botResponse]);
+    // Start animation
+    setIsListening(true);
+    startMicAnimation();
+
+    // Simulate processing time
+    setTimeout(async () => {
+      const botResponseText = getHumanLikeResponse();
+
+      // Speak the message
+      await speakMessage(botResponseText);
+
+      // Add bot response as text
+      const botResponse: MessageType = {
+        id: Date.now().toString(),
+        text: botResponseText,
+        sender: 'bot',
+      };
+      setMessages(prev => [...prev, botResponse]);
+
+      // Stop animation after a delay
+      setTimeout(() => {
+        setIsListening(false);
+        stopMicAnimation();
+      }, 1000);
+    }, 1000); // Simulate processing time
   };
 
   const handleSendMessage = () => {
@@ -69,42 +170,49 @@ export default function ChatbotScreen() {
       text: message,
       sender: 'user',
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setMessage('');
-    
+
     // Simulate bot response after a short delay
     setTimeout(() => {
-      const unavailableMessage = 'Dugtong Bot is not available right now';
+      const botResponseText = getHumanLikeResponse(message);
       const botResponse: MessageType = {
         id: (Date.now() + 1).toString(),
-        text: unavailableMessage,
+        text: botResponseText,
         sender: 'bot',
       };
       setMessages(prev => [...prev, botResponse]);
-      
+
       // Speak the response
-      speakMessage(unavailableMessage);
+      speakMessage(botResponseText);
     }, 500);
   };
 
   const renderMessageBubble = (msg: MessageType) => {
     const isUser = msg.sender === 'user';
-    
+
     return (
       <View
         key={msg.id}
         style={[
-          styles.messageBubble,
-          isUser ? styles.userMessageBubble : styles.botMessageBubble,
+          styles.messageContainer,
+          { alignSelf: isUser ? 'flex-end' : 'flex-start' }
         ]}
       >
-        <Text style={[
-          styles.messageText,
-          isUser && styles.userMessageText
-        ]}>
-          {msg.text}
-        </Text>
+        <View
+          style={[
+            styles.messageBubble,
+            isUser ? styles.userMessageBubble : styles.botMessageBubble,
+          ]}
+        >
+          <Text style={[
+            styles.messageText,
+            isUser ? styles.userMessageText : styles.botMessageText
+          ]}>
+            {msg.text}
+          </Text>
+        </View>
       </View>
     );
   };
@@ -127,11 +235,14 @@ export default function ChatbotScreen() {
 
             {/* Big Modern Talk Icon */}
             <View style={styles.talkSection}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.bigTalkButton}
                 onPress={handleMicPress}
+                activeOpacity={0.8}
               >
-                <Mic color="#FFF" size={48} strokeWidth={1.5} />
+                <Animated.View style={[styles.micContainer, animatedMicStyle]}>
+                  <Mic color="#FFF" size={48} strokeWidth={1.5} />
+                </Animated.View>
               </TouchableOpacity>
               <Text style={styles.talkSubtext}>Tap to speak to Dugtong</Text>
             </View>
@@ -199,11 +310,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -225,7 +336,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -237,25 +348,44 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
   },
-  messageBubble: {
-    padding: 15,
-    borderRadius: 15,
-    maxWidth: '90%',
+  micContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageContainer: {
     marginBottom: 10,
+    maxWidth: '90%',
+  },
+  messageBubble: {
+    padding: 16,
+    borderRadius: 20,
+    maxWidth: '90%',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   botMessageBubble: {
-    backgroundColor: colors.inputBackground,
-    borderBottomLeftRadius: 2,
+    backgroundColor: colors.surface,
+    borderBottomLeftRadius: 4,
     alignSelf: 'flex-start',
+    marginRight: 50, // Add space on the right for alignment
   },
   userMessageBubble: {
     backgroundColor: colors.primary,
-    borderBottomRightRadius: 2,
+    borderBottomRightRadius: 4,
     alignSelf: 'flex-end',
+    marginLeft: 50, // Add space on the left for alignment
   },
   messageText: {
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 22,
+    fontSize: 16,
+  },
+  botMessageText: {
+    color: colors.text,
   },
   userMessageText: {
     color: '#FFFFFF',
@@ -285,5 +415,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
