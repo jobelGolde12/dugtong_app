@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Alert, Platform } from 'react-native';
 import { normalizeBoolean, toBoolean } from '../lib/utils/booleanHelpers';
+import { ThemeProvider } from '../contexts/ThemeContext';
 
 // Import exception handlers with error handling
 let setJSExceptionHandler: any, setNativeExceptionHandler: any;
@@ -197,13 +198,20 @@ export default function Layout() {
     };
   }, []);
   return (
-    <ErrorBoundary>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="register" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="dashboard" />
-      </Stack>
-    </ErrorBoundary>
+    <ThemeProvider>
+      <ErrorBoundary>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="register" />
+          <Stack.Screen name="login" />
+          <Stack.Screen name="dashboard" />
+          <Stack.Screen name="search" />
+          <Stack.Screen name="donor-management" />
+          <Stack.Screen name="reports" />
+          <Stack.Screen name="notifications" />
+          <Stack.Screen name="settings" />
+        </Stack>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }

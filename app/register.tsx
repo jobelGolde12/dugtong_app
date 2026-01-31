@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -493,7 +494,12 @@ export default function RegisterScreen() {
                   <Text style={styles.submitButtonText}>Submit Registration</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.requiredNote}>* Required fields</Text>
+                
+                          <Link href="/login" asChild>
+                            <TouchableOpacity>
+                              <Text style={styles.link}>Login (Authorized Personnel)</Text>
+                            </TouchableOpacity>
+                          </Link>
               </View>
             </SafeScrollView>
           </KeyboardAvoidingView>
@@ -773,5 +779,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '500',
+  },
+  link: {
+    color: '#E0E7FF',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    // Modernistic Font Settings
+    fontWeight: '500',
+    letterSpacing: 0.3,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+    textAlign: 'center',
   },
 });

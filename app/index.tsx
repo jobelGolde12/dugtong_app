@@ -18,7 +18,7 @@ export default function HomeScreen() {
 
         {/* Text Content */}
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Start Saving Lives the Easy Way</Text>
+          <Text style={styles.title}>Dugtong</Text>
           <Text style={styles.subtitle}>
             Find blood donors quickly and manage donations across Sorsogon Province with just a few taps.
           </Text>
@@ -34,11 +34,6 @@ export default function HomeScreen() {
           <Link href="/register" asChild>
             <TouchableOpacity>
               <Text style={styles.link}>Register as Donor</Text>
-            </TouchableOpacity>
-          </Link>
-          <Link href="/login" asChild>
-            <TouchableOpacity>
-              <Text style={styles.link}>Login (Authorized Personnel)</Text>
             </TouchableOpacity>
           </Link>
         </View>
@@ -78,10 +73,10 @@ const styles = StyleSheet.create({
   // Text Section
   textContainer: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 5,
   },
   title: {
-    fontSize: 28,
+    fontSize: 35,
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 12,

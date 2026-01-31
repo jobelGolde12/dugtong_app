@@ -7,8 +7,10 @@ import { LoadingIndicator } from './components/LoadingIndicator';
 import { donorService } from '../lib/services/donorService';
 import { Donor, SearchParams } from '../types/donor.types';
 import DashboardLayout from './components/DashboardLayout';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function SearchScreen() {
+  const { colors } = useTheme();
   const [filters, setFilters] = useState({
     bloodType: '',
     municipality: '',
@@ -61,6 +63,8 @@ export default function SearchScreen() {
     <DonorCard donor={item} onPress={handleDonorPress} />
   );
 
+  const styles = createStyles(colors);
+
   return (
     <DashboardLayout>
       <View style={styles.container}>
@@ -100,10 +104,10 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
     padding: 20,
   },
   title: {
@@ -111,16 +115,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
-    color: '#333',
+    color: colors.text,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 15,
-    color: '#333',
+    color: colors.text,
   },
   searchButton: {
-    backgroundColor: '#0d6efd',
+    backgroundColor: colors.primary,
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',

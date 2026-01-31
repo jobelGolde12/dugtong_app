@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Pressable } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import Animated, { useAnimatedStyle, withTiming, useSharedValue } from 'react-native-reanimated';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const { colors } = useTheme();
   const [isOpen, setIsOpen] = useState(true);
   const sidebarTranslateX = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
@@ -36,6 +38,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     pointerEvents: backdropOpacity.value > 0 ? 'auto' : 'none',
   }));
 
+  const styles = createStyles(colors);
+
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -52,6 +56,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Donor Management', path: '/donor-management', icon: '👥' },
     { label: 'Reports', path: '/reports', icon: '📊' },
     { label: 'Notification', path: '/notifications', icon: '🔔' },
+    { label: 'Settings', path: '/settings', icon: '⚙️' },
   ];
 
   const isActive = (path: string) => pathname === path;
@@ -145,10 +150,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
   },
   toggleButton: {
     position: 'absolute',
@@ -157,11 +162,11 @@ const styles = StyleSheet.create({
     zIndex: 1001,
     width: 44,
     height: 44,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -170,7 +175,7 @@ const styles = StyleSheet.create({
   toggleIcon: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#495057',
+    color: colors.textSecondary,
   },
   backdrop: {
     position: 'absolute',
@@ -187,9 +192,9 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: 280,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     zIndex: 999,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -203,12 +208,12 @@ const styles = StyleSheet.create({
   sidebarTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#212529',
+    color: colors.text,
     letterSpacing: -0.5,
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e9ecef',
+    backgroundColor: colors.border,
     marginTop: 16,
   },
   navigation: {
@@ -226,15 +231,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   navItemActive: {
-    backgroundColor: '#0d6efd',
-    shadowColor: '#0d6efd',
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
   navItemHover: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.border,
   },
   navIcon: {
     fontSize: 20,
@@ -247,7 +252,7 @@ const styles = StyleSheet.create({
   },
   navLabel: {
     fontSize: 16,
-    color: '#495057',
+    color: colors.textSecondary,
     fontWeight: '500',
     letterSpacing: -0.2,
   },
@@ -283,6 +288,6 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
   },
 });

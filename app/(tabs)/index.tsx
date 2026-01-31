@@ -1,6 +1,6 @@
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Dimensions, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,7 +26,7 @@ export default function HomeScreen() {
 
         {/* Text Content */}
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Start Saving Lives the Easy Way</Text>
+          <Text style={styles.title}>Dugtong</Text>
           <Text style={styles.subtitle}>
             Find blood donors quickly and manage donations across Sorsogon Province with just a few taps.
           </Text>
