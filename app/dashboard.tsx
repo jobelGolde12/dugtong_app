@@ -18,6 +18,18 @@ export default function DashboardScreen() {
     router.push('/search');
   };
 
+  const handleNavigateToDonorManagement = () => {
+    router.push('/donor-management');
+  };
+
+  const handleNavigateToReports = () => {
+    router.push('/reports');
+  };
+
+  const handleNavigateToNotifications = () => {
+    router.push('/notifications');
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -33,20 +45,20 @@ export default function DashboardScreen() {
           <Text style={styles.cardDescription}>Search for blood donors by blood type and location</Text>
         </TouchableOpacity>
 
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} onPress={handleNavigateToDonorManagement}>
           <Text style={styles.cardTitle}>Donor Management</Text>
           <Text style={styles.cardDescription}>Manage registered donors and their profiles</Text>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} onPress={handleNavigateToReports}>
           <Text style={styles.cardTitle}>Reports</Text>
           <Text style={styles.cardDescription}>View statistics and reports</Text>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} onPress={handleNavigateToNotifications}>
           <Text style={styles.cardTitle}>Notifications</Text>
           <Text style={styles.cardDescription}>Send notifications to donors</Text>
-        </View>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

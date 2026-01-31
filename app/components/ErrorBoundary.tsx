@@ -21,13 +21,9 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('=== ERROR BOUNDARY CAUGHT ERROR ===');
-    console.error('Error:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    console.error('Component stack:', errorInfo.componentStack);
-    console.error('====================================');
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Simple error logging to avoid console.error issues
+    console.log('ErrorBoundary caught:', error.message);
   }
 
   render() {
