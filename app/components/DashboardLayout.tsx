@@ -183,14 +183,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   interface NavItemData {
     label: string;
     path: `/${string}`;
-    icon: string;
-    iconOutline: string;
+    icon: any;
+    iconOutline: any;
   }
   
   const navigationItems: NavItemData[] = [
     { label: 'Reports', path: '/reports', icon: 'bar-chart', iconOutline: 'bar-chart-outline' },
     { label: 'Find Donor', path: '/search', icon: 'search', iconOutline: 'search-outline' },
     { label: 'Donor Management', path: '/donor-management', icon: 'people', iconOutline: 'people-outline' },
+    { label: 'Dugtong Bot', path: '/chatbot', icon: 'chatbubbles-outline', iconOutline: 'chatbubbles' },
     { label: 'Notification', path: '/notifications', icon: 'notifications', iconOutline: 'notifications-outline' },
     { label: 'Settings', path: '/settings', icon: 'settings', iconOutline: 'settings-outline' },
   ];

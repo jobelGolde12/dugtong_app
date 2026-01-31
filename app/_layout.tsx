@@ -208,6 +208,7 @@ export default function Layout() {
           <Stack.Screen name="search" />
           <Stack.Screen name="donor-management" />
           <Stack.Screen name="reports" />
+          <Stack.Screen name="chatbot" />
           <Stack.Screen name="notifications" />
           <Stack.Screen name="settings" />
         </Stack>
