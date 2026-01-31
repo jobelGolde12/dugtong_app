@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Modal, ScrollView } from 'react-native';
-import { BLOOD_TYPES, MUNICIPALITIES, AVAILABILITY_OPTIONS } from '../../constants/filters.constants';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AVAILABILITY_OPTIONS, BLOOD_TYPES, MUNICIPALITIES } from '../../constants/filters.constants';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface SearchFiltersProps {
   filters: {
@@ -27,25 +28,28 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({
   showMunicipalityModal,
   setShowMunicipalityModal
 }) => {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+  
   return (
     <View style={styles.filtersContainer}>
       <Text style={styles.sectionTitle}>Search Filters</Text>
 
       <TouchableOpacity
-        style={[styles.dropdown, !filters.bloodType && styles.placeholder]}
+        style={styles.dropdown}
         onPress={() => setShowBloodTypeModal(true)}
       >
-        <Text style={styles.dropdownText}>
+        <Text style={[styles.dropdownText, !filters.bloodType && styles.placeholder]}>
           {filters.bloodType || 'Select Blood Type *'}
         </Text>
         <Text style={styles.dropdownArrow}>▼</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.dropdown, !filters.municipality && styles.placeholder]}
+        style={styles.dropdown}
         onPress={() => setShowMunicipalityModal(true)}
       >
-        <Text style={styles.dropdownText}>
+        <Text style={[styles.dropdownText, !filters.municipality && styles.placeholder]}>
           {filters.municipality || 'Select Municipality'}
         </Text>
         <Text style={styles.dropdownArrow}>▼</Text>
@@ -136,9 +140,9 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   filtersContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 20,
     marginBottom: 20,
@@ -155,12 +159,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 15,
-    color: '#333',
+    color: colors.text,
   },
   dropdown: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 15,
@@ -170,14 +174,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholder: {
-    color: '#999',
+    color: colors.text, // Changed from colors.placeholder to colors.text for dark theme
   },
   dropdownText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
   },
   dropdownArrow: {
-    color: '#666',
+    color: colors.text, // Changed from colors.secondaryText to colors.text for dark theme
     fontSize: 14,
   },
   radioGroup: {
@@ -187,24 +191,24 @@ const styles = StyleSheet.create({
   },
   radioButton: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
     marginRight: 10,
   },
   radioButtonSelected: {
-    backgroundColor: '#e7f1ff',
-    borderColor: '#0d6efd',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
   },
   radioText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.text,
   },
   radioTextSelected: {
-    color: '#0d6efd',
+    color: colors.primary,
     fontWeight: '600',
   },
   modalOverlay: {
@@ -213,7 +217,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -224,26 +228,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 15,
     textAlign: 'center',
+    color: colors.text,
   },
   modalItem: {
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
   },
   modalItemText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     textAlign: 'center',
   },
   modalCloseButton: {
     marginTop: 15,
     paddingVertical: 15,
-    backgroundColor: '#6c757d',
+    backgroundColor: colors.secondary,
     borderRadius: 8,
     alignItems: 'center',
   },
   modalCloseButtonText: {
-    color: '#fff',
+    color: colors.text, // Changed from '#fff' to colors.text for dark theme
     fontSize: 16,
     fontWeight: '600',
   },
