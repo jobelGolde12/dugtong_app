@@ -3,8 +3,8 @@ import { router } from 'expo-router';
 
 export default function DashboardScreen() {
   useEffect(() => {
-    // Redirect to Find Donor page by default
-    router.replace('/search');
+    // Redirect to Reports page by default
+    router.replace('/reports');
   }, []);
 
   return null;

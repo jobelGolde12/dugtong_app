@@ -20,6 +20,7 @@ import type {
   ReportSummary
 } from '../../../types/report.types';
 import { LoadingIndicator } from '../../components/dashboard/LoadingIndicator';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 // ========== TypeScript Interfaces ==========
 
@@ -44,39 +45,47 @@ interface AvailabilityOption {
 }
 
 // ========== Reusable Components ==========
-const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color, icon }) => (
-  <TouchableOpacity 
-    style={styles.statCard}
-    activeOpacity={0.7}
-  >
-    <View style={styles.statIconContainer}>
-      <Ionicons name={icon as any} size={24} color={color} />
-    </View>
-    <View style={styles.statContent}>
-      <Text style={styles.statValue}>{value.toLocaleString()}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-      <Text style={styles.statSubtitle}>{subtitle}</Text>
-    </View>
-    <View style={[styles.statIndicator, { backgroundColor: color + '20' }]} />
-  </TouchableOpacity>
-);
+const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color, icon }) => {
+  const { colors } = useTheme();
+  
+  return (
+    <TouchableOpacity 
+      style={[styles.statCard, { backgroundColor: colors.surface }]}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.statIconContainer, { backgroundColor: colors.primary + '20' }]}>
+        <Ionicons name={icon as any} size={24} color={color} />
+      </View>
+      <View style={styles.statContent}>
+        <Text style={[styles.statValue, { color: colors.text }]}>{value.toLocaleString()}</Text>
+        <Text style={[styles.statTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.statSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
+      </View>
+      <View style={[styles.statIndicator, { backgroundColor: color + '20' }]} />
+    </TouchableOpacity>
+  );
+};
 
-const ChartPlaceholder: React.FC<{ title: string; dataPoints: number }> = ({ title, dataPoints }) => (
-  <View style={styles.chartContainer}>
-    <Text style={styles.chartTitle}>{title}</Text>
-    <View style={styles.chartVisual}>
-      {Array.from({ length: dataPoints }).map((_, index) => (
-        <View
-          key={index}
-          style={[
-            styles.chartBar,
-            { height: `${20 + Math.random() * 60}%` }
-          ]}
-        />
-      ))}
+const ChartPlaceholder: React.FC<{ title: string; dataPoints: number }> = ({ title, dataPoints }) => {
+  const { colors } = useTheme();
+  
+  return (
+    <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
+      <Text style={[styles.chartTitle, { color: colors.text }]}>{title}</Text>
+      <View style={styles.chartVisual}>
+        {Array.from({ length: dataPoints }).map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.chartBar,
+              { height: `${20 + Math.random() * 60}%`, backgroundColor: colors.primary }
+            ]}
+          />
+        ))}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const FilterSelect: React.FC<{
   label: string;
@@ -85,6 +94,7 @@ const FilterSelect: React.FC<{
   onSelect: (value: string) => void;
   placeholder?: string;
 }> = ({ label, value, options, onSelect, placeholder = "Select..." }) => {
+  const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
 
   const selectedLabel = options.find(opt => opt.value === value)?.label || placeholder;
@@ -92,66 +102,69 @@ const FilterSelect: React.FC<{
   return (
     <>
       <TouchableOpacity
-        style={styles.filterSelect}
+        style={[styles.filterSelect, { backgroundColor: colors.surface }]}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.7}
       >
         <View>
-          <Text style={styles.filterSelectLabel}>{label}</Text>
-          <Text style={styles.filterSelectValue}>{selectedLabel}</Text>
+          <Text style={[styles.filterSelectLabel, { color: colors.textSecondary }]}>{label}</Text>
+          <Text style={[styles.filterSelectValue, { color: colors.text }]}>{selectedLabel}</Text>
         </View>
-        <Ionicons name="chevron-down" size={20} color="#666" />
+        <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{label}</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalOptions}>
-              {options.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.modalOption,
-                    value === option.value && styles.modalOptionSelected
-                  ]}
-                  onPress={() => {
-                    onSelect(option.value);
-                    setModalVisible(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.modalOptionText,
-                    value === option.value && styles.modalOptionTextSelected
-                  ]}>
-                    {option.label}
-                  </Text>
-                  {value === option.value && (
-                    <Ionicons name="checkmark" size={20} color="#4A6FFF" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+       <Modal
+         animationType="slide"
+         transparent={true}
+         visible={modalVisible}
+         onRequestClose={() => setModalVisible(false)}
+       >
+         <View style={styles.modalOverlay}>
+           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+               <Text style={[styles.modalTitle, { color: colors.text }]}>{label}</Text>
+               <TouchableOpacity onPress={() => setModalVisible(false)}>
+                 <Ionicons name="close" size={24} color={colors.text} />
+               </TouchableOpacity>
+             </View>
+             <ScrollView style={styles.modalOptions}>
+               {options.map((option) => (
+                 <TouchableOpacity
+                   key={option.value}
+                   style={[
+                     styles.modalOption,
+                     { borderBottomColor: colors.border },
+                     value === option.value && [styles.modalOptionSelected, { backgroundColor: colors.primary + '20' }]
+                   ]}
+                   onPress={() => {
+                     onSelect(option.value);
+                     setModalVisible(false);
+                   }}
+                   activeOpacity={0.7}
+                 >
+                   <Text style={[
+                     styles.modalOptionText,
+                     { color: colors.text },
+                     value === option.value && [styles.modalOptionTextSelected, { color: colors.primary }]
+                   ]}>
+                     {option.label}
+                   </Text>
+                   {value === option.value && (
+                     <Ionicons name="checkmark" size={20} color={colors.primary} />
+                   )}
+                 </TouchableOpacity>
+               ))}
+             </ScrollView>
+           </View>
+         </View>
+       </Modal>
     </>
   );
 };
 
 // ========== Main Component ==========
 export const ReportsScreen: React.FC = () => {
+  const { colors } = useTheme();
   const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
   const [bloodTypeData, setBloodTypeData] = useState<BloodTypeDistribution[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyDonationData[]>([]);
@@ -237,19 +250,19 @@ export const ReportsScreen: React.FC = () => {
 
   if (!reportSummary) {
     return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-        <Text style={styles.errorTitle}>Unable to Load Data</Text>
-        <Text style={styles.errorMessage}>Please check your connection and try again.</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadData}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+       <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+         <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
+         <Text style={[styles.errorTitle, { color: colors.text }]}>Unable to Load Data</Text>
+         <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>Please check your connection and try again.</Text>
+         <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={loadData}>
+           <Text style={styles.retryButtonText}>Retry</Text>
+         </TouchableOpacity>
+       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView 
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -259,31 +272,32 @@ export const ReportsScreen: React.FC = () => {
         overScrollMode="always"
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <View>
-            <Text style={styles.headerTitle}>Dashboard</Text>
-            <Text style={styles.headerSubtitle}>Real-time donation insights</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Dashboard</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Real-time donation insights</Text>
           </View>
-          <TouchableOpacity style={styles.refreshButton} onPress={loadData}>
-            <Ionicons name="refresh" size={24} color="#4A6FFF" />
-          </TouchableOpacity>
+           <TouchableOpacity style={[styles.refreshButton, { backgroundColor: colors.primary + '20' }]} onPress={loadData}>
+             <Ionicons name="refresh" size={24} color={colors.primary} />
+           </TouchableOpacity>
         </View>
 
         <View style={styles.scrollContent}>
           {/* Search Bar */}
           <View style={[
             styles.searchContainer,
-            searchFocused && styles.searchContainerFocused
+            { backgroundColor: colors.surface, borderColor: colors.surface },
+            searchFocused && [styles.searchContainerFocused, { borderColor: colors.primary, backgroundColor: colors.background }]
           ]}>
             <Ionicons 
               name="search" 
               size={20} 
-              color={searchFocused ? "#4A6FFF" : "#999"} 
+              color={searchFocused ? colors.primary : colors.textSecondary} 
             />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search donors, locations..."
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
               value={filters.searchQuery}
               onChangeText={(text) => handleFilterChange('searchQuery', text)}
               onFocus={() => setSearchFocused(true)}
@@ -291,7 +305,7 @@ export const ReportsScreen: React.FC = () => {
             />
             {filters.searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => handleFilterChange('searchQuery', '')}>
-                <Ionicons name="close-circle" size={20} color="#999" />
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -346,9 +360,9 @@ export const ReportsScreen: React.FC = () => {
             />
           </View>
 
-          {/* Charts Section */}
-          <View style={styles.chartsSection}>
-            <Text style={styles.sectionTitle}>Analytics Overview</Text>
+           {/* Charts Section */}
+           <View style={styles.chartsSection}>
+             <Text style={[styles.sectionTitle, { color: colors.text }]}>Analytics Overview</Text>
             
             <ChartPlaceholder 
               title="Donor Distribution by Blood Type" 
@@ -366,37 +380,37 @@ export const ReportsScreen: React.FC = () => {
             />
           </View>
 
-          {/* Quick Actions */}
-          <View style={styles.quickActions}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.actionsGrid}>
-              <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-                <Ionicons name="download-outline" size={24} color="#4A6FFF" />
-                <Text style={styles.actionText}>Export Report</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-                <Ionicons name="notifications-outline" size={24} color="#4A6FFF" />
-                <Text style={styles.actionText}>Send Alerts</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-                <Ionicons name="add-circle-outline" size={24} color="#4A6FFF" />
-                <Text style={styles.actionText}>Add Donor</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+           {/* Quick Actions */}
+           <View style={styles.quickActions}>
+             <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+             <View style={styles.actionsGrid}>
+               <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} activeOpacity={0.7}>
+                 <Ionicons name="download-outline" size={24} color={colors.primary} />
+                 <Text style={[styles.actionText, { color: colors.primary }]}>Export Report</Text>
+               </TouchableOpacity>
+               <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} activeOpacity={0.7}>
+                 <Ionicons name="notifications-outline" size={24} color={colors.primary} />
+                 <Text style={[styles.actionText, { color: colors.primary }]}>Send Alerts</Text>
+               </TouchableOpacity>
+               <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} activeOpacity={0.7}>
+                 <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+                 <Text style={[styles.actionText, { color: colors.primary }]}>Add Donor</Text>
+               </TouchableOpacity>
+             </View>
+           </View>
         </View>
 
-        {/* Clear Filters Button */}
-        {(filters.bloodType || filters.municipality || filters.searchQuery) && (
-          <TouchableOpacity 
-            style={styles.clearFiltersButton}
-            onPress={handleClearFilters}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="close" size={20} color="#fff" />
-            <Text style={styles.clearFiltersText}>Clear Filters</Text>
-          </TouchableOpacity>
-        )}
+         {/* Clear Filters Button */}
+         {(filters.bloodType || filters.municipality || filters.searchQuery) && (
+           <TouchableOpacity 
+             style={[styles.clearFiltersButton, { backgroundColor: colors.primary }]}
+             onPress={handleClearFilters}
+             activeOpacity={0.8}
+           >
+             <Ionicons name="close" size={20} color="#fff" />
+             <Text style={styles.clearFiltersText}>Clear Filters</Text>
+           </TouchableOpacity>
+         )}
       </ScrollView>
     </View>
   );
@@ -406,7 +420,6 @@ export const ReportsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   scrollContainer: {
     flex: 1,
@@ -418,23 +431,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A1A1A',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
     marginTop: 4,
   },
   refreshButton: {
     padding: 8,
-    backgroundColor: '#F5F7FF',
     borderRadius: 12,
   },
 
@@ -445,23 +453,19 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F7FF',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F5F7FF',
   },
   searchContainerFocused: {
-    borderColor: '#4A6FFF',
     backgroundColor: '#FFFFFF',
   },
   searchInput: {
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#1A1A1A',
   },
   filterRow: {
     flexDirection: 'row',
@@ -474,20 +478,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F5F7FF',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
   filterSelectLabel: {
     fontSize: 12,
-    color: '#666',
     marginBottom: 2,
   },
   filterSelectValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1A1A1A',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -499,7 +500,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: Dimensions.get('window').width / 2 - 30,
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -517,7 +517,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#F5F7FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -528,18 +527,15 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1A1A1A',
     marginBottom: 2,
   },
   statTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 2,
   },
   statSubtitle: {
     fontSize: 11,
-    color: '#666',
   },
   statIndicator: {
     position: 'absolute',
@@ -555,11 +551,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A1A',
     marginBottom: 20,
   },
   chartContainer: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
@@ -572,7 +566,6 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 20,
   },
   chartVisual: {
@@ -584,7 +577,6 @@ const styles = StyleSheet.create({
   },
   chartBar: {
     flex: 1,
-    backgroundColor: '#4A6FFF',
     borderRadius: 8,
     opacity: 0.8,
   },
@@ -601,7 +593,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F7FF',
     borderRadius: 16,
     padding: 16,
     gap: 8,
@@ -609,7 +600,6 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#4A6FFF',
   },
   clearFiltersButton: {
     position: 'absolute',
@@ -617,7 +607,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4A6FFF',
     borderRadius: 25,
     paddingHorizontal: 20,
     paddingVertical: 12,
@@ -640,7 +629,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '80%',
@@ -651,12 +639,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A1A',
   },
   modalOptions: {
     maxHeight: 400,
@@ -667,17 +653,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   modalOptionSelected: {
     backgroundColor: '#F5F7FF',
   },
   modalOptionText: {
     fontSize: 16,
-    color: '#333',
   },
   modalOptionTextSelected: {
-    color: '#4A6FFF',
     fontWeight: '600',
   },
   // Error State Styles
@@ -686,23 +669,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
-    backgroundColor: '#FFFFFF',
   },
   errorTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#1A1A1A',
     marginTop: 24,
     marginBottom: 8,
   },
   errorMessage: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     marginBottom: 32,
   },
   retryButton: {
-    backgroundColor: '#4A6FFF',
     borderRadius: 16,
     paddingHorizontal: 32,
     paddingVertical: 16,
