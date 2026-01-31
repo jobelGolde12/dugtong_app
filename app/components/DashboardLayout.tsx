@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react';
 import {
   Alert,
   GestureResponderEvent,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -12,33 +13,43 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withTiming
+  withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const { colors } = useTheme();
-  const [isOpen, setIsOpen] = useState(true);
+  const insets = useSafeAreaInsets();
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Animation values
-  const sidebarTranslateX = useSharedValue(0);
-  const backdropOpacity = useSharedValue(0);
+  // Constants
   const sidebarWidth = 280;
+
+  // Animation values - sidebarWidth must be defined before these
+  const sidebarTranslateX = useSharedValue(-sidebarWidth);
+  const backdropOpacity = useSharedValue(0);
+  const toggleButtonScale = useSharedValue(1);
+  const toggleButtonOpacity = useSharedValue(1);
 
   // Animation configuration for smooth, performant transitions
   const animationConfig = {
-    duration: 250,
+    duration: 280,
+    easing: Easing.out(Easing.cubic),
   };
 
+  // Calculate header height with safe area (handles notch/status bar)
+  const headerTopPadding = Math.max(insets.top + 12, insets.top + 4);
+  
   /**
    * Opens the sidebar with smooth timing animation
    */
@@ -47,6 +58,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setIsOpen(true);
     sidebarTranslateX.value = withTiming(0, animationConfig);
     backdropOpacity.value = withTiming(0.3, { duration: 200 });
+    // Button scale animation for feedback
+    toggleButtonScale.value = withTiming(0.9, { duration: 100 }, () => {
+      toggleButtonScale.value = withTiming(1, { duration: 150 });
+    });
+    toggleButtonOpacity.value = withTiming(1, { duration: 200 });
   }, []);
 
   /**
@@ -72,10 +88,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   /**
    * Swipe gesture handler for closing sidebar on left swipe
+   * and opening on right swipe (from sidebar edge)
    */
   const swipeGesture = Gesture.Pan()
     .onChange((event) => {
-      // Only handle horizontal swipes from right side
+      // Handle closing swipe (leftward from open state)
       if (event.translationX < 0 && isOpen) {
         sidebarTranslateX.value = Math.max(event.translationX, -sidebarWidth);
         backdropOpacity.value = withTiming(
@@ -83,13 +100,41 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           { duration: 0 }
         );
       }
+      // Handle opening swipe (rightward from closed state)
+      else if (event.translationX > 0 && !isOpen) {
+        sidebarTranslateX.value = Math.min(0, -sidebarWidth + event.translationX);
+        backdropOpacity.value = withTiming(
+          Math.min(0.3, (event.translationX / sidebarWidth) * 0.3),
+          { duration: 0 }
+        );
+      }
     })
     .onEnd((event) => {
-      // If swipe threshold exceeded, close sidebar
-      if (event.translationX < -50 && isOpen) {
-        runOnJS(closeSidebar)();
+      if (isOpen) {
+        // Closing logic - threshold at 60px for smooth feel
+        if (event.translationX < -60) {
+          runOnJS(closeSidebar)();
+        } else {
+          runOnJS(openSidebar)();
+        }
       } else {
-        // Snap back to open state
+        // Opening logic
+        if (event.translationX > 60) {
+          runOnJS(openSidebar)();
+        } else {
+          // Snap back to closed state
+          runOnJS(closeSidebar)();
+        }
+      }
+    });
+
+  /**
+   * Swipe gesture for main content area - swipe right from edge to open sidebar
+   */
+  const mainContentSwipe = Gesture.Pan()
+    .onEnd((event) => {
+      // Only open if swiping rightward from left edge area
+      if (event.translationX > 80 && !isOpen) {
         runOnJS(openSidebar)();
       }
     });
@@ -105,32 +150,49 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     pointerEvents: backdropOpacity.value > 0 ? 'auto' : 'none',
   }));
 
-  const styles = createStyles(colors);
+  // Animated style for toggle button scale
+  const toggleButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: toggleButtonScale.value }],
+  }));
+
+  // Animated style for toggle button opacity (when sidebar opens, button stays visible)
+  const toggleButtonContainerStyle = useAnimatedStyle(() => ({
+    opacity: toggleButtonOpacity.value,
+  }));
+
+  const styles = createStyles(colors, insets, headerTopPadding, isOpen);
 
   /**
    * Handle logout with confirmation
    */
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: () => router.replace('/') }
+        { text: 'Logout', onPress: () => router.replace('/') },
       ]
     );
-  };
+  }, []);
 
   /**
    * Navigation items with icon configuration
    * Uses Ionicons for consistent, modern iconography
    */
-  const navigationItems = [
-    { label: 'Find Donor', path: '/search', icon: 'search' as const, iconOutline: 'search-outline' as const },
-    { label: 'Donor Management', path: '/donor-management', icon: 'people' as const, iconOutline: 'people-outline' as const },
-    { label: 'Reports', path: '/reports', icon: 'bar-chart' as const, iconOutline: 'bar-chart-outline' as const },
-    { label: 'Notification', path: '/notifications', icon: 'notifications' as const, iconOutline: 'notifications-outline' as const },
-    { label: 'Settings', path: '/settings', icon: 'settings' as const, iconOutline: 'settings-outline' as const },
+  interface NavItemData {
+    label: string;
+    path: `/${string}`;
+    icon: string;
+    iconOutline: string;
+  }
+  
+  const navigationItems: NavItemData[] = [
+    { label: 'Find Donor', path: '/search', icon: 'search', iconOutline: 'search-outline' },
+    { label: 'Donor Management', path: '/donor-management', icon: 'people', iconOutline: 'people-outline' },
+    { label: 'Reports', path: '/reports', icon: 'bar-chart', iconOutline: 'bar-chart-outline' },
+    { label: 'Notification', path: '/notifications', icon: 'notifications', iconOutline: 'notifications-outline' },
+    { label: 'Settings', path: '/settings', icon: 'settings', iconOutline: 'settings-outline' },
   ];
 
   /**
@@ -141,7 +203,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   /**
    * NavItem component with press animation
    */
-  const NavItem = ({ item }: { item: typeof navigationItems[0] }) => {
+  const NavItem = ({ item }: { item: NavItemData }) => {
     const [isHovered, setIsHovered] = useState(false);
     const scale = useSharedValue(1);
     
@@ -159,6 +221,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setIsHovered(false);
     };
 
+    const handleNav = useCallback(() => {
+      router.push(item.path as any);
+    }, [item.path]);
+
     return (
       <Animated.View style={animatedStyle}>
         <Pressable
@@ -167,7 +233,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             isActive(item.path) && styles.navItemActive,
             isHovered && !isActive(item.path) && styles.navItemHover,
           ]}
-          onPress={() => router.push(item.path)}
+          onPress={handleNav}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
         >
@@ -193,28 +259,46 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   /**
    * Handle backdrop tap to close sidebar
    */
-  const handleBackdropTap = (event: GestureResponderEvent) => {
-    // Prevent closing when tapping on sidebar
-    if (event.target === undefined || isOpen) {
-      closeSidebar();
-    }
-  };
+  const handleBackdropTap = useCallback(
+    (event: GestureResponderEvent) => {
+      // Prevent closing when tapping on sidebar
+      if (event.target === undefined || isOpen) {
+        closeSidebar();
+      }
+    },
+    [isOpen, closeSidebar]
+  );
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      {/* Toggle Button - Fixed position */}
-      <TouchableOpacity
-        style={styles.toggleButton}
-        onPress={toggleSidebar}
-        accessibilityLabel={isOpen ? 'Close sidebar' : 'Open sidebar'}
-        accessibilityRole="button"
+      {/* Toggle Button - Dynamic positioning based on sidebar state */}
+      {/* When open: Top-right of main header area */}
+      {/* When closed: Top-right of collapsed sidebar area */}
+      <Animated.View
+        style={[
+          styles.toggleButtonContainer,
+          isOpen ? styles.toggleButtonOpen : styles.toggleButtonClosed,
+          toggleButtonContainerStyle,
+        ]}
       >
-        <Ionicons
-          name={isOpen ? 'close' : 'menu'}
-          size={22}
-          color={colors.textSecondary}
-        />
-      </TouchableOpacity>
+        <Animated.View style={toggleButtonAnimatedStyle}>
+          <TouchableOpacity
+            style={styles.toggleButton}
+            onPress={toggleSidebar}
+            accessibilityLabel={isOpen ? 'Close sidebar' : 'Open sidebar'}
+            accessibilityRole="button"
+            accessibilityHint={isOpen ? 'Closes the navigation drawer' : 'Opens the navigation drawer'}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isOpen ? 'close' : 'menu'}
+              size={24}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
 
       {/* Backdrop - Tappable overlay */}
       <Animated.View
@@ -244,6 +328,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               onPress={handleLogout}
               accessibilityLabel="Logout"
               accessibilityRole="button"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
@@ -251,36 +336,56 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </Animated.View>
       </GestureDetector>
 
-      {/* Main Content */}
-      <View style={styles.mainContent}>
-        {children}
-      </View>
+      {/* Main Content with swipe detection */}
+      <GestureDetector gesture={mainContentSwipe}>
+        <View style={styles.mainContent}>
+          {/* Dashboard Header Area */}
+          <View style={styles.dashboardHeader}>
+            <View style={styles.headerLeftSpacer} />
+          </View>
+          {children}
+        </View>
+      </GestureDetector>
     </GestureHandlerRootView>
   );
 }
 
-const createStyles = (colors: any) =>
+const createStyles = (colors: any, insets: any, headerTopPadding: number, isOpen: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
-    toggleButton: {
+    // Toggle button container - handles positioning based on sidebar state
+    toggleButtonContainer: {
       position: 'absolute',
-      top: 20,
-      left: 20,
       zIndex: 1001,
-      width: 44,
-      height: 44,
+      // When sidebar is OPEN: button is in main content header (top-right)
+      // When sidebar is CLOSED: button is at top-right of collapsed sidebar area
+    },
+    toggleButtonOpen: {
+      top: headerTopPadding,
+      right: 16,
+    },
+    toggleButtonClosed: {
+      top: headerTopPadding,
+      right: 12,
+    },
+    toggleButton: {
+      width: 48,
+      height: 48,
       backgroundColor: colors.surface,
-      borderRadius: 22,
+      borderRadius: 24,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.15,
       shadowRadius: 8,
-      elevation: 5,
+      elevation: 6,
+      // iOS ripple effect simulation
+      borderWidth: Platform.OS === 'ios' ? 0.5 : 0,
+      borderColor: colors.border,
     },
     backdrop: {
       position: 'absolute',
@@ -308,7 +413,7 @@ const createStyles = (colors: any) =>
     sidebarHeader: {
       paddingHorizontal: 24,
       paddingVertical: 24,
-      paddingTop: 80,
+      paddingTop: Math.max(insets.top + 20, 60),
     },
     sidebarTitle: {
       fontSize: 24,
@@ -362,7 +467,7 @@ const createStyles = (colors: any) =>
     },
     sidebarFooter: {
       paddingHorizontal: 12,
-      paddingBottom: 24,
+      paddingBottom: Math.max(insets.bottom + 16, 24),
     },
     logoutButton: {
       flexDirection: 'row',
@@ -382,6 +487,16 @@ const createStyles = (colors: any) =>
       color: '#fff',
       fontWeight: '600',
       fontSize: 16,
+    },
+    // Dashboard header area - provides space for toggle button when sidebar is open
+    dashboardHeader: {
+      height: headerTopPadding + 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+    },
+    headerLeftSpacer: {
+      flex: 1,
     },
     mainContent: {
       flex: 1,

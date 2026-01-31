@@ -25,9 +25,11 @@ export default function HomeScreen() {
         </View>
 
         {/* Main Button */}
-        <TouchableOpacity style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Continue</Text>
-        </TouchableOpacity>
+        <Link href="/login" asChild>
+          <TouchableOpacity style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Continue</Text>
+          </TouchableOpacity>
+        </Link>
 
         {/* Secondary Links */}
         <View style={styles.secondaryLinks}>

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, FlatList } from 'react-native';
-import { DonorCard } from './components/DonorCard';
-import { SearchFilters } from './components/SearchFilters';
-import { EmptyState } from './components/EmptyState';
-import { LoadingIndicator } from './components/LoadingIndicator';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import { donorService } from '../lib/services/donorService';
 import { Donor, SearchParams } from '../types/donor.types';
 import DashboardLayout from './components/DashboardLayout';
-import { useTheme } from '../contexts/ThemeContext';
+import { DonorCard } from './components/DonorCard';
+import { EmptyState } from './components/EmptyState';
+import { LoadingIndicator } from './components/LoadingIndicator';
+import { SearchFilters } from './components/SearchFilters';
 
 export default function SearchScreen() {
   const { colors } = useTheme();
@@ -116,6 +116,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: colors.text,
+    marginTop: 30,
   },
   sectionTitle: {
     fontSize: 18,
@@ -137,5 +138,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   resultsContainer: {
     flex: 1,
+    backgroundColor: colors.background,
   },
 });
