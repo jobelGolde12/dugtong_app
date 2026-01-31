@@ -6,7 +6,7 @@ import { EmptyState } from './components/EmptyState';
 import { LoadingIndicator } from './components/LoadingIndicator';
 import { donorService } from '../lib/services/donorService';
 import { Donor, SearchParams } from '../types/donor.types';
-import { router } from 'expo-router';
+import DashboardLayout from './components/DashboardLayout';
 
 export default function SearchScreen() {
   const [filters, setFilters] = useState({
@@ -62,39 +62,41 @@ export default function SearchScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Find a Donor</Text>
+    <DashboardLayout>
+      <View style={styles.container}>
+        <Text style={styles.title}>Find a Donor</Text>
 
-      <SearchFilters
-        filters={filters}
-        setFilters={setFilters}
-        showBloodTypeModal={showBloodTypeModal}
-        setShowBloodTypeModal={setShowBloodTypeModal}
-        showMunicipalityModal={showMunicipalityModal}
-        setShowMunicipalityModal={setShowMunicipalityModal}
-      />
+        <SearchFilters
+          filters={filters}
+          setFilters={setFilters}
+          showBloodTypeModal={showBloodTypeModal}
+          setShowBloodTypeModal={setShowBloodTypeModal}
+          showMunicipalityModal={showMunicipalityModal}
+          setShowMunicipalityModal={setShowMunicipalityModal}
+        />
 
-      <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-        <Text style={styles.searchButtonText}>Search Donors</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+          <Text style={styles.searchButtonText}>Search Donors</Text>
+        </TouchableOpacity>
 
-      <View style={styles.resultsContainer}>
-        <Text style={styles.sectionTitle}>Search Results</Text>
+        <View style={styles.resultsContainer}>
+          <Text style={styles.sectionTitle}>Search Results</Text>
 
-        {loading ? (
-          <LoadingIndicator />
-        ) : results.length > 0 ? (
-          <FlatList
-            data={results}
-            renderItem={renderResultItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-          />
-        ) : (
-          <EmptyState message="No donors found. Try adjusting your filters." />
-        )}
+          {loading ? (
+            <LoadingIndicator />
+          ) : results.length > 0 ? (
+            <FlatList
+              data={results}
+              renderItem={renderResultItem}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            <EmptyState message="No donors found. Try adjusting your filters." />
+          )}
+        </View>
       </View>
-    </View>
+    </DashboardLayout>
   );
 }
 
