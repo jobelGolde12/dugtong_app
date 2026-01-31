@@ -1,9 +1,10 @@
 import * as Speech from 'expo-speech';
 import { Bot, Mic, Send } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Animated as RNAnimated,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -13,11 +14,13 @@ import {
   View,
 } from 'react-native';
 import Animated, {
-  useSharedValue,
+  Easing,
   useAnimatedStyle,
+  useSharedValue,
+  withDelay,
   withRepeat,
+  withSequence,
   withTiming,
-  Easing
 } from 'react-native-reanimated';
 import { useTheme } from '../contexts/ThemeContext';
 import DashboardLayout from './components/DashboardLayout';
@@ -29,7 +32,7 @@ type MessageType = {
 };
 
 export default function ChatbotScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<MessageType[]>([
     {
@@ -38,9 +41,18 @@ export default function ChatbotScreen() {
       sender: 'bot',
     },
   ]);
+  const [showIntro, setShowIntro] = useState(true);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const introAnim = useRef(new RNAnimated.Value(1)).current;
 
   // Animation values for microphone
   const micScale = useSharedValue(1);
+  const borderScale = useSharedValue(1);
+  const borderOpacity = useSharedValue(0.3);
+  const ring1Scale = useSharedValue(1);
+  const ring1Opacity = useSharedValue(0);
+  const ring2Scale = useSharedValue(1);
+  const ring2Opacity = useSharedValue(0);
   const [isListening, setIsListening] = useState(false);
 
   const animatedMicStyle = useAnimatedStyle(() => {
@@ -49,15 +61,148 @@ export default function ChatbotScreen() {
     };
   });
 
-  const startMicAnimation = () => {
-    micScale.value = withRepeat(
-      withTiming(1.1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-      -1,  // Repeat infinitely
-      true  // Reverse direction on repeat
+  const animatedBorderStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: borderScale.value }],
+      opacity: borderOpacity.value,
+    };
+  });
+
+  const animatedRing1Style = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: ring1Scale.value }],
+      opacity: ring1Opacity.value,
+    };
+  });
+
+  const animatedRing2Style = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: ring2Scale.value }],
+      opacity: ring2Opacity.value,
+    };
+  });
+
+  const startMicIdleAnimation = () => {
+    // Gentle idle pulse
+    borderScale.value = withRepeat(
+      withSequence(
+        withDelay(300, withTiming(1.03, { 
+          duration: 1800, 
+          easing: Easing.bezier(0.4, 0, 0.2, 1) 
+        })),
+        withTiming(1, { 
+          duration: 1800, 
+          easing: Easing.bezier(0.4, 0, 0.2, 1) 
+        })
+      ),
+      -1,
+      true
+    );
+    
+    borderOpacity.value = withRepeat(
+      withSequence(
+        withDelay(300, withTiming(0.5, { duration: 900 })),
+        withTiming(0.3, { duration: 900 })
+      ),
+      -1,
+      true
     );
   };
 
+  const startMicActiveAnimation = () => {
+    // Stronger active pulse with faster timing
+    borderScale.value = withRepeat(
+      withSequence(
+        withTiming(1.1, { 
+          duration: 500, 
+          easing: Easing.bezier(0.4, 0, 0.2, 1) 
+        }),
+        withTiming(1, { 
+          duration: 500, 
+          easing: Easing.bezier(0.4, 0, 0.2, 1) 
+        })
+      ),
+      -1,
+      true
+    );
+    
+    borderOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.9, { duration: 500 }),
+        withTiming(0.7, { duration: 500 })
+      ),
+      -1,
+      true
+    );
+    
+    // Dual ring effect
+    ring1Scale.value = withRepeat(
+      withSequence(
+        withTiming(1.4, { 
+          duration: 1200, 
+          easing: Easing.bezier(0.4, 0, 0.2, 1) 
+        }),
+        withTiming(1, { duration: 100 })
+      ),
+      -1,
+      false
+    );
+    
+    ring1Opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: 800 }),
+        withTiming(0, { duration: 400 })
+      ),
+      -1,
+      false
+    );
+    
+    ring2Scale.value = withDelay(300, withRepeat(
+      withSequence(
+        withTiming(1.4, { 
+          duration: 1200, 
+          easing: Easing.bezier(0.4, 0, 0.2, 1) 
+        }),
+        withTiming(1, { duration: 100 })
+      ),
+      -1,
+      false
+    ));
+    
+    ring2Opacity.value = withDelay(300, withRepeat(
+      withSequence(
+        withTiming(0.3, { duration: 800 }),
+        withTiming(0, { duration: 400 })
+      ),
+      -1,
+      false
+    ));
+  };
+
   const stopMicAnimation = () => {
+    borderScale.value = withTiming(1, { duration: 300 });
+    borderOpacity.value = withTiming(0.3, { duration: 300 });
+    ring1Scale.value = withTiming(1, { duration: 200 });
+    ring1Opacity.value = withTiming(0, { duration: 200 });
+    ring2Scale.value = withTiming(1, { duration: 200 });
+    ring2Opacity.value = withTiming(0, { duration: 200 });
+  };
+
+  // Start gentle idle animation on mount
+  useEffect(() => {
+    startMicIdleAnimation();
+  }, []);
+
+  const handleTapPress = () => {
+    // Quick compression feedback
+    micScale.value = withSequence(
+      withTiming(0.95, { duration: 100 }),
+      withTiming(1, { duration: 150, easing: Easing.bezier(0.4, 0, 0.2, 1) })
+    );
+  };
+
+  const handleTapRelease = () => {
+    // Restore scale
     micScale.value = withTiming(1, { duration: 200 });
   };
 
@@ -134,9 +279,11 @@ export default function ChatbotScreen() {
   };
 
   const handleMicPress = async () => {
+    handleTapPress();
+    
     // Start animation
     setIsListening(true);
-    startMicAnimation();
+    startMicActiveAnimation();
 
     // Simulate processing time
     setTimeout(async () => {
@@ -153,10 +300,24 @@ export default function ChatbotScreen() {
       };
       setMessages(prev => [...prev, botResponse]);
 
+      // Hide intro on first user interaction
+      if (showIntro) {
+        RNAnimated.timing(introAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowIntro(false);
+        });
+      }
+
       // Stop animation after a delay
       setTimeout(() => {
         setIsListening(false);
         stopMicAnimation();
+        setTimeout(() => {
+          startMicIdleAnimation();
+        }, 300);
       }, 1000);
     }, 1000); // Simulate processing time
   };
@@ -174,6 +335,17 @@ export default function ChatbotScreen() {
     setMessages(prev => [...prev, userMessage]);
     setMessage('');
 
+    // Hide intro on first user interaction
+    if (showIntro) {
+      RNAnimated.timing(introAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowIntro(false);
+      });
+    }
+
     // Simulate bot response after a short delay
     setTimeout(() => {
       const botResponseText = getHumanLikeResponse(message);
@@ -188,6 +360,15 @@ export default function ChatbotScreen() {
       speakMessage(botResponseText);
     }, 500);
   };
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages]);
 
   const renderMessageBubble = (msg: MessageType) => {
     const isUser = msg.sender === 'user';
@@ -224,28 +405,92 @@ export default function ChatbotScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.flex}
         >
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            {/* AI Profile Section */}
-            <View style={styles.botProfileContainer}>
-              <View style={styles.botIconCircle}>
-                <Bot color="#2196F3" size={40} />
-              </View>
-              <Text style={styles.botName}>Dugtong</Text>
-            </View>
-
-            {/* Big Modern Talk Icon */}
-            <View style={styles.talkSection}>
-              <TouchableOpacity
-                style={styles.bigTalkButton}
-                onPress={handleMicPress}
-                activeOpacity={0.8}
+          <ScrollView 
+            ref={scrollViewRef}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* AI Profile Section - Conditional */}
+            {showIntro && (
+              <RNAnimated.View 
+                style={[
+                  styles.botProfileContainer,
+                  {
+                    opacity: introAnim,
+                    transform: [{
+                      translateY: introAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-20, 0]
+                      })
+                    }]
+                  }
+                ]}
               >
-                <Animated.View style={[styles.micContainer, animatedMicStyle]}>
-                  <Mic color="#FFF" size={48} strokeWidth={1.5} />
-                </Animated.View>
-              </TouchableOpacity>
-              <Text style={styles.talkSubtext}>Tap to speak to Dugtong</Text>
-            </View>
+                <View style={styles.botIconCircle}>
+                  <Bot color="#2196F3" size={40} />
+                </View>
+                <Text style={styles.botName}>Dugtong Bot</Text>
+              </RNAnimated.View>
+            )}
+
+            {/* Big Modern Talk Icon - Conditional */}
+            {showIntro && (
+              <RNAnimated.View 
+                style={[
+                  styles.talkSection,
+                  {
+                    opacity: introAnim,
+                    transform: [{
+                      translateY: introAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-30, -10]
+                      })
+                    }]
+                  }
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.bigTalkButton}
+                  onPressIn={handleTapPress}
+                  onPressOut={handleTapRelease}
+                  onPress={handleMicPress}
+                  activeOpacity={1}
+                >
+                  {/* Dual ring effect for active state */}
+                  <Animated.View style={[
+                    styles.ringContainer, 
+                    animatedRing1Style,
+                    { borderColor: colors.primary }
+                  ]} />
+                  <Animated.View style={[
+                    styles.ringContainer, 
+                    animatedRing2Style,
+                    { borderColor: colors.primary }
+                  ]} />
+                  
+                  {/* Main border animation */}
+                  <Animated.View style={[
+                    styles.borderAnimationContainer, 
+                    animatedBorderStyle,
+                    { 
+                      borderColor: colors.primary,
+                      shadowColor: colors.primary,
+                    }
+                  ]} />
+                  
+                  {/* Microphone container with bounce animation */}
+                  <Animated.View style={[styles.micContainer, animatedMicStyle]}>
+                    <Mic color="#FFF" size={48} strokeWidth={1.5} />
+                  </Animated.View>
+                </TouchableOpacity>
+                <Text style={[
+                  styles.talkSubtext,
+                  isDark && styles.darkTalkSubtext
+                ]}>
+                  Tap to speak
+                </Text>
+              </RNAnimated.View>
+            )}
 
             {/* Chat Messages */}
             {messages.map(renderMessageBubble)}
@@ -266,6 +511,7 @@ export default function ChatbotScreen() {
             <TouchableOpacity 
               style={styles.sendButton}
               onPress={handleSendMessage}
+              activeOpacity={0.8}
             >
               <Send color="#FFF" size={20} />
             </TouchableOpacity>
@@ -301,10 +547,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   scrollContent: {
     padding: 20,
     alignItems: 'center',
+    paddingTop: 10, // Reduced top padding
+    minHeight: '100%',
   },
   botProfileContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 20, // Reduced margin
   },
   botIconCircle: {
     width: 80,
@@ -318,6 +566,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
+    marginTop: 70,
   },
   botName: {
     marginTop: 10,
@@ -327,7 +576,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   talkSection: {
     alignItems: 'center',
-    marginVertical: 40,
+    marginVertical: 30, // Reduced vertical margin
+    marginTop: 20, // Moved upward
   },
   bigTalkButton: {
     width: 120,
@@ -341,6 +591,26 @@ const createStyles = (colors: any) => StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
+    position: 'relative', // For border animation positioning
+  },
+  borderAnimationContainer: {
+    position: 'absolute',
+    width: 140, // Slightly larger than the button
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  ringContainer: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 1.5,
+    backgroundColor: 'transparent',
   },
   talkSubtext: {
     marginTop: 15,
@@ -348,10 +618,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
   },
+  darkTalkSubtext: {
+    color: '#FFFFFF', // White text for dark mode
+    opacity: 0.9,
+  },
   micContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
+    height: '100%',
   },
   messageContainer: {
     marginBottom: 10,
@@ -397,6 +673,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     alignItems: 'center',
+    marginTop: -20,
   },
   input: {
     flex: 1,
