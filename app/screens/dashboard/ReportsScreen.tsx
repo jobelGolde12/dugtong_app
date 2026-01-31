@@ -13,32 +13,15 @@ import {
   View,
 } from 'react-native';
 import { reportService } from '../../../lib/services/reportService';
+import type {
+  AvailabilityTrend,
+  BloodTypeDistribution,
+  MonthlyDonationData,
+  ReportSummary
+} from '../../../types/report.types';
 import { LoadingIndicator } from '../../components/dashboard/LoadingIndicator';
 
 // ========== TypeScript Interfaces ==========
-interface ReportSummary {
-  totalDonors: number;
-  availableDonors: number;
-  requestsThisMonth: number;
-  successfulDonations: number;
-}
-
-interface BloodTypeDistribution {
-  type: string;
-  count: number;
-  percentage: number;
-}
-
-interface MonthlyDonationData {
-  month: string;
-  donations: number;
-}
-
-interface AvailabilityTrend {
-  date: string;
-  available: number;
-  requested: number;
-}
 
 interface FilterState {
   bloodType: string | null;
@@ -267,149 +250,154 @@ export const ReportsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Dashboard</Text>
-          <Text style={styles.headerSubtitle}>Real-time donation insights</Text>
-        </View>
-        <TouchableOpacity style={styles.refreshButton} onPress={loadData}>
-          <Ionicons name="refresh" size={24} color="#4A6FFF" />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView 
-        style={styles.scrollView}
+        style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="on-drag"
+        bounces={true}
+        overScrollMode="always"
       >
-        {/* Search Bar */}
-        <View style={[
-          styles.searchContainer,
-          searchFocused && styles.searchContainerFocused
-        ]}>
-          <Ionicons 
-            name="search" 
-            size={20} 
-            color={searchFocused ? "#4A6FFF" : "#999"} 
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search donors, locations..."
-            placeholderTextColor="#999"
-            value={filters.searchQuery}
-            onChangeText={(text) => handleFilterChange('searchQuery', text)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-          />
-          {filters.searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => handleFilterChange('searchQuery', '')}>
-              <Ionicons name="close-circle" size={20} color="#999" />
-            </TouchableOpacity>
-          )}
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>Dashboard</Text>
+            <Text style={styles.headerSubtitle}>Real-time donation insights</Text>
+          </View>
+          <TouchableOpacity style={styles.refreshButton} onPress={loadData}>
+            <Ionicons name="refresh" size={24} color="#4A6FFF" />
+          </TouchableOpacity>
         </View>
 
-        {/* Filter Row */}
-        <View style={styles.filterRow}>
-          <FilterSelect
-            label="Blood Type"
-            value={filters.bloodType}
-            options={bloodTypeOptions}
-            onSelect={(value) => handleFilterChange('bloodType', value)}
-            placeholder="All Types"
-          />
-          <FilterSelect
-            label="Availability"
-            value={filters.municipality}
-            options={availabilityOptions}
-            onSelect={(value) => handleFilterChange('municipality', value)}
-            placeholder="All Status"
-          />
-        </View>
+        <View style={styles.scrollContent}>
+          {/* Search Bar */}
+          <View style={[
+            styles.searchContainer,
+            searchFocused && styles.searchContainerFocused
+          ]}>
+            <Ionicons 
+              name="search" 
+              size={20} 
+              color={searchFocused ? "#4A6FFF" : "#999"} 
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search donors, locations..."
+              placeholderTextColor="#999"
+              value={filters.searchQuery}
+              onChangeText={(text) => handleFilterChange('searchQuery', text)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+            />
+            {filters.searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => handleFilterChange('searchQuery', '')}>
+                <Ionicons name="close-circle" size={20} color="#999" />
+              </TouchableOpacity>
+            )}
+          </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <StatCard
-            title="Total Donors"
-            value={reportSummary.totalDonors}
-            subtitle="Registered in system"
-            color="#4A6FFF"
-            icon="people-outline"
-          />
-          <StatCard
-            title="Available Now"
-            value={reportSummary.availableDonors}
-            subtitle="Ready to donate"
-            color="#00C896"
-            icon="checkmark-circle-outline"
-          />
-          <StatCard
-            title="This Month"
-            value={reportSummary.requestsThisMonth}
-            subtitle="Blood requests"
-            color="#FF9F43"
-            icon="calendar-outline"
-          />
-          <StatCard
-            title="Successful"
-            value={reportSummary.successfulDonations}
-            subtitle="Completed donations"
-            color="#9B51E0"
-            icon="trophy-outline"
-          />
-        </View>
+          {/* Filter Row */}
+          <View style={styles.filterRow}>
+            <FilterSelect
+              label="Blood Type"
+              value={filters.bloodType}
+              options={bloodTypeOptions}
+              onSelect={(value) => handleFilterChange('bloodType', value)}
+              placeholder="All Types"
+            />
+            <FilterSelect
+              label="Availability"
+              value={filters.municipality}
+              options={availabilityOptions}
+              onSelect={(value) => handleFilterChange('municipality', value)}
+              placeholder="All Status"
+            />
+          </View>
 
-        {/* Charts Section */}
-        <View style={styles.chartsSection}>
-          <Text style={styles.sectionTitle}>Analytics Overview</Text>
-          
-          <ChartPlaceholder 
-            title="Donor Distribution by Blood Type" 
-            dataPoints={8}
-          />
-          
-          <ChartPlaceholder 
-            title="Monthly Donation Trends" 
-            dataPoints={12}
-          />
-          
-          <ChartPlaceholder 
-            title="Availability Overview" 
-            dataPoints={7}
-          />
-        </View>
+          {/* Stats Grid */}
+          <View style={styles.statsGrid}>
+            <StatCard
+              title="Total Donors"
+              value={reportSummary.totalDonors}
+              subtitle="Registered in system"
+              color="#4A6FFF"
+              icon="people-outline"
+            />
+            <StatCard
+              title="Available Now"
+              value={reportSummary.availableDonors}
+              subtitle="Ready to donate"
+              color="#00C896"
+              icon="checkmark-circle-outline"
+            />
+            <StatCard
+              title="This Month"
+              value={reportSummary.requestsThisMonth}
+              subtitle="Blood requests"
+              color="#FF9F43"
+              icon="calendar-outline"
+            />
+            <StatCard
+              title="Successful"
+              value={reportSummary.successfulDonations}
+              subtitle="Completed donations"
+              color="#9B51E0"
+              icon="trophy-outline"
+            />
+          </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-              <Ionicons name="download-outline" size={24} color="#4A6FFF" />
-              <Text style={styles.actionText}>Export Report</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-              <Ionicons name="notifications-outline" size={24} color="#4A6FFF" />
-              <Text style={styles.actionText}>Send Alerts</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-              <Ionicons name="add-circle-outline" size={24} color="#4A6FFF" />
-              <Text style={styles.actionText}>Add Donor</Text>
-            </TouchableOpacity>
+          {/* Charts Section */}
+          <View style={styles.chartsSection}>
+            <Text style={styles.sectionTitle}>Analytics Overview</Text>
+            
+            <ChartPlaceholder 
+              title="Donor Distribution by Blood Type" 
+              dataPoints={8}
+            />
+            
+            <ChartPlaceholder 
+              title="Monthly Donation Trends" 
+              dataPoints={12}
+            />
+            
+            <ChartPlaceholder 
+              title="Availability Overview" 
+              dataPoints={7}
+            />
+          </View>
+
+          {/* Quick Actions */}
+          <View style={styles.quickActions}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionsGrid}>
+              <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+                <Ionicons name="download-outline" size={24} color="#4A6FFF" />
+                <Text style={styles.actionText}>Export Report</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+                <Ionicons name="notifications-outline" size={24} color="#4A6FFF" />
+                <Text style={styles.actionText}>Send Alerts</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+                <Ionicons name="add-circle-outline" size={24} color="#4A6FFF" />
+                <Text style={styles.actionText}>Add Donor</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </ScrollView>
 
-      {/* Clear Filters Button */}
-      {(filters.bloodType || filters.municipality || filters.searchQuery) && (
-        <TouchableOpacity 
-          style={styles.clearFiltersButton}
-          onPress={handleClearFilters}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="close" size={20} color="#fff" />
-          <Text style={styles.clearFiltersText}>Clear Filters</Text>
-        </TouchableOpacity>
-      )}
+        {/* Clear Filters Button */}
+        {(filters.bloodType || filters.municipality || filters.searchQuery) && (
+          <TouchableOpacity 
+            style={styles.clearFiltersButton}
+            onPress={handleClearFilters}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={20} color="#fff" />
+            <Text style={styles.clearFiltersText}>Clear Filters</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
     </View>
   );
 };
@@ -419,6 +407,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  scrollContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -446,9 +437,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FF',
     borderRadius: 12,
   },
-  scrollView: {
-    flex: 1,
-  },
+
   scrollContent: {
     padding: 20,
     paddingBottom: 100,
@@ -511,52 +500,54 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: Dimensions.get('window').width / 2 - 30,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 2,
     position: 'relative',
     overflow: 'hidden',
+    minHeight: 150,
+    maxHeight: 150,
   },
   statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: '#F5F7FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   statContent: {
     flex: 1,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
     marginBottom: 2,
   },
   statSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
   },
   statIndicator: {
     position: 'absolute',
     top: 0,
     right: 0,
-    width: 80,
-    height: 80,
-    borderBottomLeftRadius: 40,
+    width: 60,
+    height: 60,
+    borderBottomLeftRadius: 30,
   },
   chartsSection: {
     marginBottom: 32,
