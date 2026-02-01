@@ -1,177 +1,138 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import React, { memo, useMemo, useCallback } from 'react';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Platform,
+  StatusBar,
+  Text,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import DashboardLayout from './components/DashboardLayout';
+import SettingsSection from './components/SettingsSection';
+import ProfileCard from './components/ProfileCard';
+import ThemeOption from './components/ThemeOption';
+import { useSettings } from '../hooks/useSettings';
 
-export default function SettingsScreen() {
+const SettingsScreen: React.FC = memo(() => {
   const { mode, setTheme, colors, isDark } = useTheme();
+  const {
+    profile,
+    themeOptions,
+    handleProfileEdit,
+    handleProfilePress,
+  } = useSettings();
 
-  const themeOptions = [
-    { key: 'light', label: 'Light', icon: '☀️' },
-    { key: 'dark', label: 'Dark', icon: '🌙' },
-    { key: 'system', label: 'System', icon: '⚙️' },
-  ] as const;
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const styles = createStyles(colors);
+  const handleThemeChange = useCallback((themeKey: string) => {
+    setTheme(themeKey);
+  }, [setTheme]);
 
   return (
     <DashboardLayout>
-      <ScrollView style={styles.container}>
-        <Text style={styles.title}>Settings</Text>
-
-        {/* Profile Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile</Text>
-          <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>JD</Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>John Doe</Text>
-              <Text style={styles.profileEmail}>john.doe@example.com</Text>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={colors.background}
+        />
+        <ScrollView
+          style={styles.container}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.contentContainer}
+          bounces={true}
+          overScrollMode="always"
+          accessibilityLabel="Settings screen"
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <Text style={styles.title} accessibilityRole="header">
+                Settings
+              </Text>
+              <Text style={styles.subtitle} accessibilityRole="text">
+                Manage your preferences and profile
+              </Text>
             </View>
           </View>
-        </View>
 
-        {/* Theme Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Theme</Text>
-          <View style={styles.themeCard}>
-            {themeOptions.map((option) => (
-              <TouchableOpacity
+          {/* Profile Section */}
+          <SettingsSection
+            title="Profile"
+            description="Update your personal information and avatar"
+            testID="profile-section"
+          >
+            <ProfileCard
+              name={profile.name}
+              email={profile.email}
+              initials={profile.initials}
+              avatarUrl={profile.avatarUrl}
+              onPress={handleProfilePress}
+              onEditPress={handleProfileEdit}
+            />
+          </SettingsSection>
+
+          {/* Theme Section */}
+          <SettingsSection
+            title="Appearance"
+            description="Choose how the app looks on your device"
+            testID="theme-section"
+          >
+            {themeOptions.map((option, index) => (
+              <ThemeOption
                 key={option.key}
-                style={[
-                  styles.themeOption,
-                  mode === option.key && styles.themeOptionActive
-                ]}
-                onPress={() => setTheme(option.key)}
-              >
-                <Text style={styles.themeIcon}>{option.icon}</Text>
-                <Text style={[
-                  styles.themeLabel,
-                  mode === option.key && styles.themeLabelActive
-                ]}>
-                  {option.label}
-                </Text>
-                {mode === option.key && (
-                  <View style={styles.checkmark}>
-                    <Text style={styles.checkmarkText}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                option={option}
+                isActive={mode === option.key}
+                onPress={handleThemeChange}
+                isLast={index === themeOptions.length - 1}
+              />
             ))}
-          </View>
-        </View>
-      </ScrollView>
+          </SettingsSection>
+
+          {/* Additional Settings Sections Placeholder */}
+          <View style={styles.spacer} />
+        </ScrollView>
+      </SafeAreaView>
     </DashboardLayout>
   );
-}
-
-const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 32,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
-  },
-  profileCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  profileEmail: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  themeCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 8,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  themeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginVertical: 2,
-  },
-  themeOptionActive: {
-    backgroundColor: colors.primary,
-  },
-  themeIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  themeLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text,
-    flex: 1,
-  },
-  themeLabelActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmarkText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
 });
+
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    },
+    container: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: 24,
+    },
+    header: {
+      marginBottom: 32,
+    },
+    headerContent: {
+      marginBottom: 8,
+    },
+    title: {
+      fontSize: 34,
+      fontWeight: '800',
+      color: colors.text,
+      letterSpacing: -0.5,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      opacity: 0.8,
+      lineHeight: 22,
+    },
+    spacer: {
+      height: 40,
+    },
+  });
+
+export default SettingsScreen;

@@ -7,7 +7,7 @@ interface DonorCardProps {
   onPress: (donor: Donor) => void;
 }
 
-export const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
+const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   return (
     <TouchableOpacity style={styles.donorCard} onPress={() => onPress(donor)}>
       <View style={styles.donorHeader}>
@@ -93,3 +93,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export default DonorCard;

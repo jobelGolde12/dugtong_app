@@ -1,90 +1,96 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useColorScheme } from 'react-native';
-
-type ThemeMode = 'light' | 'dark' | 'system';
-
-interface ThemeColors {
-  background: string;
-  surface: string;
-  primary: string;
-  text: string;
-  textSecondary: string;
-  border: string;
-  shadow: string;
-}
+import { ThemeMode, ThemeColors } from '../types/theme';
 
 interface ThemeContextType {
   mode: ThemeMode;
   colors: ThemeColors;
-  setTheme: (mode: ThemeMode) => void;
   isDark: boolean;
+  setTheme: (mode: ThemeMode) => void;
 }
 
 const lightColors: ThemeColors = {
-  background: '#f8f9fa',
-  surface: '#ffffff',
-  primary: '#0d6efd',
+  background: '#FFFFFF',
+  surface: '#F8F9FA',
+  surfaceVariant: '#E9ECEF',
+  primary: '#4361EE',
+  primaryVariant: '#3A56D4',
+  secondary: '#7209B7',
   text: '#212529',
-  textSecondary: '#495057',
-  border: '#e9ecef',
+  textSecondary: '#6C757D',
+  textOnPrimary: '#FFFFFF',
+  textOnSecondary: '#FFFFFF',
+  border: '#DEE2E6',
   shadow: '#000000',
+  error: '#E63946',
+  success: '#2A9D8F',
+  warning: '#F4A261',
+  info: '#457B9D',
+  disabled: '#ADB5BD',
+  ripple: '#4361EE1A',
 };
 
 const darkColors: ThemeColors = {
   background: '#121212',
-  surface: '#1e1e1e',
-  primary: '#4285f4',
-  text: '#ffffff',
-  textSecondary: '#b3b3b3',
-  border: '#333333',
+  surface: '#1E1E1E',
+  surfaceVariant: '#2D2D2D',
+  primary: '#6C8CFF',
+  primaryVariant: '#5A7AE6',
+  secondary: '#9D4EDD',
+  text: '#E9ECEF',
+  textSecondary: '#ADB5BD',
+  textOnPrimary: '#FFFFFF',
+  textOnSecondary: '#FFFFFF',
+  border: '#495057',
   shadow: '#000000',
+  error: '#FF6B6B',
+  success: '#4ECDC4',
+  warning: '#FFD166',
+  info: '#118AB2',
+  disabled: '#6C757D',
+  ripple: '#6C8CFF1A',
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
   const [mode, setMode] = useState<ThemeMode>('system');
-  
-  const getEffectiveTheme = (): 'light' | 'dark' => {
+
+  const getActualMode = useCallback((): 'light' | 'dark' => {
     if (mode === 'system') {
       return systemColorScheme === 'dark' ? 'dark' : 'light';
     }
     return mode;
-  };
+  }, [mode, systemColorScheme]);
 
-  const isDark = getEffectiveTheme() === 'dark';
-  const colors = isDark ? darkColors : lightColors;
+  const getColors = useCallback((): ThemeColors => {
+    const actualMode = getActualMode();
+    return actualMode === 'dark' ? darkColors : lightColors;
+  }, [getActualMode]);
 
-  const setTheme = (newMode: ThemeMode) => {
+  const handleSetTheme = useCallback((newMode: ThemeMode) => {
     setMode(newMode);
-    // In a real app, you'd use AsyncStorage for React Native
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('theme', newMode);
-    }
-  };
-
-  useEffect(() => {
-    // Load saved theme on mount
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('theme') as ThemeMode;
-      if (saved && ['light', 'dark', 'system'].includes(saved)) {
-        setMode(saved);
-      }
-    }
   }, []);
 
+  const value = {
+    mode,
+    colors: getColors(),
+    isDark: getActualMode() === 'dark',
+    setTheme: handleSetTheme,
+  };
+
   return (
-    <ThemeContext.Provider value={{ mode, colors, setTheme, isDark }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
 };
 
-export const useTheme = () => {
+export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+    throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
 };

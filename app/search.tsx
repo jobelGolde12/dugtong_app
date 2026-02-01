@@ -5,7 +5,7 @@ import SafeScrollView from '../lib/SafeScrollView';
 import { donorService } from '../lib/services/donorService';
 import { Donor, SearchParams } from '../types/donor.types';
 import DashboardLayout from './components/DashboardLayout';
-import { DonorCard } from './components/DonorCard';
+import DonorCard from './components/DonorCard';
 import EmptyState from './components/EmptyState';
 import LoadingIndicator from './components/LoadingIndicator';
 import SearchFilters from './components/SearchFilters';

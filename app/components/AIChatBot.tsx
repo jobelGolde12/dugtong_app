@@ -5,11 +5,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mic, Send, X, Bot } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import DashboardLayout from './DashboardLayout';
