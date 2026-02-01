@@ -8,7 +8,7 @@ interface NotificationFilterBarProps<T> {
   searchPlaceholder?: string;
 }
 
-export const NotificationFilterBar: React.FC<NotificationFilterBarProps<any>> = ({ 
+const NotificationFilterBar: React.FC<NotificationFilterBarProps<any>> = ({ 
   filters, 
   onFilterChange, 
   onClearFilters,
@@ -264,3 +264,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+export default NotificationFilterBar;

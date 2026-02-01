@@ -13,7 +13,7 @@ interface NotificationItemProps {
   onMarkAsRead: (id: string) => void;
 }
 
-export const NotificationItem: React.FC<NotificationItemProps> = ({ 
+const NotificationItem: React.FC<NotificationItemProps> = ({ 
   notification, 
   onMarkAsRead 
 }) => {
@@ -131,3 +131,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d6efd',
   },
 });
+export default NotificationItem;

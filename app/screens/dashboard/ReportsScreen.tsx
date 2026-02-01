@@ -19,7 +19,7 @@ import type {
   MonthlyDonationData,
   ReportSummary
 } from '../../../types/report.types';
-import { LoadingIndicator } from '../../components/dashboard/LoadingIndicator';
+import LoadingIndicator from '../../components/dashboard/LoadingIndicator';
 import { useTheme } from '../../../contexts/ThemeContext';
 
 // ========== TypeScript Interfaces ==========
@@ -163,7 +163,7 @@ const FilterSelect: React.FC<{
 };
 
 // ========== Main Component ==========
-export const ReportsScreen: React.FC = () => {
+const ReportsScreen: React.FC = () => {
   const { colors } = useTheme();
   const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
   const [bloodTypeData, setBloodTypeData] = useState<BloodTypeDistribution[]>([]);
@@ -692,3 +692,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+export default ReportsScreen;

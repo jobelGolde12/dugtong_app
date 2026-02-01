@@ -6,9 +6,9 @@ interface EmptyStateProps {
   icon?: string;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ 
+const EmptyState: React.FC<EmptyStateProps> = ({ 
   message, 
-  icon = '📭' 
+  icon = '' 
 }) => {
   return (
     <View style={styles.container}>
@@ -36,3 +36,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 });
+export default EmptyState;

@@ -671,7 +671,7 @@ const StatsBar: React.FC<{ donors: Donor[] }> = ({ donors }) => {
 };
 
 // ============ MAIN SCREEN COMPONENT ============
-export const DonorManagementScreen: React.FC = () => {
+const DonorManagementScreen: React.FC = () => {
   const [donors, setDonors] = useState<Donor[]>([
     {
       id: '1',
@@ -883,3 +883,4 @@ const responsiveStyles = {
     },
   },
 } as const;
+export default DonorManagementScreen;

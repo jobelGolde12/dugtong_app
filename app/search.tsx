@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import SafeScrollView from '../lib/SafeScrollView';
 import { donorService } from '../lib/services/donorService';
 import { Donor, SearchParams } from '../types/donor.types';
 import DashboardLayout from './components/DashboardLayout';
 import { DonorCard } from './components/DonorCard';
-import { EmptyState } from './components/EmptyState';
-import { LoadingIndicator } from './components/LoadingIndicator';
-import { SearchFilters } from './components/SearchFilters';
+import EmptyState from './components/EmptyState';
+import LoadingIndicator from './components/LoadingIndicator';
+import SearchFilters from './components/SearchFilters';
 
 export default function SearchScreen() {
   const { colors } = useTheme();
@@ -67,7 +68,14 @@ export default function SearchScreen() {
 
   return (
     <DashboardLayout>
-      <View style={styles.container}>
+      <SafeScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="always"
+        bounces={true}
+        overScrollMode="always"
+      >
         <Text style={styles.title}>Find a Donor</Text>
 
         <SearchFilters
@@ -94,17 +102,26 @@ export default function SearchScreen() {
               renderItem={renderResultItem}
               keyExtractor={(item) => item.id}
               showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
             />
           ) : (
             <EmptyState message="No donors found. Try adjusting your filters." />
           )}
         </View>
-      </View>
+      </SafeScrollView>
     </DashboardLayout>
   );
 }
 
 const createStyles = (colors: any) => StyleSheet.create({
+  scrollView: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

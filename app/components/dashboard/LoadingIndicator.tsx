@@ -6,7 +6,7 @@ interface LoadingIndicatorProps {
   color?: string;
 }
 
-export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ 
+const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ 
   size = 'large', 
   color = '#0d6efd' 
 }) => {
@@ -25,3 +25,4 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
 });
+export default LoadingIndicator;

@@ -6,7 +6,7 @@ interface StatusBadgeProps {
   variant?: 'success' | 'warning' | 'danger' | 'info';
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ 
+const StatusBadge: React.FC<StatusBadgeProps> = ({ 
   status, 
   variant = 'info' 
 }) => {
@@ -49,3 +49,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+export default StatusBadge;

@@ -9,7 +9,7 @@ interface DonorTableProps {
   onEdit: (donor: Donor) => void;
 }
 
-export const DonorTable: React.FC<DonorTableProps> = ({ 
+const DonorTable: React.FC<DonorTableProps> = ({ 
   donors, 
   onViewDetails, 
   onToggleAvailability, 
@@ -169,3 +169,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+export default DonorTable;

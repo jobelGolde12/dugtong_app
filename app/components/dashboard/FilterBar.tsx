@@ -9,7 +9,7 @@ interface FilterBarProps<T> {
   searchPlaceholder?: string;
 }
 
-export const FilterBar: React.FC<FilterBarProps<any>> = ({
+const FilterBar: React.FC<FilterBarProps<any>> = ({
   filters,
   onFilterChange,
   onClearFilters,
@@ -334,3 +334,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+export default FilterBar;

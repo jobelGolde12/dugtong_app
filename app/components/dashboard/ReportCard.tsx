@@ -8,7 +8,7 @@ interface ReportCardProps {
   color?: string;
 }
 
-export const ReportCard: React.FC<ReportCardProps> = ({ 
+const ReportCard: React.FC<ReportCardProps> = ({ 
   title, 
   value, 
   subtitle, 
@@ -55,3 +55,4 @@ const styles = StyleSheet.create({
     color: '#888',
   },
 });
+export default ReportCard;

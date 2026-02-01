@@ -20,7 +20,7 @@ interface SearchFiltersProps {
   setShowMunicipalityModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export const SearchFilters: React.FC<SearchFiltersProps> = ({
+const SearchFilters: React.FC<SearchFiltersProps> = ({
   filters,
   setFilters,
   showBloodTypeModal,
@@ -253,3 +253,4 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
   },
 });
+export default SearchFilters;

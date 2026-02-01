@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Alert, FlatList, Text, TouchableOpacity } from 'react-native';
-import { NotificationItem } from '../../components/dashboard/NotificationItem';
-import { NotificationFilterBar } from '../../components/dashboard/NotificationFilterBar';
-import { EmptyState } from '../../components/dashboard/EmptyState';
-import { LoadingIndicator } from '../../components/dashboard/LoadingIndicator';
+import React, { useEffect, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SafeScrollView from '../../../lib/SafeScrollView';
 import { notificationService } from '../../../lib/services/notificationService';
 import { Notification, NotificationFilter } from '../../../types/notification.types';
+import EmptyState from '../../components/dashboard/EmptyState';
+import LoadingIndicator from '../../components/dashboard/LoadingIndicator';
+import NotificationFilterBar from '../../components/dashboard/NotificationFilterBar';
+import NotificationItem from '../../components/dashboard/NotificationItem';
 
-export const NotificationsScreen: React.FC = () => {
+const NotificationsScreen: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<NotificationFilter>({
@@ -93,7 +94,14 @@ export const NotificationsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeScrollView
+      style={styles.scrollView}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="always"
+      bounces={true}
+      overScrollMode="always"
+    >
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Notifications</Text>
@@ -119,15 +127,24 @@ export const NotificationsScreen: React.FC = () => {
           renderItem={renderNotification}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={false}
         />
       ) : (
         <EmptyState message="No notifications at this time." icon="🔔" />
       )}
-    </View>
+    </SafeScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
@@ -165,3 +182,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+export default NotificationsScreen;
