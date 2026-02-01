@@ -132,6 +132,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
    * Swipe gesture for main content area - swipe right from edge to open sidebar
    */
   const mainContentSwipe = Gesture.Pan()
+    .activeOffsetX([-10, 10]) // Require horizontal movement to activate
+    .failOffsetY([-10, 10])   // Cancel gesture if vertical movement detected
     .onEnd((event) => {
       // Only open if swiping rightward from left edge area
       if (event.translationX > 80 && !isOpen) {
