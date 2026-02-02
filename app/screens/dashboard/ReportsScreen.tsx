@@ -406,6 +406,7 @@ const ReportsScreen: React.FC = () => {
               shadowColor: colors.primary 
             }]} 
             activeOpacity={0.8}
+            onPress={() => router.push('/send-alerts')}
           >
             <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
               <Ionicons name="notifications" size={22} color={colors.primary} />

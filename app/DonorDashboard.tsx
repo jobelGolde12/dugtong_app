@@ -219,6 +219,13 @@ export default function DonorDashboard() {
             </TouchableOpacity>
             
             <TouchableOpacity 
+              style={styles.sendAlertsButton}
+              onPress={() => router.push('/send-alerts')}
+            >
+              <Text style={styles.sendAlertsButtonText}>Send Alerts</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
               style={styles.clearButton} 
               onPress={handleClearData}
             >
@@ -444,6 +451,20 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     color: '#EF4444',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sendAlertsButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0d6efd',
+  },
+  sendAlertsButtonText: {
+    color: '#0d6efd',
     fontSize: 16,
     fontWeight: '600',
   },

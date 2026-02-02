@@ -69,4 +69,14 @@ export const notificationService = {
       resolve();
     });
   },
+
+  deleteAll: async (): Promise<void> => {
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    return new Promise((resolve) => {
+      MOCK_NOTIFICATIONS.length = 0;
+      resolve();
+    });
+  },
 };
