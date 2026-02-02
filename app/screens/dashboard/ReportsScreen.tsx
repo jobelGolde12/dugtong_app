@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { reportService } from '../../../lib/services/reportService';
 import type {
   AvailabilityTrend,
@@ -20,7 +21,6 @@ import type {
   ReportSummary
 } from '../../../types/report.types';
 import LoadingIndicator from '../../components/dashboard/LoadingIndicator';
-import { useTheme } from '../../../contexts/ThemeContext';
 
 // ========== TypeScript Interfaces ==========
 
@@ -272,7 +272,7 @@ const ReportsScreen: React.FC = () => {
         overScrollMode="always"
       >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        {/* <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <View>
             <Text style={[styles.headerTitle, { color: colors.text }]}>Dashboard</Text>
             <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Real-time donation insights</Text>
@@ -280,7 +280,7 @@ const ReportsScreen: React.FC = () => {
            <TouchableOpacity style={[styles.refreshButton, { backgroundColor: colors.primary + '20' }]} onPress={loadData}>
              <Ionicons name="refresh" size={24} color={colors.primary} />
            </TouchableOpacity>
-        </View>
+        </View> */}
 
         <View style={styles.scrollContent}>
           {/* Search Bar */}
@@ -381,23 +381,52 @@ const ReportsScreen: React.FC = () => {
           </View>
 
            {/* Quick Actions */}
-           <View style={styles.quickActions}>
-             <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-             <View style={styles.actionsGrid}>
-               <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} activeOpacity={0.7}>
-                 <Ionicons name="download-outline" size={24} color={colors.primary} />
-                 <Text style={[styles.actionText, { color: colors.primary }]}>Export Report</Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} activeOpacity={0.7}>
-                 <Ionicons name="notifications-outline" size={24} color={colors.primary} />
-                 <Text style={[styles.actionText, { color: colors.primary }]}>Send Alerts</Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} activeOpacity={0.7}>
-                 <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
-                 <Text style={[styles.actionText, { color: colors.primary }]}>Add Donor</Text>
-               </TouchableOpacity>
-             </View>
-           </View>
+                <View style={styles.quickActions}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity 
+            style={[styles.actionButton, { 
+              backgroundColor: colors.surface,
+              shadowColor: colors.primary 
+            }]} 
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+              <Ionicons name="download" size={22} color={colors.primary} />
+            </View>
+            <Text style={[styles.actionText, { color: colors.text }]}>Export Report</Text>
+            <View style={[styles.actionSubtext, { backgroundColor: colors.primary }]} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, { 
+              backgroundColor: colors.surface,
+              shadowColor: colors.primary 
+            }]} 
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+              <Ionicons name="notifications" size={22} color={colors.primary} />
+            </View>
+            <Text style={[styles.actionText, { color: colors.text }]}>Send Alerts</Text>
+            <View style={[styles.actionSubtext, { backgroundColor: colors.primary }]} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, { 
+              backgroundColor: colors.surface,
+              shadowColor: colors.primary 
+            }]} 
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+              <Ionicons name="person-add" size={22} color={colors.primary} />
+            </View>
+            <Text style={[styles.actionText, { color: colors.text }]}>Add Donor</Text>
+            <View style={[styles.actionSubtext, { backgroundColor: colors.primary }]} />
+          </TouchableOpacity>
+        </View>
+      </View>
         </View>
 
          {/* Clear Filters Button */}
@@ -548,11 +577,6 @@ const styles = StyleSheet.create({
   chartsSection: {
     marginBottom: 32,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 20,
-  },
   chartContainer: {
     borderRadius: 20,
     padding: 20,
@@ -579,27 +603,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 8,
     opacity: 0.8,
-  },
-  quickActions: {
-    marginBottom: 32,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    padding: 16,
-    gap: 8,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   clearFiltersButton: {
     position: 'absolute',
@@ -690,6 +693,59 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  quickActions: {
+    marginTop: 32,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 20,
+    letterSpacing: -0.5,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    minWidth: '30%',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  actionSubtext: {
+    width: 24,
+    height: 3,
+    borderRadius: 2,
+    opacity: 0.6,
   },
 });
 export default ReportsScreen;
