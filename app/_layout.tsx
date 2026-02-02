@@ -212,6 +212,7 @@ export default function Layout() {
           <Stack.Screen name="notifications" />
           <Stack.Screen name="settings" />
           <Stack.Screen name="DonorDashboard" />
+          <Stack.Screen name="AddDonorPage" />
         </Stack>
       </ErrorBoundary>
     </ThemeProvider>

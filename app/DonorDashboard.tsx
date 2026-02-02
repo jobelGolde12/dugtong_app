@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useRouter } from 'expo-router';
 
 interface DonorProfile {
   fullName: string;
@@ -27,6 +28,7 @@ interface DonorProfile {
 }
 
 export default function DonorDashboard() {
+  const router = useRouter();
   const [donorData, setDonorData] = useState<DonorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -207,13 +209,22 @@ export default function DonorDashboard() {
             </TouchableOpacity>
           </View>
 
-          {/* Action Button */}
-          <TouchableOpacity 
-            style={styles.clearButton} 
-            onPress={handleClearData}
-          >
-            <Text style={styles.clearButtonText}>Clear Donor Data</Text>
-          </TouchableOpacity>
+          {/* Action Buttons */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => router.push('/register')}
+            >
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.clearButton} 
+              onPress={handleClearData}
+            >
+              <Text style={styles.clearButtonText}>Clear Donor Data</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Footer Note */}
           <Text style={styles.footerNote}>
@@ -404,6 +415,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  buttonContainer: {
+    gap: 12,
+    marginTop: 8,
+  },
+  backButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#6C63FF',
+  },
+  backButtonText: {
+    color: '#6C63FF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   clearButton: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -412,7 +441,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#EF4444',
-    marginTop: 8,
   },
   clearButtonText: {
     color: '#EF4444',

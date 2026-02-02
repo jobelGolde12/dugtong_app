@@ -167,18 +167,29 @@ export default function LoginScreen() {
                 {/* Dummy Data Section */}
                 <View style={styles.dummySection}>
                   <Text style={styles.dummyDataTitle}>Or use dummy data for testing:</Text>
-                  {DUMMY_AUTHORIZED_USERS.map((user, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.dummyButton}
-                      onPress={() => handleDummyLogin(user)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.dummyButtonText}>
-                        {user.fullName} - {user.contactNumber}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {DUMMY_AUTHORIZED_USERS.map((user, index) => {
+                    const isDisabled = user.fullName === 'Hospital Staff' || user.fullName === 'Health Officer';
+                    
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.dummyButton,
+                          isDisabled && styles.dummyButtonDisabled
+                        ]}
+                        onPress={() => !isDisabled && handleDummyLogin(user)}
+                        disabled={isDisabled}
+                        activeOpacity={isDisabled ? 1 : 0.8}
+                      >
+                        <Text style={[
+                          styles.dummyButtonText,
+                          isDisabled && styles.dummyButtonTextDisabled
+                        ]}>
+                          {user.fullName} - {user.contactNumber}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
                 {/* Register Link */}
@@ -343,6 +354,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
+  dummyButtonDisabled: {
+    backgroundColor: 'rgba(108, 117, 125, 0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
   dummyButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
@@ -350,6 +365,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 1,
+  },
+  dummyButtonTextDisabled: {
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   registerButton: {
     backgroundColor: 'rgba(108, 117, 125, 0.8)',

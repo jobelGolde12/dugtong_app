@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   Alert,
   Dimensions,
@@ -164,6 +165,7 @@ const FilterSelect: React.FC<{
 
 // ========== Main Component ==========
 const ReportsScreen: React.FC = () => {
+  const router = useRouter();
   const { colors } = useTheme();
   const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
   const [bloodTypeData, setBloodTypeData] = useState<BloodTypeDistribution[]>([]);
@@ -418,6 +420,7 @@ const ReportsScreen: React.FC = () => {
               shadowColor: colors.primary 
             }]} 
             activeOpacity={0.8}
+            onPress={() => router.push('/AddDonorPage')}
           >
             <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
               <Ionicons name="person-add" size={22} color={colors.primary} />
