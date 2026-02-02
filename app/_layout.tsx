@@ -211,6 +211,7 @@ export default function Layout() {
           <Stack.Screen name="chatbot" />
           <Stack.Screen name="notifications" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="DonorDashboard" />
         </Stack>
       </ErrorBoundary>
     </ThemeProvider>

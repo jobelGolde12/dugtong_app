@@ -1,5 +1,5 @@
 // Mock data for testing
-const MOCK_DONORS = [
+const MOCK_DONORS: Donor[] = [
   { id: '1', name: 'Juan Dela Cruz', age: 32, sex: 'Male', bloodType: 'O+', contactNumber: '09123456789', municipality: 'Sorsogon City', availabilityStatus: 'Available', dateRegistered: '2023-01-15', lastDonationDate: '2024-12-10' },
   { id: '2', name: 'Maria Santos', age: 28, sex: 'Female', bloodType: 'A+', contactNumber: '09234567890', municipality: 'Gubat', availabilityStatus: 'Available', dateRegistered: '2023-02-20', lastDonationDate: '2024-11-05' },
   { id: '3', name: 'Pedro Garcia', age: 45, sex: 'Male', bloodType: 'B+', contactNumber: '09345678901', municipality: 'Irosin', availabilityStatus: 'Temporarily Unavailable', dateRegistered: '2023-03-10', lastDonationDate: '2024-10-15' },
@@ -7,7 +7,7 @@ const MOCK_DONORS = [
   { id: '5', name: 'Jose Lim', age: 40, sex: 'Male', bloodType: 'O-', contactNumber: '09567890123', municipality: 'Castilla', availabilityStatus: 'Available', dateRegistered: '2023-05-12', lastDonationDate: '2024-08-30' },
 ];
 
-import { Donor, DonorFilter } from '../../types/donor.types';
+import { Donor, DonorFilter, SearchParams } from '../../types/donor.types';
 
 export const donorService = {
   getDonors: async (filters: DonorFilter): Promise<Donor[]> => {
@@ -68,6 +68,33 @@ export const donorService = {
     return new Promise((resolve) => {
       const donor = MOCK_DONORS.find(donor => donor.id === id);
       resolve(donor || null);
+    });
+  },
+
+  searchDonors: async (params: SearchParams): Promise<Donor[]> => {
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    return new Promise((resolve) => {
+      let filtered = [...MOCK_DONORS];
+      
+      if (params.bloodType) {
+        filtered = filtered.filter(donor => donor.bloodType === params.bloodType);
+      }
+      
+      if (params.municipality) {
+        filtered = filtered.filter(donor => donor.municipality === params.municipality);
+      }
+      
+      if (params.available !== undefined) {
+        if (params.available === true) {
+          filtered = filtered.filter(donor => donor.availabilityStatus === 'Available');
+        } else if (params.available === false) {
+          filtered = filtered.filter(donor => donor.availabilityStatus === 'Temporarily Unavailable');
+        }
+      }
+      
+      resolve(filtered);
     });
   }
 };

@@ -1,8 +1,26 @@
-import { Link } from 'expo-router';
-import React from 'react';
+import { Link, useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
 import { ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function HomeScreen() {
+  const router = useRouter();
+
+  useEffect(() => {
+    checkExistingDonorProfile();
+  }, []);
+
+  const checkExistingDonorProfile = async () => {
+    try {
+      const savedData = await AsyncStorage.getItem('donorProfile');
+      if (savedData) {
+        router.replace('/DonorDashboard');
+      }
+    } catch (error) {
+      console.error('Error checking donor profile:', error);
+    }
+  };
+
   return (
     <ImageBackground
       source={require('@/assets/images/welcome-bg.png')}

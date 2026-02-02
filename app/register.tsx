@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -18,6 +18,7 @@ import {
   useWindowDimensions,
   View
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import SafeScrollView from '../lib/SafeScrollView';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -72,6 +73,7 @@ interface DropdownModalProps {
 
 export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
+  const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     age: '',
@@ -177,10 +179,9 @@ export default function RegisterScreen() {
     const newErrors: Errors = {};
     let isValid = true;
 
-    (Object.keys(formData) as Array<keyof FormData>).forEach(field => {
-      // Only skip synced field, validate all others including availabilityStatus
-      if (field === 'synced') return;
-
+    const fieldsToValidate: Array<keyof FormData> = ['fullName', 'age', 'sex', 'bloodType', 'contactNumber', 'municipality', 'availabilityStatus'];
+    
+    fieldsToValidate.forEach(field => {
       const error = validateField(field, formData[field]);
       if (error) {
         newErrors[field] = error;
@@ -219,30 +220,29 @@ export default function RegisterScreen() {
 
     try {
       const donorData = {
-        ...formData,
+        fullName: formData.fullName,
+        age: formData.age,
+        sex: formData.sex,
+        bloodType: formData.bloodType,
+        contactNumber: formData.contactNumber,
+        municipality: formData.municipality,
+        availabilityStatus: formData.availabilityStatus,
         synced: false,
         created_at: new Date().toISOString()
       };
 
       console.log('Saving donor data locally:', donorData);
       
+      await AsyncStorage.setItem('donorProfile', JSON.stringify(donorData));
+      
       Alert.alert(
         'Registration Successful 🎉',
-        'Thank you for registering as a voluntary donor! Your data has been saved and will be uploaded once internet is available.',
+        'Thank you for registering as a voluntary donor! Your data has been saved.',
         [
           { 
             text: 'OK', 
             onPress: () => {
-              console.log('Form submitted successfully');
-              setFormData({
-                fullName: '',
-                age: '',
-                sex: '',
-                bloodType: '',
-                contactNumber: '',
-                municipality: '',
-                availabilityStatus: 'Available'
-              });
+              router.push('/DonorDashboard');
             }
           }
         ]

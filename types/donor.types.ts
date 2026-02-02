@@ -18,3 +18,9 @@ export interface DonorFilter {
   availability: boolean | null;
   searchQuery: string;
 }
+
+export interface SearchParams {
+  bloodType: string;
+  municipality?: string;
+  available?: boolean;
+}
