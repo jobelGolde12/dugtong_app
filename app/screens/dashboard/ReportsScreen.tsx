@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -411,7 +411,7 @@ const ReportsScreen: React.FC = () => {
             <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
               <Ionicons name="notifications" size={22} color={colors.primary} />
             </View>
-            <Text style={[styles.actionText, { color: colors.text }]}>Send Alerts</Text>
+            <Text style={[styles.actionText, { color: colors.text }]}>Create Notification</Text>
             <View style={[styles.actionSubtext, { backgroundColor: colors.primary }]} />
           </TouchableOpacity>
           
@@ -478,7 +478,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 12,
   },
-
   scrollContent: {
     padding: 20,
     paddingBottom: 100,
@@ -629,7 +628,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -670,7 +668,6 @@ const styles = StyleSheet.create({
   modalOptionTextSelected: {
     fontWeight: '600',
   },
-  // Error State Styles
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -698,9 +695,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  // Updated Quick Actions Styles for Row Display
   quickActions: {
     marginTop: 32,
-    paddingHorizontal: 16,
+    paddingHorizontal: 0, // Adjusted to align better with other sections
   },
   sectionTitle: {
     fontSize: 20,
@@ -709,18 +707,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
+    flexDirection: 'row', // Force items into a row
+    justifyContent: 'space-between', // Space them evenly
+    gap: 10,
   },
   actionButton: {
-    flex: 1,
-    minWidth: '30%',
+    flex: 1, // Let buttons grow to fill equal space
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
     borderRadius: 20,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.05)',
     shadowOffset: {
@@ -732,21 +728,21 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 44, // Slightly smaller to ensure fit in a row
+    height: 44,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   actionText: {
-    fontSize: 14,
+    fontSize: 11, // Smaller text to prevent wrapping on small screens
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   actionSubtext: {
-    width: 24,
+    width: 20,
     height: 3,
     borderRadius: 2,
     opacity: 0.6,
