@@ -36,124 +36,11 @@ import Animated, {
   useSharedValue,
   withSpring
 } from 'react-native-reanimated';
+import { useTheme } from '../contexts/ThemeContext';
 import SafeScrollView from '../lib/SafeScrollView';
+import { ThemeColors } from '../types/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// Design System Constants
-const COLORS = {
-  primary: {
-    50: '#eff6ff',
-    100: '#dbeafe',
-    200: '#bfdbfe',
-    300: '#93c5fd',
-    400: '#60a5fa',
-    500: '#3b82f6',
-    600: '#2563eb',
-    700: '#1d4ed8',
-    800: '#1e40af',
-    900: '#1e3a8a',
-  },
-  neutral: {
-    50: '#f8fafc',
-    100: '#f1f5f9',
-    200: '#e2e8f0',
-    300: '#cbd5e1',
-    400: '#94a3b8',
-    500: '#64748b',
-    600: '#475569',
-    700: '#334155',
-    800: '#1e293b',
-    900: '#0f172a',
-  },
-  success: {
-    50: '#f0fdf4',
-    100: '#dcfce7',
-    500: '#10b981',
-    600: '#059669',
-  },
-  warning: {
-    50: '#fffbeb',
-    100: '#fef3c7',
-    500: '#f59e0b',
-    600: '#d97706',
-  },
-  error: {
-    50: '#fef2f2',
-    100: '#fee2e2',
-    500: '#ef4444',
-    600: '#dc2626',
-  },
-  info: {
-    50: '#f0f9ff',
-    100: '#e0f2fe',
-    500: '#0ea5e9',
-    600: '#0284c7',
-  },
-  surface: {
-    light: '#ffffff',
-    dark: '#1a1a1a',
-  },
-} as const;
-
-const SPACING = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 32,
-} as const;
-
-const TYPOGRAPHY = {
-  h1: { fontSize: 28, fontWeight: '800', lineHeight: 36, letterSpacing: -0.5 },
-  h2: { fontSize: 22, fontWeight: '700', lineHeight: 30, letterSpacing: -0.3 },
-  h3: { fontSize: 18, fontWeight: '600', lineHeight: 26 },
-  body1: { fontSize: 16, fontWeight: '400', lineHeight: 24 },
-  body2: { fontSize: 14, fontWeight: '400', lineHeight: 20 },
-  caption: { fontSize: 12, fontWeight: '400', lineHeight: 16 },
-  button: { fontSize: 14, fontWeight: '600', letterSpacing: 0.25 },
-} as const;
-
-const SHADOWS = {
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  xl: {
-    shadowColor: COLORS.primary[500],
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 32,
-    elevation: 16,
-  }
-} as const;
-
-const RADIUS = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  full: 9999,
-} as const;
 
 // Reusable Form Components
 const FormCard: React.FC<{
@@ -161,18 +48,13 @@ const FormCard: React.FC<{
   title?: string;
   icon?: React.ReactNode;
   style?: any;
-}> = ({ children, title, icon, style }) => {
+  styles: any;
+}> = ({ children, title, icon, style, styles }) => {
   return (
     <Animated.View 
       entering={FadeInDown.duration(500)}
       style={[
-        {
-          backgroundColor: COLORS.surface.light,
-          borderRadius: RADIUS.lg,
-          padding: SPACING.xl,
-          marginBottom: SPACING.xl,
-          ...SHADOWS.md,
-        },
+        styles.formCard,
         style
       ]}
     >
@@ -201,6 +83,8 @@ const FormInput: React.FC<{
   icon?: React.ReactNode;
   error?: string;
   required?: boolean;
+  styles: any;
+  colors: ThemeColors;
 }> = ({ 
   label, 
   placeholder, 
@@ -210,7 +94,9 @@ const FormInput: React.FC<{
   numberOfLines = 1,
   icon,
   error,
-  required = false 
+  required = false,
+  styles,
+  colors
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const scale = useSharedValue(1);
@@ -256,7 +142,7 @@ const FormInput: React.FC<{
             icon && styles.formInputWithIcon,
           ]}
           placeholder={placeholder}
-          placeholderTextColor={COLORS.neutral[400]}
+          placeholderTextColor={colors.disabled}
           value={value}
           onChangeText={onChangeText}
           multiline={multiline}
@@ -282,7 +168,9 @@ const FormSelect: React.FC<{
   onPress: () => void;
   icon?: React.ReactNode;
   required?: boolean;
-}> = ({ label, placeholder, value, onPress, icon, required = false }) => {
+  styles: any;
+  colors: ThemeColors;
+}> = ({ label, placeholder, value, onPress, icon, required = false, styles, colors }) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -329,7 +217,7 @@ const FormSelect: React.FC<{
               {value || placeholder}
             </Text>
           </View>
-          <ChevronDown size={20} color={COLORS.neutral[400]} />
+          <ChevronDown size={20} color={colors.disabled} />
         </Animated.View>
       </TouchableOpacity>
     </View>
@@ -342,7 +230,9 @@ const FormDatePicker: React.FC<{
   onChange: (date: Date) => void;
   mode?: 'date' | 'time' | 'datetime';
   required?: boolean;
-}> = ({ label, value, onChange, mode = 'datetime', required = false }) => {
+  styles: any;
+  colors: ThemeColors;
+}> = ({ label, value, onChange, mode = 'datetime', required = false, styles, colors }) => {
   const [showPicker, setShowPicker] = useState(false);
   const scale = useSharedValue(1);
 
@@ -385,7 +275,7 @@ const FormDatePicker: React.FC<{
       >
         <Animated.View style={[styles.formSelectWrapper, animatedStyle]}>
           <View style={styles.formInputIcon}>
-            <Calendar size={20} color={COLORS.neutral[400]} />
+            <Calendar size={20} color={colors.disabled} />
           </View>
           <View style={styles.formSelectTextContainer}>
             <Text style={styles.formSelectText}>
@@ -417,7 +307,8 @@ const FormCheckbox: React.FC<{
   checked: boolean;
   onToggle: () => void;
   description?: string;
-}> = ({ label, checked, onToggle, description }) => {
+  styles: any;
+}> = ({ label, checked, onToggle, description, styles }) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -468,7 +359,9 @@ const Chip: React.FC<{
   selected: boolean;
   onPress: () => void;
   icon?: React.ReactNode;
-}> = ({ label, selected, onPress, icon }) => {
+  styles: any;
+  colors: ThemeColors;
+}> = ({ label, selected, onPress, icon, styles, colors }) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -492,16 +385,10 @@ const Chip: React.FC<{
     >
       <Animated.View
         style={[
+          styles.chip,
           {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: SPACING.xs,
-            paddingHorizontal: SPACING.lg,
-            paddingVertical: SPACING.sm,
-            borderRadius: RADIUS.full,
-            backgroundColor: selected ? COLORS.primary[500] : COLORS.neutral[100],
-            borderWidth: 1,
-            borderColor: selected ? COLORS.primary[500] : COLORS.neutral[200],
+            backgroundColor: selected ? colors.primary : colors.surfaceVariant,
+            borderColor: selected ? colors.primary : colors.border,
           },
           animatedStyle,
         ]}
@@ -510,12 +397,12 @@ const Chip: React.FC<{
           <View style={{ opacity: selected ? 1 : 0.6 }}>
             {React.cloneElement(icon as any, {
               size: 16,
-              color: selected ? '#fff' : COLORS.neutral[600],
+              color: selected ? colors.textOnPrimary : colors.textSecondary,
             })}
           </View>
         )}
         <Text style={{
-          color: selected ? '#fff' : COLORS.neutral[700],
+          color: selected ? colors.textOnPrimary : colors.text,
           fontWeight: '500',
           fontSize: 14,
         }}>
@@ -527,6 +414,9 @@ const Chip: React.FC<{
 };
 
 const CreateAlertsScreen: React.FC = () => {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+  
   // Form state
   const [formData, setFormData] = useState({
     title: '',
@@ -545,27 +435,27 @@ const CreateAlertsScreen: React.FC = () => {
   const [showAudienceModal, setShowAudienceModal] = useState(false);
 
   const audienceOptions = [
-    { id: 'all', label: 'All Donors', icon: <Globe size={16} /> },
-    { id: 'blood_a', label: 'Blood Type A', icon: <Target size={16} /> },
-    { id: 'blood_b', label: 'Blood Type B', icon: <Target size={16} /> },
-    { id: 'blood_o', label: 'Blood Type O', icon: <Target size={16} /> },
-    { id: 'blood_ab', label: 'Blood Type AB', icon: <Target size={16} /> },
-    { id: 'available', label: 'Available Donors', icon: <Users size={16} /> },
-    { id: 'location', label: 'Specific Location', icon: <MapPin size={16} /> },
+    { id: 'all', label: 'All Donors', icon: <Globe size={16} color={colors.textSecondary}/> },
+    { id: 'blood_a', label: 'Blood Type A', icon: <Target size={16} color={colors.textSecondary}/> },
+    { id: 'blood_b', label: 'Blood Type B', icon: <Target size={16} color={colors.textSecondary}/> },
+    { id: 'blood_o', label: 'Blood Type O', icon: <Target size={16} color={colors.textSecondary}/> },
+    { id: 'blood_ab', label: 'Blood Type AB', icon: <Target size={16} color={colors.textSecondary}/> },
+    { id: 'available', label: 'Available Donors', icon: <Users size={16} color={colors.textSecondary}/> },
+    { id: 'location', label: 'Specific Location', icon: <MapPin size={16} color={colors.textSecondary}/> },
   ];
 
   const alertTypes = [
-    { id: 'urgent', label: 'Urgent Need', icon: <AlertCircle size={16} />, color: COLORS.error[500] },
-    { id: 'reminder', label: 'Reminder', icon: <Bell size={16} />, color: COLORS.warning[500] },
-    { id: 'info', label: 'Information', icon: <FileText size={16} />, color: COLORS.info[500] },
-    { id: 'event', label: 'Event', icon: <Calendar size={16} />, color: COLORS.success[500] },
+    { id: 'urgent', label: 'Urgent Need', icon: <AlertCircle size={16} />, color: colors.error },
+    { id: 'reminder', label: 'Reminder', icon: <Bell size={16} />, color: colors.warning },
+    { id: 'info', label: 'Information', icon: <FileText size={16} />, color: colors.info },
+    { id: 'event', label: 'Event', icon: <Calendar size={16} />, color: colors.success },
   ];
 
   const priorityOptions = [
-    { id: 'low', label: 'Low', color: COLORS.success[500] },
-    { id: 'medium', label: 'Medium', color: COLORS.warning[500] },
-    { id: 'high', label: 'High', color: COLORS.error[500] },
-    { id: 'critical', label: 'Critical', color: COLORS.error[600] },
+    { id: 'low', label: 'Low', color: colors.success },
+    { id: 'medium', label: 'Medium', color: colors.warning },
+    { id: 'high', label: 'High', color: colors.error },
+    { id: 'critical', label: 'Critical', color: colors.error },
   ];
 
   const handleInputChange = (field: string, value: any) => {
@@ -706,9 +596,9 @@ const CreateAlertsScreen: React.FC = () => {
           style={styles.header}
         >
           <View style={styles.titleContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <View style={styles.headerIcon}>
-                <Bell size={28} color={COLORS.primary[600]} />
+                <Bell size={28} color={colors.primary} />
               </View>
               <View>
                 <Text style={styles.title}>Create Alert</Text>
@@ -728,25 +618,29 @@ const CreateAlertsScreen: React.FC = () => {
         </Animated.View>
 
         {/* Main Form */}
-        <FormCard title="Alert Details" icon={<FileText size={20} color={COLORS.primary[500]} />}>
+        <FormCard styles={styles} title="Alert Details" icon={<FileText size={20} color={colors.primary} />}>
           <FormInput
+            styles={styles}
+            colors={colors}
             label="Alert Title"
             placeholder="Enter a clear, descriptive title"
             value={formData.title}
             onChangeText={(text) => handleInputChange('title', text)}
-            icon={<Tag size={20} color={COLORS.neutral[400]} />}
+            icon={<Tag size={20} color={colors.disabled} />}
             error={errors.title}
             required
           />
 
           <FormInput
+            styles={styles}
+            colors={colors}
             label="Message"
             placeholder="Enter the full notification message"
             value={formData.message}
             onChangeText={(text) => handleInputChange('message', text)}
             multiline
             numberOfLines={4}
-            icon={<FileText size={20} color={COLORS.neutral[400]} />}
+            icon={<FileText size={20} color={colors.disabled} />}
             error={errors.message}
             required
           />
@@ -760,6 +654,8 @@ const CreateAlertsScreen: React.FC = () => {
             >
               {alertTypes.map((type) => (
                 <Chip
+                  styles={styles}
+                  colors={colors}
                   key={type.id}
                   label={type.label}
                   selected={formData.alertType === type.id}
@@ -779,7 +675,7 @@ const CreateAlertsScreen: React.FC = () => {
                   style={[
                     styles.priorityButton,
                     formData.priority === priority.id && styles.priorityButtonSelected,
-                    formData.priority === priority.id && { borderColor: priority.color }
+                    formData.priority === priority.id && { borderColor: priority.color, backgroundColor: colors.surfaceVariant }
                   ]}
                   onPress={() => handleInputChange('priority', priority.id)}
                 >
@@ -800,13 +696,15 @@ const CreateAlertsScreen: React.FC = () => {
         </FormCard>
 
         {/* Target Audience Card */}
-        <FormCard title="Target Audience" icon={<Users size={20} color={COLORS.primary[500]} />}>
+        <FormCard styles={styles} title="Target Audience" icon={<Users size={20} color={colors.primary} />}>
           <FormSelect
+            styles={styles}
+            colors={colors}
             label="Select Audience"
             placeholder="Choose who should receive this alert"
             value={formatAudienceDisplay()}
             onPress={() => setShowAudienceModal(true)}
-            icon={<Target size={20} color={COLORS.neutral[400]} />}
+            icon={<Target size={20} color={colors.disabled} />}
             required
           />
           
@@ -835,7 +733,7 @@ const CreateAlertsScreen: React.FC = () => {
         </FormCard>
 
         {/* Schedule Card */}
-        <FormCard title="Schedule" icon={<Calendar size={20} color={COLORS.primary[500]} />}>
+        <FormCard styles={styles} title="Schedule" icon={<Calendar size={20} color={colors.primary} />}>
           <View style={styles.scheduleOptions}>
             <TouchableOpacity
               style={[
@@ -886,6 +784,8 @@ const CreateAlertsScreen: React.FC = () => {
               style={styles.scheduleDateContainer}
             >
               <FormDatePicker
+                styles={styles}
+                colors={colors}
                 label="Schedule Date & Time"
                 value={formData.scheduleDate}
                 onChange={(date) => handleInputChange('scheduleDate', date)}
@@ -897,6 +797,7 @@ const CreateAlertsScreen: React.FC = () => {
           <View style={styles.formSection}>
             <Text style={styles.formSectionTitle}>Additional Options</Text>
             <FormCheckbox
+              styles={styles}
               label="Require confirmation"
               checked={formData.isScheduled}
               onToggle={() => handleInputChange('isScheduled', !formData.isScheduled)}
@@ -906,13 +807,15 @@ const CreateAlertsScreen: React.FC = () => {
         </FormCard>
 
         {/* Location Card (Optional) */}
-        <FormCard title="Location (Optional)" icon={<MapPin size={20} color={COLORS.primary[500]} />}>
+        <FormCard styles={styles} title="Location (Optional)" icon={<MapPin size={20} color={colors.primary} />}>
           <FormInput
+            styles={styles}
+            colors={colors}
             label="Location Details"
             placeholder="e.g., Central Hospital, 123 Main St"
             value={formData.location}
             onChangeText={(text) => handleInputChange('location', text)}
-            icon={<MapPin size={20} color={COLORS.neutral[400]} />}
+            icon={<MapPin size={20} color={colors.disabled} />}
           />
           <Text style={styles.helperText}>
             Add location details if this alert is location-specific
@@ -941,9 +844,9 @@ const CreateAlertsScreen: React.FC = () => {
             disabled={isSubmitting}
           >
             {isSubmitting ? (
-              <Clock size={20} color="#fff" />
+              <Clock size={20} color={colors.textOnPrimary} />
             ) : (
-              <Send size={20} color="#fff" />
+              <Send size={20} color={colors.textOnPrimary} />
             )}
             <Text style={styles.submitButtonText}>
               {isSubmitting ? 'Creating...' : 'Create Alert'}
@@ -965,7 +868,7 @@ const CreateAlertsScreen: React.FC = () => {
                 onPress={() => setShowAudienceModal(false)}
                 style={styles.modalCloseButton}
               >
-                <X size={24} color={COLORS.neutral[500]} />
+                <X size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -1028,30 +931,30 @@ const CreateAlertsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.neutral[50],
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: SPACING.lg,
-    paddingBottom: SPACING['3xl'],
+    padding: 16,
+    paddingBottom: 32,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: SPACING.xl,
-    paddingTop: SPACING.sm,
+    marginBottom: 20,
+    paddingTop: 35,
   },
   headerIcon: {
     width: 48,
     height: 48,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary[50],
+    borderRadius: 12,
+    backgroundColor: colors.surfaceVariant,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1059,86 +962,104 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    ...TYPOGRAPHY.h1,
-    color: COLORS.neutral[900],
+    fontSize: 28,
+    fontWeight: '800',
+    lineHeight: 36,
+    letterSpacing: -0.5,
+    color: colors.text,
   },
   subtitle: {
-    ...TYPOGRAPHY.body2,
-    color: COLORS.neutral[500],
-    marginTop: SPACING.xs,
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 20,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   draftButton: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.neutral[100],
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[300],
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: 12,
+    borderWidth: 0,
   },
   draftButtonText: {
-    color: COLORS.neutral[700],
+    color: colors.textSecondary,
     fontWeight: '500',
     fontSize: 14,
+  },
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    // Removed shadows
+    elevation: 0, // For Android
   },
   formCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.xl,
-    gap: SPACING.sm,
+    marginBottom: 20,
+    gap: 8,
   },
   formCardIcon: {
     width: 32,
     height: 32,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.primary[50],
+    borderRadius: 8,
+    backgroundColor: colors.surfaceVariant,
     alignItems: 'center',
     justifyContent: 'center',
   },
   formCardTitle: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.neutral[900],
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 30,
+    letterSpacing: -0.3,
+    color: colors.text,
   },
   formInputContainer: {
-    marginBottom: SPACING.xl,
+    marginBottom: 20,
   },
   formLabelContainer: {
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
   },
   formLabel: {
-    ...TYPOGRAPHY.body1,
-    color: COLORS.neutral[700],
+    fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 24,
+    color: colors.text,
     fontWeight: '500',
   },
   requiredStar: {
-    color: COLORS.error[500],
+    color: colors.error,
   },
   formInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface.light,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[200],
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 0,
     overflow: 'hidden',
-    ...SHADOWS.sm,
+    // Removed shadows
+    elevation: 0, // For Android
   },
   formInputFocused: {
-    borderColor: COLORS.primary[300],
-    ...SHADOWS.md,
+    borderColor: 'transparent',
+    // Removed shadows
+    elevation: 0, // For Android
   },
   formInputError: {
-    borderColor: COLORS.error[300],
+    borderColor: 'transparent',
   },
   formInputIcon: {
-    paddingLeft: SPACING.lg,
-    paddingRight: SPACING.sm,
+    paddingLeft: 16,
+    paddingRight: 8,
   },
   formInput: {
     flex: 1,
     fontSize: 16,
-    color: COLORS.neutral[900],
-    paddingVertical: SPACING.lg,
-    paddingRight: SPACING.lg,
+    color: colors.text,
+    paddingVertical: 16,
+    paddingRight: 16,
     minHeight: 56,
   },
   formInputWithIcon: {
@@ -1147,72 +1068,82 @@ const styles = StyleSheet.create({
   formInputMultiline: {
     textAlignVertical: 'top',
     minHeight: 120,
-    paddingTop: SPACING.lg,
+    paddingTop: 16,
   },
   formError: {
-    color: COLORS.error[500],
+    color: colors.error,
     fontSize: 12,
-    marginTop: SPACING.xs,
+    marginTop: 4,
     fontWeight: '500',
   },
   formSelectWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface.light,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[200],
-    paddingRight: SPACING.lg,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 0,
+    paddingRight: 16,
     minHeight: 56,
-    ...SHADOWS.sm,
+    // Removed shadows
+    elevation: 0, // For Android
   },
   formSelectTextContainer: {
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: SPACING.lg,
+    paddingVertical: 16,
   },
   formSelectText: {
     fontSize: 16,
-    color: COLORS.neutral[900],
-    paddingLeft: SPACING.lg,
+    color: colors.text,
+    paddingLeft: 16,
   },
   formSelectPlaceholder: {
-    color: COLORS.neutral[400],
+    color: colors.disabled,
   },
   formSection: {
-    marginTop: SPACING.xl,
+    marginTop: 20,
   },
   formSectionTitle: {
-    ...TYPOGRAPHY.body1,
-    color: COLORS.neutral[700],
+    fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 24,
+    color: colors.text,
     fontWeight: '500',
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
   },
   chipsContainer: {
-    gap: SPACING.sm,
-    paddingRight: SPACING.lg,
+    gap: 8,
+    paddingRight: 16,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 9999,
+    borderWidth: 0, // Removed border
   },
   priorityContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.sm,
+    gap: 8,
   },
   priorityButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.surface.light,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[200],
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 0, // Removed border
     minWidth: 100,
-    ...SHADOWS.sm,
+    // Removed shadows
+    elevation: 0, // For Android
   },
   priorityButtonSelected: {
-    backgroundColor: COLORS.primary[50],
-    borderWidth: 2,
+    borderWidth: 0, // Removed border
   },
   priorityIndicator: {
     width: 12,
@@ -1221,118 +1152,113 @@ const styles = StyleSheet.create({
   },
   priorityText: {
     fontSize: 14,
-    color: COLORS.neutral[700],
+    color: colors.text,
     fontWeight: '500',
   },
   selectedAudienceContainer: {
-    marginTop: SPACING.lg,
-    padding: SPACING.md,
-    backgroundColor: COLORS.primary[50],
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary[100],
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: 12,
+    borderWidth: 0, // Removed border
   },
   selectedAudienceTitle: {
     fontSize: 14,
-    color: COLORS.primary[700],
+    color: colors.primary,
     fontWeight: '600',
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
   },
   selectedAudienceChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.sm,
+    gap: 8,
   },
   audienceChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    backgroundColor: COLORS.surface.light,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: COLORS.primary[200],
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: colors.surface,
+    borderRadius: 9999,
+    borderWidth: 0, // Removed border
   },
   audienceChipText: {
     fontSize: 12,
-    color: COLORS.primary[700],
+    color: colors.primary,
     fontWeight: '500',
   },
   scheduleOptions: {
-    gap: SPACING.lg,
-    marginBottom: SPACING.xl,
+    gap: 16,
+    marginBottom: 20,
   },
   scheduleOption: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: SPACING.md,
-    padding: SPACING.lg,
-    backgroundColor: COLORS.surface.light,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[200],
+    gap: 12,
+    padding: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 0, // Removed border
   },
   scheduleOptionSelected: {
-    borderColor: COLORS.primary[300],
-    backgroundColor: COLORS.primary[50],
+    borderColor: 'transparent',
+    backgroundColor: colors.surfaceVariant,
   },
   scheduleOptionRadio: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    borderWidth: 2,
-    borderColor: COLORS.neutral[300],
+    borderWidth: 0, // Removed border
     marginTop: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scheduleOptionRadioSelected: {
-    borderColor: COLORS.primary[500],
+    borderColor: colors.primary,
   },
   scheduleOptionRadioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary[500],
+    backgroundColor: colors.primary,
   },
   scheduleOptionTitle: {
     fontSize: 16,
-    color: COLORS.neutral[900],
+    color: colors.text,
     fontWeight: '500',
     marginBottom: 2,
   },
   scheduleOptionDescription: {
     fontSize: 14,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
   },
   scheduleDateContainer: {
-    marginTop: SPACING.lg,
+    marginTop: 16,
   },
   helperText: {
     fontSize: 12,
-    color: COLORS.neutral[500],
-    marginTop: SPACING.sm,
+    color: colors.textSecondary,
+    marginTop: 8,
     fontStyle: 'italic',
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: SPACING.md,
+    gap: 12,
   },
   checkbox: {
     width: 20,
     height: 20,
     borderRadius: 6,
-    borderWidth: 2,
-    borderColor: COLORS.neutral[300],
+    borderWidth: 0, // Removed border
     marginTop: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxChecked: {
-    borderColor: COLORS.primary[500],
-    backgroundColor: COLORS.primary[500],
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   checkboxInner: {
     width: 20,
@@ -1344,39 +1270,38 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textOnPrimary,
   },
   checkboxContent: {
     flex: 1,
   },
   checkboxLabel: {
     fontSize: 16,
-    color: COLORS.neutral[900],
+    color: colors.text,
     fontWeight: '500',
     marginBottom: 2,
   },
   checkboxDescription: {
     fontSize: 14,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: SPACING.md,
-    marginTop: SPACING.xl,
-    marginBottom: SPACING['3xl'],
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 32,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.neutral[100],
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[300],
+    paddingVertical: 16,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: 16,
+    borderWidth: 0, // Removed border
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelButtonText: {
-    color: COLORS.neutral[700],
+    color: colors.text,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -1385,84 +1310,85 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.primary[500],
-    borderRadius: RADIUS.lg,
-    ...SHADOWS.md,
+    gap: 8,
+    paddingVertical: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    // Removed shadows
+    elevation: 0, // For Android
   },
   submitButtonDisabled: {
     opacity: 0.7,
   },
   submitButtonText: {
-    color: '#fff',
+    color: colors.textOnPrimary,
     fontWeight: '600',
     fontSize: 16,
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: COLORS.neutral[50],
+    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.neutral[200],
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 0, // Removed border
   },
   modalTitle: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.neutral[900],
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 30,
+    letterSpacing: -0.3,
+    color: colors.text,
   },
   modalCloseButton: {
-    padding: SPACING.xs,
+    padding: 4,
   },
   modalContent: {
     flex: 1,
-    padding: SPACING.lg,
+    padding: 16,
   },
   audienceOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
-    padding: SPACING.lg,
-    backgroundColor: COLORS.surface.light,
-    borderRadius: RADIUS.md,
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[200],
+    gap: 12,
+    padding: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 0, // Removed border
   },
   audienceOptionSelected: {
-    borderColor: COLORS.primary[300],
-    backgroundColor: COLORS.primary[50],
+    borderColor: 'transparent',
+    backgroundColor: colors.surfaceVariant,
   },
   audienceCheckbox: {
     width: 20,
     height: 20,
     borderRadius: 6,
-    borderWidth: 2,
-    borderColor: COLORS.neutral[300],
+    borderWidth: 0, // Removed border
     alignItems: 'center',
     justifyContent: 'center',
   },
   audienceCheckboxSelected: {
-    borderColor: COLORS.primary[500],
-    backgroundColor: COLORS.primary[500],
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   audienceCheckboxInner: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textOnPrimary,
   },
   audienceOptionIcon: {
     width: 32,
     height: 32,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.neutral[100],
+    borderRadius: 8,
+    backgroundColor: colors.surfaceVariant,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1471,47 +1397,46 @@ const styles = StyleSheet.create({
   },
   audienceOptionLabel: {
     fontSize: 16,
-    color: COLORS.neutral[900],
+    color: colors.text,
     fontWeight: '500',
     marginBottom: 2,
   },
   audienceOptionDescription: {
     fontSize: 12,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: SPACING.md,
-    padding: SPACING.lg,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.neutral[200],
+    gap: 12,
+    padding: 16,
+    borderTopWidth: 0, // Removed border
   },
   modalSelectAllButton: {
     flex: 1,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.neutral[100],
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[300],
+    paddingVertical: 16,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: 12,
+    borderWidth: 0, // Removed border
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalSelectAllText: {
-    color: COLORS.neutral[700],
+    color: colors.text,
     fontWeight: '500',
     fontSize: 14,
   },
   modalDoneButton: {
     flex: 1,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.primary[500],
-    borderRadius: RADIUS.md,
+    paddingVertical: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.sm,
+    // Removed shadows
+    elevation: 0, // For Android
   },
   modalDoneText: {
-    color: '#fff',
+    color: colors.textOnPrimary,
     fontWeight: '600',
     fontSize: 14,
   },
