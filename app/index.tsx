@@ -2,24 +2,23 @@ import { Link, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import SplashScreen from './components/SplashScreen';
+import { useAppLoading } from '../hooks/useAppLoading';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isLoading, hasDonorProfile } = useAppLoading();
 
   useEffect(() => {
-    checkExistingDonorProfile();
-  }, []);
-
-  const checkExistingDonorProfile = async () => {
-    try {
-      const savedData = await AsyncStorage.getItem('donorProfile');
-      if (savedData) {
-        router.replace('/DonorDashboard');
-      }
-    } catch (error) {
-      console.error('Error checking donor profile:', error);
+    if (!isLoading && hasDonorProfile) {
+      router.replace('/DonorDashboard');
     }
-  };
+  }, [isLoading, hasDonorProfile, router]);
+
+  // Show splash screen while app is loading
+  if (isLoading) {
+    return <SplashScreen />;
+  }
 
   return (
     <ImageBackground
