@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   FlatList,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,6 +32,150 @@ const FILTER_OPTIONS = [
   { id: 'follows', label: 'Follows', icon: 'person-add' },
 ];
 
+// ADDED: Modal component for notification details
+const NotificationModal: React.FC<{
+  visible: boolean;
+  notification: Notification | null;
+  onClose: () => void;
+  onMarkAsRead: (id: string) => Promise<void>;
+}> = ({ visible, notification, onClose, onMarkAsRead }) => {
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible && notification) {
+      Animated.spring(slideAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }).start();
+      
+      // Mark as read when modal opens
+      if (!notification.isRead) {
+        onMarkAsRead(notification.id);
+      }
+    } else {
+      slideAnim.setValue(0);
+    }
+  }, [visible, notification]);
+
+  const getIconName = () => {
+    if (!notification) return 'notifications';
+    switch (notification.type) {
+      case 'mention': return 'at';
+      case 'system': return 'notifications';
+      case 'follow': return 'person-add';
+      case 'like': return 'heart';
+      case 'comment': return 'chatbubble';
+      default: return 'notifications';
+    }
+  };
+
+  const getIconColor = () => {
+    if (!notification) return '#6B7280';
+    switch (notification.type) {
+      case 'mention': return '#3B82F6';
+      case 'system': return '#6B7280';
+      case 'follow': return '#10B981';
+      case 'like': return '#EF4444';
+      case 'comment': return '#8B5CF6';
+      default: return '#6B7280';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (!notification) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <Animated.View
+          style={[
+            styles.modalContent,
+            {
+              transform: [{
+                translateY: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [500, 0]
+                })
+              }],
+              opacity: slideAnim
+            }
+          ]}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <View style={[styles.modalIcon, { backgroundColor: `${getIconColor()}15` }]}>
+                  <Ionicons
+                    name={getIconName() as any}
+                    size={24}
+                    color={getIconColor()}
+                  />
+                </View>
+                <View style={styles.modalHeaderText}>
+                  <Text style={styles.modalTitle}>{notification.title}</Text>
+                  <Text style={styles.modalTime}>{formatDate(notification.createdAt)}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Body */}
+            <View style={styles.modalBody}>
+              <Text style={styles.modalMessage}>{notification.message}</Text>
+              
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.modalActionButton}>
+                  <Ionicons name="arrow-redo" size={20} color="#3B82F6" />
+                  <Text style={styles.modalActionText}>Reply</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.modalActionButton}>
+                  <Ionicons name="archive" size={20} color="#6B7280" />
+                  <Text style={[styles.modalActionText, { color: '#6B7280' }]}>Archive</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.modalActionButton}>
+                  <Ionicons name="trash" size={20} color="#EF4444" />
+                  <Text style={[styles.modalActionText, { color: '#EF4444' }]}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
 const NotificationsScreen: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([]);
@@ -38,6 +183,8 @@ const NotificationsScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
   
   const searchAnim = useRef(new Animated.Value(0)).current;
   const headerAnim = useRef(new Animated.Value(1)).current;
@@ -100,12 +247,14 @@ const NotificationsScreen: React.FC = () => {
       });
     }
 
-    // Apply search filter
+    // Apply search filter - UPDATED to be more robust
     if (searchQuery.trim()) {
-      filtered = filtered.filter(notif =>
-        notif.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        notif.message.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(notif => {
+        const title = notif.title?.toLowerCase() || '';
+        const message = notif.message?.toLowerCase() || '';
+        return title.includes(query) || message.includes(query);
+      });
     }
 
     setFilteredNotifications(filtered);
@@ -187,6 +336,17 @@ const NotificationsScreen: React.FC = () => {
     }
   };
 
+  // ADDED: Handle notification press
+  const handleNotificationPress = (notification: Notification) => {
+    setSelectedNotification(notification);
+    setModalVisible(true);
+    
+    // Mark as read if unread
+    if (!notification.isRead) {
+      handleMarkAsRead(notification.id);
+    }
+  };
+
   const renderFilterChip = ({ id, label, icon }: { id: string; label: string; icon: string }) => (
     <TouchableOpacity
       key={id}
@@ -221,6 +381,7 @@ const NotificationsScreen: React.FC = () => {
   const renderNotificationItem = ({ item }: { item: Notification }) => (
     <NotificationItem
       notification={item}
+      onPress={() => handleNotificationPress(item)}
       onMarkAsRead={handleMarkAsRead}
     />
   );
@@ -240,7 +401,15 @@ const NotificationsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Animated Header */}
+      {/* ADDED: Notification Modal */}
+      <NotificationModal
+        visible={modalVisible}
+        notification={selectedNotification}
+        onClose={() => setModalVisible(false)}
+        onMarkAsRead={handleMarkAsRead}
+      />
+
+      {/* Animated Header - UPDATED to always show search icon */}
       <Animated.View style={[
         styles.header,
         {
@@ -263,11 +432,16 @@ const NotificationsScreen: React.FC = () => {
             )}
           </View>
           <View style={styles.headerActions}>
+            {/* Search button always visible */}
             <TouchableOpacity
               style={styles.headerButton}
               onPress={toggleSearch}
             >
-              <Ionicons name="search" size={22} color="#374151" />
+              <Ionicons 
+                name={showSearch ? "close" : "search"} 
+                size={22} 
+                color="#374151" 
+              />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerButton}
@@ -284,40 +458,29 @@ const NotificationsScreen: React.FC = () => {
         </View>
       </Animated.View>
 
-      {/* Search Bar */}
-      <Animated.View style={[
-        styles.searchContainer,
-        {
-          opacity: searchAnim,
-          height: searchAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 56]
-          }),
-          marginBottom: searchAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 16]
-          })
-        }
-      ]}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search notifications..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus={true}
-            placeholderTextColor="#9CA3AF"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
+      {/* Search Bar - FIXED to always be in view when toggled */}
+      {showSearch && (
+        <View style={styles.searchBarContainer}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search notifications..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus={true}
+              placeholderTextColor="#9CA3AF"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </Animated.View>
+      )}
 
-      {/* Filter Chips */}
+      {/* Filter Chips - FIXED height */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -373,15 +536,14 @@ const NotificationsScreen: React.FC = () => {
   );
 };
 
+// UPDATED: NotificationItem component with onPress prop
 const NotificationItem: React.FC<{
   notification: Notification;
-  onMarkAsRead: (id: string) => void;
-}> = ({ notification, onMarkAsRead }) => {
-  const handlePress = () => {
-    if (!notification.isRead) {
-      onMarkAsRead(notification.id);
-    }
-    // Navigate to notification target...
+  onPress: () => void;
+  onMarkAsRead: (id: string) => Promise<void>;
+}> = ({ notification, onPress, onMarkAsRead }) => {
+  const handleActionPress = async () => {
+    await onMarkAsRead(notification.id);
   };
 
   const getIconName = () => {
@@ -409,7 +571,7 @@ const NotificationItem: React.FC<{
   return (
     <TouchableOpacity
       style={[styles.notificationItem, !notification.isRead && styles.notificationUnread]}
-      onPress={handlePress}
+      onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.notificationIconContainer}>
@@ -431,13 +593,16 @@ const NotificationItem: React.FC<{
           {notification.message}
         </Text>
         <Text style={styles.notificationTime}>
-          {notification.timestamp}
+          {new Date(notification.createdAt).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })}
         </Text>
       </View>
 
       <TouchableOpacity
         style={styles.notificationAction}
-        onPress={() => onMarkAsRead(notification.id)}
+        onPress={handleActionPress}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Ionicons
@@ -491,9 +656,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  searchContainer: {
+  // FIXED: Search bar styles
+  searchBarContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 16,
-    overflow: 'hidden',
+    paddingTop: 44, // Safe area top padding + additional space
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    zIndex: 1000,
   },
   searchBar: {
     flexDirection: 'row',
@@ -514,6 +687,7 @@ const styles = StyleSheet.create({
     color: '#111827',
     paddingVertical: 10,
   },
+  // FIXED: Filter chip height
   filterContainer: {
     paddingHorizontal: 16,
     paddingBottom: 16,
@@ -522,12 +696,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10, // Increased from 8 to 10
     borderRadius: 20,
     backgroundColor: '#F9FAFB',
     marginRight: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    height: 40, // Added fixed height
+    minWidth: 80, // Added minimum width
   },
   filterChipActive: {
     backgroundColor: '#3B82F6',
@@ -700,6 +876,85 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
+  },
+  // ADDED: Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 34,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  modalIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  modalHeaderText: {
+    flex: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  modalTime: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  modalCloseButton: {
+    padding: 4,
+    marginLeft: 12,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalMessage: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#374151',
+    marginBottom: 32,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  modalActionButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    minWidth: 100,
+  },
+  modalActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginTop: 6,
   },
 });
 
