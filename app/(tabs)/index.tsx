@@ -18,7 +18,7 @@ export default function HomeScreen() {
         {/* Top Illustration Area with blood.png */}
         <View style={styles.illustrationWrapper}>
           <Image
-            source={require('@/assets/images/blood.png')}
+            source={require('../../assets/images/drop_blood.jpg')}
             style={styles.bloodImage}
             resizeMode="contain"
           />
@@ -105,7 +105,6 @@ const styles = StyleSheet.create({
     height: 180, // Adjust size as needed
     // The PNG should have transparent background already
     // If there's still white background, you can use tintColor to adjust
-    tintColor: '#FF0000', // Optional: Add red tint if your PNG is not already red
   },
 
   // Text Section

@@ -1,75 +1,66 @@
-Add an application icon to this React Native + TypeScript project using the provided image.
+You are working on an existing React Native + TypeScript application.
 
-Source image:
+Task Overview
 
-Icon file: drop_blood.jpg
+Add a new navigation link called "Map" in the file:
 
-Path: @assets/images/drop_blood.jpg
+@app/components/DashboardLayout.tsx
 
-Requirements:
+This new link must navigate to a new page/screen called:
 
-Generate and configure app icons for both Android and iOS
+Blood Donation Map
 
-Use the image as the base icon, properly resized and optimized
+Detailed Requirements
 
-Ensure the icon is square, centered, and visually balanced
+Dashboard Layout Update
 
-Do not stretch or distort the image
+Add a new navigation item labeled "Map".
 
-Android-specific tasks:
+Ensure it follows the same styling and navigation pattern as the existing links.
 
-Generate all required launcher icon sizes (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi)
+The link must route correctly to the new Blood Donation Map screen.
 
-Place icons inside the correct android/app/src/main/res/mipmap-\* directories
+Create Blood Donation Map Page
 
-Update AndroidManifest.xml to reference the new launcher icon
+Create a new screen/page component for Blood Donation Map.
 
-Ensure compatibility with modern Android versions
+Use TypeScript and follow the project’s existing screen/component structure.
 
-iOS-specific tasks:
+The screen title should clearly display:
+Blood Donation Map
 
-Generate all required icon sizes for iPhone and iPad
+Google Map Integration
 
-Place icons inside ios/<project-name>/Images.xcassets/AppIcon.appiconset
+Embed a Google Map in the Blood Donation Map screen.
 
-Properly update Contents.json
+The map must be centered on:
 
-Ensure icons meet Apple App Store requirements
+Sorsogon City, Philippines
 
-Technical constraints:
+Use proper React Native map embedding (e.g., WebView with Google Maps embed OR react-native-maps if already installed).
 
-React Native project (not Expo unless explicitly detected)
+Set an appropriate zoom level so Sorsogon City is clearly visible.
 
-No third-party paid tools
+Navigation & Routing
 
-Prefer CLI-based or manual setup if needed
+Ensure the new screen is properly registered in the app’s navigation system.
 
-Output expectation:
+Verify that tapping Map from the dashboard successfully opens the Blood Donation Map screen.
 
-Step-by-step instructions
+Code Quality
 
-File paths and folder structure
+Use TypeScript types.
 
-Any commands required to generate or apply icons
+Match existing project patterns and conventions.
 
-Notes on clearing cache or rebuilding the app to see changes
+Do not break existing navigation or layouts.
 
-Verification:
+Expected Output
 
-App icon should appear correctly on the device home screen
+Updated DashboardLayout.tsx with a new Map link.
 
-Icon should display properly in both light and dark modes
+A new Blood Donation Map screen/page.
 
-Assume the project is already running correctly and focus only on app icon integration.
+Working embedded Google Map focused on Sorsogon City.
 
-💡 Optional Add-Ons (only if you want)
-
-You can append one of these depending on your goal:
-
-If you want automation:
-
-Prefer using react-native-make or @bam.tech/react-native-make if appropriate.
-
-If you want no libraries at all:
-
-Do everything manually without using icon generator libraries.
+Fully functional navigation between Dashboard and Map screen.

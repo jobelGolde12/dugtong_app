@@ -1,32 +1,43 @@
 import {
   CheckCircle,
-  ChevronDown,
   ChevronRight,
   Edit2,
   Filter,
+  Plus,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Users,
+  X,
   XCircle
 } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Dimensions,
+  Keyboard,
+  Modal,
+  Platform,
   ScrollView,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View
 } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
+  FadeInUp,
+  FadeOut,
+  Layout,
+  SlideInDown,
+  SlideOutDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 // ============ TYPES & INTERFACES ============
 interface Donor {
@@ -34,9 +45,12 @@ interface Donor {
   name: string;
   bloodType: string;
   municipality: string;
-  availabilityStatus: 'Available' | 'Temporarily Unavailable';
+  availabilityStatus: 'Available' | 'Temporarily Unavailable' | 'Recently Donated';
   lastDonation?: string;
   contactNumber?: string;
+  email?: string;
+  donorSince?: string;
+  totalDonations?: number;
 }
 
 interface DonorFilter {
@@ -61,29 +75,32 @@ const COLORS = {
     900: '#0c4a6e',
   },
   neutral: {
-    50: '#fafafa',
-    100: '#f5f5f5',
-    200: '#e5e5e5',
-    300: '#d4d4d4',
-    400: '#a3a3a3',
-    500: '#737373',
-    600: '#525252',
-    700: '#404040',
-    800: '#262626',
-    900: '#171717',
+    50: '#f8fafc',
+    100: '#f1f5f9',
+    200: '#e2e8f0',
+    300: '#cbd5e1',
+    400: '#94a3b8',
+    500: '#64748b',
+    600: '#475569',
+    700: '#334155',
+    800: '#1e293b',
+    900: '#0f172a',
   },
   success: {
     50: '#f0fdf4',
-    500: '#22c55e',
-    600: '#16a34a',
+    100: '#dcfce7',
+    500: '#10b981',
+    600: '#059669',
   },
   warning: {
-    50: '#fefce8',
-    500: '#eab308',
-    600: '#ca8a04',
+    50: '#fffbeb',
+    100: '#fef3c7',
+    500: '#f59e0b',
+    600: '#d97706',
   },
   error: {
     50: '#fef2f2',
+    100: '#fee2e2',
     500: '#ef4444',
     600: '#dc2626',
   },
@@ -91,24 +108,30 @@ const COLORS = {
     light: '#ffffff',
     dark: '#1a1a1a',
   },
+  gradient: {
+    start: '#0ea5e9',
+    end: '#0284c7',
+  }
 } as const;
 
 const SPACING = {
   xs: 4,
   sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  '2xl': 48,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  '2xl': 32,
+  '3xl': 48,
 } as const;
 
 const TYPOGRAPHY = {
-  h1: { fontSize: 32, fontWeight: '700', lineHeight: 40 },
-  h2: { fontSize: 24, fontWeight: '600', lineHeight: 32 },
-  h3: { fontSize: 20, fontWeight: '600', lineHeight: 28 },
+  h1: { fontSize: 28, fontWeight: '800', lineHeight: 36, letterSpacing: -0.5 },
+  h2: { fontSize: 22, fontWeight: '700', lineHeight: 30, letterSpacing: -0.3 },
+  h3: { fontSize: 18, fontWeight: '600', lineHeight: 26 },
   body1: { fontSize: 16, fontWeight: '400', lineHeight: 24 },
   body2: { fontSize: 14, fontWeight: '400', lineHeight: 20 },
   caption: { fontSize: 12, fontWeight: '400', lineHeight: 16 },
+  button: { fontSize: 14, fontWeight: '600', letterSpacing: 0.25 },
 } as const;
 
 const SHADOWS = {
@@ -122,26 +145,35 @@ const SHADOWS = {
   md: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 4,
   },
   lg: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowRadius: 20,
     elevation: 8,
   },
+  xl: {
+    shadowColor: COLORS.primary[500],
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
+    elevation: 16,
+  }
 } as const;
 
 const RADIUS = {
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 24,
+  xl: 20,
   full: 9999,
 } as const;
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // ============ REUSABLE COMPONENTS ============
 const Container: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -150,72 +182,103 @@ const Container: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </SafeAreaView>
 );
 
+const Text = ({ children, style, variant, ...props }: any) => {
+  const variantStyle = variant ? TYPOGRAPHY[variant as keyof typeof TYPOGRAPHY] : {};
+  return (
+    <Animated.Text
+      style={[{ color: COLORS.neutral[900] }, variantStyle, style]}
+      {...props}
+    >
+      {children}
+    </Animated.Text>
+  );
+};
+
 const Card: React.FC<{
   children: React.ReactNode;
   onPress?: () => void;
-  variant?: 'default' | 'elevated';
-}> = ({ children, onPress, variant = 'default' }) => {
+  variant?: 'default' | 'elevated' | 'outlined';
+  style?: any;
+}> = ({ children, onPress, variant = 'default', style }) => {
   const scale = useSharedValue(1);
-  const shadowOpacity = useSharedValue(0.1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    shadowOpacity: shadowOpacity.value,
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98);
-    shadowOpacity.value = withTiming(0.05);
+    if (onPress) {
+      scale.value = withSpring(0.98);
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1);
-    shadowOpacity.value = withTiming(0.1);
+    if (onPress) {
+      scale.value = withSpring(1);
+    }
   };
 
-  return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={!onPress}
-    >
-      <Animated.View
-        style={[
-          {
-            backgroundColor: COLORS.surface.light,
-            borderRadius: RADIUS.lg,
-            padding: SPACING.lg,
-            ...SHADOWS.md,
-          },
-          variant === 'elevated' && SHADOWS.lg,
-          animatedStyle,
-        ]}
+  const cardStyles = {
+    backgroundColor: COLORS.surface.light,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    ...(variant === 'elevated' && SHADOWS.md),
+    ...(variant === 'outlined' && {
+      borderWidth: 1,
+      borderColor: COLORS.neutral[200],
+      backgroundColor: 'transparent',
+    }),
+  };
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
       >
-        {children}
-      </Animated.View>
-    </TouchableOpacity>
+        <Animated.View style={[cardStyles, animatedStyle, style]}>
+          {children}
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <Animated.View style={[cardStyles, style]}>
+      {children}
+    </Animated.View>
   );
 };
 
 const Button: React.FC<{
   children: React.ReactNode;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
   loading?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  style?: any;
 }> = ({ 
   children, 
   onPress, 
   variant = 'primary', 
   size = 'md', 
   fullWidth = false,
-  loading = false 
+  loading = false,
+  leftIcon,
+  rightIcon,
+  style
 }) => {
   const scale = useSharedValue(1);
-  const bgColor = useSharedValue(COLORS.primary[500]);
+  const bgColor = useSharedValue(
+    variant === 'primary' ? COLORS.primary[500] :
+    variant === 'secondary' ? COLORS.neutral[100] :
+    'transparent'
+  );
 
   const buttonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -223,30 +286,52 @@ const Button: React.FC<{
   }));
 
   const sizeStyles = {
-    sm: { paddingVertical: SPACING.xs, paddingHorizontal: SPACING.md },
-    md: { paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg },
-    lg: { paddingVertical: SPACING.md, paddingHorizontal: SPACING.xl },
+    sm: { 
+      paddingVertical: SPACING.xs, 
+      paddingHorizontal: SPACING.md,
+      height: 32,
+    },
+    md: { 
+      paddingVertical: SPACING.sm, 
+      paddingHorizontal: SPACING.lg,
+      height: 40,
+    },
+    lg: { 
+      paddingVertical: SPACING.md, 
+      paddingHorizontal: SPACING.xl,
+      height: 48,
+    },
   };
 
   const variantStyles = {
     primary: {
       backgroundColor: COLORS.primary[500],
       textColor: '#ffffff',
+      borderColor: COLORS.primary[500],
     },
     secondary: {
       backgroundColor: COLORS.neutral[100],
       textColor: COLORS.neutral[700],
+      borderColor: COLORS.neutral[200],
     },
     ghost: {
       backgroundColor: 'transparent',
       textColor: COLORS.primary[500],
+      borderColor: 'transparent',
+    },
+    outline: {
+      backgroundColor: 'transparent',
+      textColor: COLORS.neutral[700],
+      borderColor: COLORS.neutral[300],
     },
   };
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.95);
+    scale.value = withSpring(0.98);
     if (variant === 'primary') {
       bgColor.value = withTiming(COLORS.primary[600]);
+    } else if (variant === 'secondary') {
+      bgColor.value = withTiming(COLORS.neutral[200]);
     }
   };
 
@@ -254,6 +339,8 @@ const Button: React.FC<{
     scale.value = withSpring(1);
     if (variant === 'primary') {
       bgColor.value = withTiming(COLORS.primary[500]);
+    } else if (variant === 'secondary') {
+      bgColor.value = withTiming(COLORS.neutral[100]);
     }
   };
 
@@ -263,7 +350,7 @@ const Button: React.FC<{
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={loading}
-      style={{ width: fullWidth ? '100%' : 'auto' }}
+      style={[{ width: fullWidth ? '100%' : 'auto' }, style]}
     >
       <Animated.View
         style={[
@@ -272,28 +359,36 @@ const Button: React.FC<{
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'row',
-            gap: SPACING.xs,
+            gap: SPACING.sm,
             opacity: loading ? 0.7 : 1,
+            borderWidth: variant === 'outline' ? 1 : 0,
+            borderColor: variantStyles[variant].borderColor,
           },
           sizeStyles[size],
-          variantStyles[variant].backgroundColor !== 'transparent' && SHADOWS.sm,
+          variant !== 'ghost' && SHADOWS.sm,
           buttonStyle,
         ]}
       >
         {loading && (
           <Animated.View entering={FadeIn}>
-            <RefreshCw size={16} color={variantStyles[variant].textColor} />
+            <RefreshCw 
+              size={size === 'sm' ? 14 : 16} 
+              color={variantStyles[variant].textColor} 
+              style={{ opacity: 0.8 }}
+            />
           </Animated.View>
         )}
-        <Animated.Text
+        {!loading && leftIcon}
+        <Text
           style={{
             color: variantStyles[variant].textColor,
-            fontWeight: '600',
-            fontSize: size === 'sm' ? 14 : 16,
+            ...TYPOGRAPHY.button,
+            fontSize: size === 'sm' ? 12 : 14,
           }}
         >
           {children}
-        </Animated.Text>
+        </Text>
+        {!loading && rightIcon}
       </Animated.View>
     </TouchableOpacity>
   );
@@ -301,8 +396,9 @@ const Button: React.FC<{
 
 const Badge: React.FC<{
   children: React.ReactNode;
-  variant?: 'success' | 'warning' | 'error' | 'neutral';
-}> = ({ children, variant = 'neutral' }) => {
+  variant?: 'success' | 'warning' | 'error' | 'neutral' | 'primary';
+  size?: 'sm' | 'md';
+}> = ({ children, variant = 'neutral', size = 'md' }) => {
   const variantConfig = {
     success: {
       backgroundColor: COLORS.success[50],
@@ -320,14 +416,18 @@ const Badge: React.FC<{
       backgroundColor: COLORS.neutral[100],
       textColor: COLORS.neutral[700],
     },
+    primary: {
+      backgroundColor: COLORS.primary[50],
+      textColor: COLORS.primary[600],
+    },
   };
 
   return (
     <View
       style={{
         backgroundColor: variantConfig[variant].backgroundColor,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.xs,
+        paddingHorizontal: size === 'sm' ? SPACING.sm : SPACING.md,
+        paddingVertical: size === 'sm' ? 2 : SPACING.xs,
         borderRadius: RADIUS.full,
         alignSelf: 'flex-start',
       }}
@@ -335,8 +435,8 @@ const Badge: React.FC<{
       <Text
         style={{
           color: variantConfig[variant].textColor,
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: size === 'sm' ? 10 : 12,
+          fontWeight: '600',
         }}
       >
         {children}
@@ -345,136 +445,418 @@ const Badge: React.FC<{
   );
 };
 
-const Text = ({ children, style, ...props }: any) => (
-  <Animated.Text
-    style={[{ color: COLORS.neutral[900] }, style]}
-    {...props}
-  >
-    {children}
-  </Animated.Text>
-);
+const Chip: React.FC<{
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  icon?: React.ReactNode;
+}> = ({ label, selected, onPress, icon }) => {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING.sm,
+        borderRadius: RADIUS.full,
+        backgroundColor: selected ? COLORS.primary[500] : COLORS.neutral[100],
+        borderWidth: 1,
+        borderColor: selected ? COLORS.primary[500] : COLORS.neutral[200],
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.xs,
+      }}
+    >
+      {icon}
+      <Text style={{
+        color: selected ? '#ffffff' : COLORS.neutral[700],
+        fontWeight: '500',
+        fontSize: 14,
+      }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+};
 
 // ============ SCREEN COMPONENTS ============
 const Header: React.FC = () => (
-  <Animated.View entering={FadeInDown.duration(500)} style={{ padding: SPACING.lg }}>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+  <Animated.View 
+    entering={FadeInDown.duration(500)}
+    style={{ 
+      paddingHorizontal: SPACING.lg, 
+      paddingTop: SPACING.lg,
+      paddingBottom: SPACING.md,
+    }}
+  >
+    <View style={{ 
+      flexDirection: 'row', 
+      justifyContent: 'space-between', 
+      alignItems: 'center',
+      marginBottom: SPACING.xs,
+    }}>
       <View>
-        <Text style={{ ...TYPOGRAPHY.h1, color: COLORS.neutral[900] }}>Donor Management</Text>
-        <Text style={{ ...TYPOGRAPHY.body2, color: COLORS.neutral[500], marginTop: SPACING.xs }}>
-          Manage and monitor blood donors in your network
+        <Text variant="h1" style={{ color: COLORS.neutral[900] }}>
+          Donor Management
+        </Text>
+        <Text 
+          variant="body2" 
+          style={{ 
+            color: COLORS.neutral[500], 
+            marginTop: SPACING.xs,
+          }}
+        >
+          {SCREEN_WIDTH > 768 ? 'Manage and monitor blood donors in your network' : 'Monitor blood donors'}
         </Text>
       </View>
       <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
-        <Button variant="ghost" size="sm">
-          <Filter size={20} />
+        <Button 
+          variant="ghost" 
+          size="sm"
+          leftIcon={<Filter size={18} color={COLORS.neutral[500]} />}
+        >
+          {SCREEN_WIDTH > 768 ? 'Filter' : ''}
         </Button>
-        <Button variant="ghost" size="sm">
-          <Users size={20} />
+        <Button 
+          variant="ghost" 
+          size="sm"
+          leftIcon={<Users size={18} color={COLORS.neutral[500]} />}
+        >
+          {SCREEN_WIDTH > 768 ? 'Groups' : ''}
         </Button>
       </View>
     </View>
   </Animated.View>
 );
 
-const FilterBar: React.FC<{
-  filters: DonorFilter;
-  onFilterChange: (filterName: keyof DonorFilter, value: any) => void;
-  onClearFilters: () => void;
-}> = ({ filters, onFilterChange, onClearFilters }) => {
-  const [expanded, setExpanded] = useState(false);
+const SearchBar: React.FC<{
+  value: string;
+  onChangeText: (text: string) => void;
+  onFilterPress: () => void;
+}> = ({ value, onChangeText, onFilterPress }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const searchWidth = useSharedValue(SCREEN_WIDTH * 0.9);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        if (SCREEN_WIDTH < 768) {
+          searchWidth.value = withTiming(SCREEN_WIDTH * 0.85);
+        }
+      }
+    );
+    
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        searchWidth.value = withTiming(SCREEN_WIDTH * 0.9);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    width: searchWidth.value,
+  }));
 
   return (
     <Animated.View 
       entering={FadeInDown.delay(100).duration(500)}
-      style={{ paddingHorizontal: SPACING.lg, marginBottom: SPACING.lg }}
+      style={[
+        {
+          alignSelf: 'center',
+          marginBottom: SPACING.lg,
+        },
+        animatedStyle
+      ]}
     >
-      <Card variant="elevated">
-        <View style={{ gap: SPACING.md }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
-            <Search size={20} color={COLORS.neutral[400]} />
-            <TextInput
-              placeholder="Search donors by name, blood type, or location..."
-              placeholderTextColor={COLORS.neutral[400]}
-              value={filters.searchQuery}
-              onChangeText={(text) => onFilterChange('searchQuery', text)}
-              style={{
-                flex: 1,
-                fontSize: 16,
-                color: COLORS.neutral[900],
-                paddingVertical: SPACING.sm,
-              }}
-            />
-          </View>
-
-          <TouchableOpacity
-            onPress={() => setExpanded(!expanded)}
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
+      }}>
+        <View style={{
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: COLORS.surface.light,
+          borderRadius: RADIUS.lg,
+          borderWidth: 1,
+          borderColor: isFocused ? COLORS.primary[300] : COLORS.neutral[200],
+          paddingHorizontal: SPACING.md,
+          paddingVertical: SPACING.sm,
+          ...SHADOWS.sm,
+        }}>
+          <Search size={20} color={COLORS.neutral[400]} />
+          <TextInput
+            ref={inputRef}
+            placeholder="Search donors by name, blood type, or location..."
+            placeholderTextColor={COLORS.neutral[400]}
+            value={value}
+            onChangeText={onChangeText}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingVertical: SPACING.sm,
+              flex: 1,
+              fontSize: 16,
+              color: COLORS.neutral[900],
+              marginLeft: SPACING.sm,
+              paddingVertical: Platform.OS === 'ios' ? SPACING.xs : 0,
             }}
-          >
-            <Text style={{ fontWeight: '600', color: COLORS.neutral[700] }}>
-              Advanced Filters
-            </Text>
-            <ChevronDown 
-              size={20} 
-              color={COLORS.neutral[500]}
-              style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}
-            />
-          </TouchableOpacity>
+            clearButtonMode="while-editing"
+          />
+          {value.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                onChangeText('');
+                inputRef.current?.blur();
+              }}
+              style={{
+                padding: SPACING.xs,
+                borderRadius: RADIUS.sm,
+              }}
+            >
+              <X size={18} color={COLORS.neutral[400]} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <Button
+          variant="outline"
+          size="md"
+          onPress={onFilterPress}
+          leftIcon={<SlidersHorizontal size={18} color={COLORS.neutral[500]} />}
+          style={{ height: 44 }}
+        />
+      </View>
+    </Animated.View>
+  );
+};
 
-          {expanded && (
-            <Animated.View 
-              entering={FadeIn}
-              style={{ 
+const FilterModal: React.FC<{
+  visible: boolean;
+  onClose: () => void;
+  filters: DonorFilter;
+  onFilterChange: (filterName: keyof DonorFilter, value: any) => void;
+  onApply: () => void;
+  onReset: () => void;
+}> = ({ visible, onClose, filters, onFilterChange, onApply, onReset }) => {
+  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+  const availabilityOptions = [
+    { label: 'Available', value: 'Available' },
+    { label: 'Temporarily Unavailable', value: 'Temporarily Unavailable' },
+    { label: 'Recently Donated', value: 'Recently Donated' },
+  ];
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.neutral[50] }}>
+        <View style={{ 
+          flexDirection: 'row', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          paddingHorizontal: SPACING.lg,
+          paddingVertical: SPACING.md,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.neutral[200],
+        }}>
+          <Text variant="h2">Filters</Text>
+          <TouchableOpacity onPress={onClose} style={{ padding: SPACING.xs }}>
+            <X size={24} color={COLORS.neutral[500]} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={{ flex: 1, padding: SPACING.lg }}>
+          <View style={{ gap: SPACING.xl }}>
+            {/* Blood Type Filter */}
+            <View>
+              <Text variant="h3" style={{ marginBottom: SPACING.md }}>
+                Blood Type
+              </Text>
+              <View style={{ 
                 flexDirection: 'row', 
                 flexWrap: 'wrap', 
                 gap: SPACING.sm,
-                paddingTop: SPACING.sm,
-                borderTopWidth: 1,
-                borderTopColor: COLORS.neutral[200]
-              }}
-            >
-              {['A+', 'B+', 'O+', 'AB+'].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  onPress={() => onFilterChange('bloodType', 
-                    filters.bloodType === type ? null : type
-                  )}
-                  style={{
-                    paddingHorizontal: SPACING.md,
-                    paddingVertical: SPACING.xs,
-                    borderRadius: RADIUS.full,
-                    backgroundColor: filters.bloodType === type 
-                      ? COLORS.primary[500] 
-                      : COLORS.neutral[100],
-                  }}
-                >
-                  <Text style={{
-                    color: filters.bloodType === type ? '#fff' : COLORS.neutral[700],
-                    fontWeight: '500',
-                  }}>
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </Animated.View>
-          )}
-
-          {(filters.bloodType || filters.municipality || filters.availability) && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ color: COLORS.neutral[500], fontSize: 14 }}>
-                Filters applied
-              </Text>
-              <Button variant="ghost" size="sm" onPress={onClearFilters}>
-                Clear all
-              </Button>
+              }}>
+                {bloodTypes.map((type) => (
+                  <Chip
+                    key={type}
+                    label={type}
+                    selected={filters.bloodType === type}
+                    onPress={() => onFilterChange('bloodType', 
+                      filters.bloodType === type ? null : type
+                    )}
+                  />
+                ))}
+              </View>
             </View>
-          )}
+
+            {/* Availability Filter */}
+            <View>
+              <Text variant="h3" style={{ marginBottom: SPACING.md }}>
+                Availability Status
+              </Text>
+              <View style={{ gap: SPACING.sm }}>
+                {availabilityOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => onFilterChange('availability', 
+                      filters.availability === option.value ? null : option.value
+                    )}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: SPACING.md,
+                      backgroundColor: COLORS.neutral[50],
+                      borderRadius: RADIUS.md,
+                      borderWidth: 1,
+                      borderColor: filters.availability === option.value 
+                        ? COLORS.primary[500] 
+                        : COLORS.neutral[200],
+                    }}
+                  >
+                    <View style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      borderWidth: 2,
+                      borderColor: filters.availability === option.value 
+                        ? COLORS.primary[500] 
+                        : COLORS.neutral[400],
+                      marginRight: SPACING.md,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {filters.availability === option.value && (
+                        <View style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: 5,
+                          backgroundColor: COLORS.primary[500],
+                        }} />
+                      )}
+                    </View>
+                    <Text style={{ flex: 1, color: COLORS.neutral[700] }}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Municipality Filter */}
+            <View>
+              <Text variant="h3" style={{ marginBottom: SPACING.md }}>
+                Location
+              </Text>
+              <TextInput
+                placeholder="Enter city or municipality..."
+                placeholderTextColor={COLORS.neutral[400]}
+                value={filters.municipality || ''}
+                onChangeText={(text) => onFilterChange('municipality', text)}
+                style={{
+                  backgroundColor: COLORS.surface.light,
+                  borderRadius: RADIUS.md,
+                  borderWidth: 1,
+                  borderColor: COLORS.neutral[200],
+                  padding: SPACING.md,
+                  fontSize: 16,
+                  color: COLORS.neutral[900],
+                }}
+              />
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={{ 
+          flexDirection: 'row', 
+          gap: SPACING.md,
+          padding: SPACING.lg,
+          borderTopWidth: 1,
+          borderTopColor: COLORS.neutral[200],
+        }}>
+          <Button
+            variant="outline"
+            size="lg"
+            onPress={onReset}
+            fullWidth
+          >
+            Reset All
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            onPress={() => {
+              onApply();
+              onClose();
+            }}
+            fullWidth
+          >
+            Apply Filters
+          </Button>
         </View>
-      </Card>
+      </SafeAreaView>
+    </Modal>
+  );
+};
+
+const StatsBar: React.FC<{ donors: Donor[] }> = ({ donors }) => {
+  const availableDonors = donors.filter(d => d.availabilityStatus === 'Available').length;
+  const totalDonors = donors.length;
+  const recentlyDonated = donors.filter(d => d.availabilityStatus === 'Recently Donated').length;
+
+  const stats = [
+    { label: 'Total Donors', value: totalDonors, color: COLORS.neutral[700] },
+    { label: 'Available Now', value: availableDonors, color: COLORS.success[500] },
+    { label: 'Recently Donated', value: recentlyDonated, color: COLORS.warning[500] },
+    { 
+      label: 'Availability', 
+      value: `${((availableDonors / totalDonors) * 100).toFixed(0)}%`, 
+      color: COLORS.primary[500] 
+    },
+  ];
+
+  return (
+    <Animated.View 
+      entering={FadeInDown.delay(200).duration(500)}
+      style={{ 
+        paddingHorizontal: SPACING.lg, 
+        marginBottom: SPACING.lg,
+      }}
+    >
+      <ScrollView 
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: SPACING.md }}
+      >
+        {stats.map((stat, index) => (
+          <Animated.View
+            key={stat.label}
+            entering={FadeInDown.delay(300 + index * 100).duration(500)}
+            layout={Layout.springify()}
+          >
+            <Card variant="elevated" style={{ minWidth: SCREEN_WIDTH > 768 ? 180 : 140 }}>
+              <View style={{ gap: SPACING.xs }}>
+                <Text variant="h2" style={{ color: stat.color }}>
+                  {stat.value}
+                </Text>
+                <Text variant="body2" style={{ color: COLORS.neutral[500] }}>
+                  {stat.label}
+                </Text>
+              </View>
+            </Card>
+          </Animated.View>
+        ))}
+      </ScrollView>
     </Animated.View>
   );
 };
@@ -484,99 +866,147 @@ const DonorCard: React.FC<{
   onViewDetails: (donor: Donor) => void;
   onToggleAvailability: (donor: Donor) => void;
   onEdit: (donor: Donor) => void;
-}> = ({ donor, onViewDetails, onToggleAvailability, onEdit }) => {
-  const statusColor = donor.availabilityStatus === 'Available' 
-    ? COLORS.success[500] 
-    : COLORS.warning[500];
+  index: number;
+}> = ({ donor, onViewDetails, onToggleAvailability, onEdit, index }) => {
+  const statusConfig = {
+    'Available': { color: COLORS.success[500], bgColor: COLORS.success[50], icon: CheckCircle },
+    'Temporarily Unavailable': { color: COLORS.warning[500], bgColor: COLORS.warning[50], icon: XCircle },
+    'Recently Donated': { color: COLORS.neutral[500], bgColor: COLORS.neutral[100], icon: CheckCircle },
+  };
+
+  const status = statusConfig[donor.availabilityStatus];
 
   return (
-    <Card
-      onPress={() => onViewDetails(donor)}
-      variant="elevated"
+    <Animated.View
+      entering={FadeInUp.delay(100 + index * 50).duration(500)}
+      layout={Layout.springify()}
     >
-      <View style={{ gap: SPACING.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
-              <Text style={{ ...TYPOGRAPHY.h3, color: COLORS.neutral[900] }}>
-                {donor.name}
+      <Card
+        onPress={() => onViewDetails(donor)}
+        variant="elevated"
+        style={{ marginBottom: SPACING.md }}
+      >
+        <View style={{ gap: SPACING.lg }}>
+          {/* Header */}
+          <View style={{ 
+            flexDirection: 'row', 
+            justifyContent: 'space-between', 
+            alignItems: 'flex-start',
+            gap: SPACING.md,
+          }}>
+            <View style={{ flex: 1, gap: SPACING.xs }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                <Text variant="h3" style={{ color: COLORS.neutral[900], flex: 1 }}>
+                  {donor.name}
+                </Text>
+                <Badge variant="primary" size="sm">
+                  {donor.bloodType}
+                </Badge>
+              </View>
+              <Text variant="body2" style={{ color: COLORS.neutral[500] }}>
+                {donor.municipality} • {donor.contactNumber || 'No contact'}
               </Text>
-              <View style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: statusColor,
-              }} />
             </View>
-            <Text style={{ ...TYPOGRAPHY.body2, color: COLORS.neutral[500], marginTop: 2 }}>
-              {donor.municipality} • {donor.contactNumber || 'No contact'}
-            </Text>
+            
+            <View style={{ flexDirection: 'row', gap: SPACING.xs }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => onEdit(donor)}
+                leftIcon={<Edit2 size={16} color={COLORS.neutral[500]} />}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => onToggleAvailability(donor)}
+                leftIcon={<status.icon size={16} color={status.color} />}
+              />
+            </View>
           </View>
-          
-          <View style={{ flexDirection: 'row', gap: SPACING.xs }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onPress={() => onEdit(donor)}
-            >
-              <Edit2 size={16} color={COLORS.neutral[500]} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onPress={() => onToggleAvailability(donor)}
-            >
-              {donor.availabilityStatus === 'Available' ? (
-                <CheckCircle size={16} color={COLORS.success[500]} />
-              ) : (
-                <XCircle size={16} color={COLORS.warning[500]} />
-              )}
-            </Button>
-          </View>
-        </View>
 
-        <View style={{ flexDirection: 'row', gap: SPACING.md, alignItems: 'center' }}>
-          <Badge variant="neutral">
-            {donor.bloodType}
-          </Badge>
-          <Badge variant={donor.availabilityStatus === 'Available' ? 'success' : 'warning'}>
-            {donor.availabilityStatus}
-          </Badge>
-          {donor.lastDonation && (
-            <Text style={{ ...TYPOGRAPHY.caption, color: COLORS.neutral[400] }}>
-              Last donation: {donor.lastDonation}
-            </Text>
-          )}
-        </View>
-
-        <TouchableOpacity
-          onPress={() => onViewDetails(donor)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
+          {/* Status & Info */}
+          <View style={{ 
+            flexDirection: SCREEN_WIDTH > 768 ? 'row' : 'column',
             justifyContent: 'space-between',
-            paddingTop: SPACING.sm,
-            borderTopWidth: 1,
-            borderTopColor: COLORS.neutral[100],
-          }}
-        >
-          <Text style={{ color: COLORS.primary[500], fontWeight: '500' }}>
-            View full details
-          </Text>
-          <ChevronRight size={16} color={COLORS.primary[500]} />
-        </TouchableOpacity>
-      </View>
-    </Card>
+            alignItems: SCREEN_WIDTH > 768 ? 'center' : 'flex-start',
+            gap: SPACING.md,
+          }}>
+            <View style={{ flexDirection: 'row', gap: SPACING.md, flexWrap: 'wrap' }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: SPACING.md,
+                paddingVertical: SPACING.xs,
+                backgroundColor: status.bgColor,
+                borderRadius: RADIUS.full,
+                gap: SPACING.xs,
+              }}>
+                <View style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: status.color,
+                }} />
+                <Text style={{ 
+                  color: status.color, 
+                  fontSize: 12, 
+                  fontWeight: '600',
+                }}>
+                  {donor.availabilityStatus}
+                </Text>
+              </View>
+              
+              {donor.lastDonation && (
+                <View style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'center',
+                  gap: SPACING.xs,
+                }}>
+                  <Text variant="caption" style={{ color: COLORS.neutral[400] }}>
+                    Last donation:
+                  </Text>
+                  <Text variant="caption" style={{ color: COLORS.neutral[600], fontWeight: '500' }}>
+                    {donor.lastDonation}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              onPress={() => onViewDetails(donor)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: SPACING.xs,
+              }}
+            >
+              <Text style={{ 
+                color: COLORS.primary[500], 
+                fontWeight: '600',
+                fontSize: 14,
+              }}>
+                View details
+              </Text>
+              <ChevronRight size={16} color={COLORS.primary[500]} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Card>
+    </Animated.View>
   );
 };
 
-const EmptyState: React.FC<{ message: string }> = ({ message }) => (
+const EmptyState: React.FC<{ 
+  message: string; 
+  onAddDonor: () => void;
+}> = ({ message, onAddDonor }) => (
   <Animated.View 
     entering={FadeIn.duration(600)}
     style={{ 
       alignItems: 'center', 
       justifyContent: 'center',
-      padding: SPACING['2xl'],
+      paddingHorizontal: SPACING.lg,
+      paddingVertical: SPACING['3xl'],
       minHeight: 400,
     }}
   >
@@ -591,13 +1021,26 @@ const EmptyState: React.FC<{ message: string }> = ({ message }) => (
     }}>
       <Users size={48} color={COLORS.neutral[400]} />
     </View>
-    <Text style={{ ...TYPOGRAPHY.h3, color: COLORS.neutral[700], marginBottom: SPACING.sm }}>
+    <Text variant="h3" style={{ 
+      color: COLORS.neutral[700], 
+      marginBottom: SPACING.sm,
+      textAlign: 'center',
+    }}>
       No donors found
     </Text>
-    <Text style={{ ...TYPOGRAPHY.body1, color: COLORS.neutral[500], textAlign: 'center' }}>
+    <Text variant="body1" style={{ 
+      color: COLORS.neutral[500], 
+      textAlign: 'center',
+      marginBottom: SPACING.lg,
+    }}>
       {message}
     </Text>
-    <Button variant="primary" size="md" style={{ marginTop: SPACING.lg }}>
+    <Button 
+      variant="primary" 
+      size="lg" 
+      onPress={onAddDonor}
+      leftIcon={<Plus size={20} color="#ffffff" />}
+    >
       Add New Donor
     </Button>
   </Animated.View>
@@ -611,64 +1054,32 @@ const LoadingIndicator: React.FC = () => (
       alignItems: 'center', 
       justifyContent: 'center',
       minHeight: 400,
+      padding: SPACING['3xl'],
     }}
   >
-    <View style={{ alignItems: 'center', gap: SPACING.md }}>
-      <RefreshCw size={32} color={COLORS.primary[500]} style={{ opacity: 0.7 }} />
-      <Text style={{ color: COLORS.neutral[500] }}>Loading donors...</Text>
+    <View style={{ alignItems: 'center', gap: SPACING.lg }}>
+      <Animated.View
+        style={{
+          width: 60,
+          height: 60,
+          borderRadius: 30,
+          backgroundColor: COLORS.primary[50],
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <RefreshCw 
+          size={32} 
+          color={COLORS.primary[500]} 
+          style={{ opacity: 0.7 }}
+        />
+      </Animated.View>
+      <Text variant="body1" style={{ color: COLORS.neutral[500] }}>
+        Loading donors...
+      </Text>
     </View>
   </Animated.View>
 );
-
-const StatsBar: React.FC<{ donors: Donor[] }> = ({ donors }) => {
-  const availableDonors = donors.filter(d => d.availabilityStatus === 'Available').length;
-  const totalDonors = donors.length;
-
-  return (
-    <Animated.View 
-      entering={FadeInDown.delay(200).duration(500)}
-      style={{ 
-        paddingHorizontal: SPACING.lg, 
-        marginBottom: SPACING.lg,
-        flexDirection: 'row',
-        gap: SPACING.md,
-      }}
-    >
-      <Card variant="elevated">
-        <View style={{ alignItems: 'center', gap: SPACING.xs }}>
-          <Text style={{ ...TYPOGRAPHY.h2, color: COLORS.neutral[900] }}>
-            {totalDonors}
-          </Text>
-          <Text style={{ ...TYPOGRAPHY.caption, color: COLORS.neutral[500] }}>
-            Total Donors
-          </Text>
-        </View>
-      </Card>
-      
-      <Card variant="elevated">
-        <View style={{ alignItems: 'center', gap: SPACING.xs }}>
-          <Text style={{ ...TYPOGRAPHY.h2, color: COLORS.success[600] }}>
-            {availableDonors}
-          </Text>
-          <Text style={{ ...TYPOGRAPHY.caption, color: COLORS.neutral[500] }}>
-            Available Now
-          </Text>
-        </View>
-      </Card>
-      
-      <Card variant="elevated">
-        <View style={{ alignItems: 'center', gap: SPACING.xs }}>
-          <Text style={{ ...TYPOGRAPHY.h2, color: COLORS.neutral[900] }}>
-            {((availableDonors / totalDonors) * 100).toFixed(0)}%
-          </Text>
-          <Text style={{ ...TYPOGRAPHY.caption, color: COLORS.neutral[500] }}>
-            Availability Rate
-          </Text>
-        </View>
-      </Card>
-    </Animated.View>
-  );
-};
 
 // ============ MAIN SCREEN COMPONENT ============
 const DonorManagementScreen: React.FC = () => {
@@ -681,6 +1092,9 @@ const DonorManagementScreen: React.FC = () => {
       availabilityStatus: 'Available',
       lastDonation: '2024-01-15',
       contactNumber: '+1 (555) 123-4567',
+      email: 'john.smith@email.com',
+      donorSince: '2020-03-12',
+      totalDonations: 8,
     },
     {
       id: '2',
@@ -690,15 +1104,45 @@ const DonorManagementScreen: React.FC = () => {
       availabilityStatus: 'Temporarily Unavailable',
       lastDonation: '2023-12-20',
       contactNumber: '+1 (555) 987-6543',
+      email: 'maria.garcia@email.com',
+      donorSince: '2019-07-22',
+      totalDonations: 12,
     },
     {
       id: '3',
       name: 'David Chen',
       bloodType: 'B+',
       municipality: 'Chicago',
-      availabilityStatus: 'Available',
+      availabilityStatus: 'Recently Donated',
       lastDonation: '2024-01-10',
       contactNumber: '+1 (555) 456-7890',
+      email: 'david.chen@email.com',
+      donorSince: '2021-11-05',
+      totalDonations: 5,
+    },
+    {
+      id: '4',
+      name: 'Sarah Johnson',
+      bloodType: 'AB+',
+      municipality: 'Miami',
+      availabilityStatus: 'Available',
+      lastDonation: '2023-11-30',
+      contactNumber: '+1 (555) 234-5678',
+      email: 'sarah.j@email.com',
+      donorSince: '2022-02-18',
+      totalDonations: 3,
+    },
+    {
+      id: '5',
+      name: 'Robert Wilson',
+      bloodType: 'O+',
+      municipality: 'Seattle',
+      availabilityStatus: 'Available',
+      lastDonation: '2024-01-05',
+      contactNumber: '+1 (555) 345-6789',
+      email: 'robert.w@email.com',
+      donorSince: '2018-09-14',
+      totalDonations: 15,
     },
   ]);
   
@@ -709,6 +1153,17 @@ const DonorManagementScreen: React.FC = () => {
     availability: null,
     searchQuery: '',
   });
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounced search implementation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filters.searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [filters.searchQuery]);
 
   const handleFilterChange = useCallback((filterName: keyof DonorFilter, value: any) => {
     setFilters(prev => ({
@@ -729,31 +1184,30 @@ const DonorManagementScreen: React.FC = () => {
   const handleViewDetails = useCallback((donor: Donor) => {
     Alert.alert(
       'Donor Details',
-      `Name: ${donor.name}\nBlood Type: ${donor.bloodType}\nMunicipality: ${donor.municipality}\nStatus: ${donor.availabilityStatus}\nContact: ${donor.contactNumber || 'N/A'}\nLast Donation: ${donor.lastDonation || 'N/A'}`,
+      `Name: ${donor.name}\nBlood Type: ${donor.bloodType}\nLocation: ${donor.municipality}\nStatus: ${donor.availabilityStatus}\nContact: ${donor.contactNumber || 'N/A'}\nEmail: ${donor.email || 'N/A'}\nLast Donation: ${donor.lastDonation || 'N/A'}\nDonor Since: ${donor.donorSince || 'N/A'}\nTotal Donations: ${donor.totalDonations || '0'}`,
       [{ text: 'OK', style: 'default' }]
     );
   }, []);
 
   const handleToggleAvailability = useCallback(async (donor: Donor) => {
     try {
-      const newStatus = donor.availabilityStatus === 'Available' 
-        ? 'Temporarily Unavailable' 
-        : 'Available';
+      const statusOrder = ['Available', 'Recently Donated', 'Temporarily Unavailable'];
+      const currentIndex = statusOrder.indexOf(donor.availabilityStatus);
+      const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length] as Donor['availabilityStatus'];
       
-      // Update local state
       setDonors(prev => prev.map(d => 
-        d.id === donor.id ? { ...d, availabilityStatus: newStatus } : d
+        d.id === donor.id ? { ...d, availabilityStatus: nextStatus } : d
       ));
       
       Alert.alert(
-        'Success',
-        `Donor marked as ${newStatus}`,
+        'Status Updated',
+        `${donor.name} is now marked as ${nextStatus}`,
         [{ text: 'OK', style: 'default' }]
       );
     } catch (error) {
       Alert.alert(
         'Error',
-        'Failed to update donor availability',
+        'Failed to update donor status',
         [{ text: 'OK', style: 'destructive' }]
       );
     }
@@ -762,125 +1216,166 @@ const DonorManagementScreen: React.FC = () => {
   const handleEdit = useCallback((donor: Donor) => {
     Alert.alert(
       'Edit Donor',
-      `Would you like to edit ${donor.name}?`,
+      `Edit details for ${donor.name}`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Edit', style: 'default' },
+        { text: 'Edit Contact', style: 'default' },
+        { text: 'Edit All Details', style: 'default' },
       ]
     );
   }, []);
 
+  const handleAddDonor = useCallback(() => {
+    Alert.alert(
+      'Add New Donor',
+      'Add new donor functionality would open a form here.',
+      [{ text: 'OK', style: 'default' }]
+    );
+  }, []);
+
   const filteredDonors = donors.filter(donor => {
-    if (filters.searchQuery) {
-      const searchLower = filters.searchQuery.toLowerCase();
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
       if (!donor.name.toLowerCase().includes(searchLower) &&
           !donor.bloodType.toLowerCase().includes(searchLower) &&
-          !donor.municipality.toLowerCase().includes(searchLower)) {
+          !donor.municipality.toLowerCase().includes(searchLower) &&
+          !(donor.email?.toLowerCase().includes(searchLower))) {
         return false;
       }
     }
     
     if (filters.bloodType && donor.bloodType !== filters.bloodType) return false;
     if (filters.availability && donor.availabilityStatus !== filters.availability) return false;
+    if (filters.municipality && !donor.municipality.toLowerCase().includes(filters.municipality.toLowerCase())) {
+      return false;
+    }
     
     return true;
   });
 
+  const activeFilterCount = [
+    filters.bloodType,
+    filters.availability,
+    filters.municipality,
+  ].filter(Boolean).length;
+
   return (
-    <Container>
-      <ScrollView 
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: SPACING['2xl'] }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Background Gradient */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 300 }}>
-          <Svg height="300" width="100%">
-            <Defs>
-              <RadialGradient id="gradient" cx="50%" cy="0%" rx="50%" ry="50%">
-                <Stop offset="0%" stopColor={COLORS.primary[50]} stopOpacity="0.8" />
-                <Stop offset="100%" stopColor={COLORS.neutral[50]} stopOpacity="0" />
-              </RadialGradient>
-            </Defs>
-            <Rect x="0" y="0" width="100%" height="300" fill="url(#gradient)" />
-          </Svg>
-        </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <Container>
+        <ScrollView 
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: SPACING['2xl'] }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Header />
+          
+          {donors.length > 0 && <StatsBar donors={donors} />}
+          
+          <SearchBar
+            value={filters.searchQuery}
+            onChangeText={(text) => handleFilterChange('searchQuery', text)}
+            onFilterPress={() => setFilterModalVisible(true)}
+          />
 
-        <Header />
-        
-        {donors.length > 0 && <StatsBar donors={donors} />}
-        
-        <FilterBar
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-        />
+          {activeFilterCount > 0 && (
+            <Animated.View
+              entering={FadeInDown}
+              exiting={FadeOut}
+              style={{ 
+                paddingHorizontal: SPACING.lg,
+                marginBottom: SPACING.md,
+              }}
+            >
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                  <Text variant="body2" style={{ color: COLORS.neutral[500] }}>
+                    {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+                  </Text>
+                  <Badge variant="primary" size="sm">
+                    {activeFilterCount}
+                  </Badge>
+                </View>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={handleClearFilters}
+                >
+                  Clear all
+                </Button>
+              </View>
+            </Animated.View>
+          )}
 
-        <View style={{ paddingHorizontal: SPACING.lg, gap: SPACING.md }}>
-          {loading ? (
-            <LoadingIndicator />
-          ) : filteredDonors.length > 0 ? (
-            filteredDonors.map((donor, index) => (
-              <Animated.View
-                key={donor.id}
-                entering={FadeInDown.delay(100 + index * 50).duration(500)}
-              >
+          <View style={{ 
+            paddingHorizontal: SPACING.lg, 
+            gap: SPACING.md,
+            minHeight: SCREEN_HEIGHT * 0.5,
+          }}>
+            {loading ? (
+              <LoadingIndicator />
+            ) : filteredDonors.length > 0 ? (
+              filteredDonors.map((donor, index) => (
                 <DonorCard
+                  key={donor.id}
                   donor={donor}
                   onViewDetails={handleViewDetails}
                   onToggleAvailability={handleToggleAvailability}
                   onEdit={handleEdit}
+                  index={index}
                 />
-              </Animated.View>
-            ))
-          ) : (
-            <EmptyState message="No donors match your current filters. Try adjusting your search criteria or add new donors." />
-          )}
-        </View>
-      </ScrollView>
+              ))
+            ) : (
+              <EmptyState 
+                message="No donors match your current filters. Try adjusting your search criteria or add new donors." 
+                onAddDonor={handleAddDonor}
+              />
+            )}
+          </View>
+        </ScrollView>
 
-      {/* Floating Action Button */}
-      <Animated.View 
-        entering={FadeIn.delay(500)}
-        style={{
-          position: 'absolute',
-          bottom: SPACING.xl,
-          right: SPACING.xl,
-        }}
-      >
-        <Button
-          variant="primary"
-          size="lg"
-          onPress={() => Alert.alert('Add Donor', 'Add new donor functionality')}
-          style={{
-            shadowColor: COLORS.primary[500],
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            elevation: 8,
-          }}
-        >
-          Add New Donor
-        </Button>
-      </Animated.View>
-    </Container>
+        {/* Floating Action Button */}
+        {!loading && filteredDonors.length > 0 && (
+          <Animated.View 
+            entering={SlideInDown.delay(500)}
+            exiting={SlideOutDown}
+            style={{
+              position: 'absolute',
+              bottom: SPACING.xl,
+              right: SPACING.xl,
+              ...SHADOWS.xl,
+            }}
+          >
+            <Button
+              variant="primary"
+              size="lg"
+              onPress={handleAddDonor}
+              leftIcon={<Plus size={20} color="#ffffff" />}
+              style={{
+                borderRadius: RADIUS.xl,
+                paddingHorizontal: SPACING.xl,
+              }}
+            >
+              {SCREEN_WIDTH > 768 ? 'Add Donor' : ''}
+            </Button>
+          </Animated.View>
+        )}
+
+        <FilterModal
+          visible={filterModalVisible}
+          onClose={() => setFilterModalVisible(false)}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onApply={() => {}}
+          onReset={handleClearFilters}
+        />
+      </Container>
+    </TouchableWithoutFeedback>
   );
 };
 
-// Responsive styles
-const responsiveStyles = {
-  container: {
-    paddingHorizontal: {
-      base: SPACING.lg,
-      lg: SPACING['2xl'],
-    },
-  },
-  grid: {
-    columns: {
-      base: 1,
-      md: 2,
-      lg: 3,
-    },
-  },
-} as const;
 export default DonorManagementScreen;
