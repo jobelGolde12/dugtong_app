@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -545,7 +545,6 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(10, 10, 30, 0.85)',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -583,7 +582,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   formContainer: {
-    backgroundColor: 'rgba(30, 40, 60, 0.4)',
     borderRadius: 24,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,

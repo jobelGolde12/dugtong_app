@@ -268,7 +268,123 @@ export default function ChatbotScreen() {
     return processedTemplate;
   };
 
-  // Updated response generation using rules from JSON
+  // OpenRouter API integration with retry mechanism
+  const getOpenRouterResponse = async (input: string): Promise<string> => {
+    // Retry configuration
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
+    
+    // Validate API key first
+    if (!process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY) {
+      console.error('❌ OpenRouter API key is not set');
+      return getHumanLikeResponse(input);
+    }
+    
+    const systemPrompt = `You are Dugtong Bot, a helpful assistant for a blood donation app. Use this context about available features:
+
+Analytics Data: ${generateAnalyticsSummary()}
+Donor Data: ${generateDonorDataSummary()}
+
+Rules to follow:
+- Be helpful and friendly
+- Provide relevant information about blood donation, analytics, or donor data when asked
+- Keep responses concise and conversational
+- If asked about analytics or donor data, use the provided summaries above`;
+
+    // Using a free model that might have rate limits - consider alternatives for production
+    const model = 'meta-llama/llama-3.2-3b-instruct:free'; // Alternative: 'google/gemma-2-9b-it:free'
+    
+    const requestBody = {
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: input }
+      ],
+      max_tokens: 150,
+      temperature: 0.7,
+    };
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔍 Starting OpenRouter API call (attempt ${attempt + 1})...`);
+        console.log('📝 Input:', input);
+        
+        console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
+        const responseText = await response.text();
+        console.log('📄 Raw response:', responseText);
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('✅ Parsed response:', JSON.stringify(data, null, 2));
+        } catch (parseError) {
+          console.error('❌ JSON parse error:', parseError);
+          console.log('📄 Response was not valid JSON:', responseText);
+          return getHumanLikeResponse(input);
+        }
+
+        if (!response.ok) {
+          console.error('❌ API Error:', data);
+          
+          // Handle rate limit errors specifically
+          if (response.status === 429) {
+            console.log(`⏳ Rate limited (429). Attempt ${attempt + 1}/${maxRetries}`);
+            console.log('💡 Tip: Consider upgrading to a paid model or adding your own API key to avoid rate limits');
+            
+            if (attempt < maxRetries) {
+              // Calculate delay with exponential backoff
+              const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+              console.log(`⏳ Waiting ${delay}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue; // Retry
+            } else {
+              console.log('❌ Max retries exceeded for rate limit');
+              console.log('🔄 Falling back to rule-based responses');
+              return getHumanLikeResponse(input);
+            }
+          }
+          
+          return getHumanLikeResponse(input);
+        }
+
+        const content = data.choices?.[0]?.message?.content;
+        console.log('💬 Final content:', content);
+
+        return content || 'Sorry, I had trouble processing that.';
+      } catch (error) {
+        console.error(`❌ OpenRouter API error on attempt ${attempt + 1}:`, error);
+        
+        if (attempt < maxRetries) {
+          // Calculate delay with exponential backoff
+          const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+          console.log(`⏳ Waiting ${delay}ms before retry due to error...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue; // Retry
+        } else {
+          console.error('❌ Max retries exceeded after error');
+          return getHumanLikeResponse(input);
+        }
+      }
+    }
+    
+    // This should not be reached, but added for completeness
+    return getHumanLikeResponse(input);
+  };
+
+  // Fallback response generation using rules from JSON
   const getHumanLikeResponse = (input: string = ''): string => {
     const lowerInput = input.toLowerCase();
 
@@ -277,7 +393,6 @@ export default function ChatbotScreen() {
       const analyticsSummary = generateAnalyticsSummary();
       const donorSummary = generateDonorDataSummary();
       
-      // Process template with actual data
       const template = getRandomResponseTemplate(chatbotRules.rules[0]);
       return processTemplate(template, {
         data_summary: analyticsSummary,
@@ -317,7 +432,7 @@ export default function ChatbotScreen() {
 
     // Simulate processing time
     setTimeout(async () => {
-      const botResponseText = getHumanLikeResponse();
+      const botResponseText = await getOpenRouterResponse('Hello, how can you help me today?');
 
       // Speak the message
       await speakMessage(botResponseText);
@@ -352,13 +467,15 @@ export default function ChatbotScreen() {
     }, 1000); // Simulate processing time
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) return;
 
+    const userInput = message.trim();
+    
     // Add user message
     const userMessage: MessageType = {
       id: Date.now().toString(),
-      text: message,
+      text: userInput,
       sender: 'user',
     };
 
@@ -376,9 +493,9 @@ export default function ChatbotScreen() {
       });
     }
 
-    // Simulate bot response after a short delay
-    setTimeout(() => {
-      const botResponseText = getHumanLikeResponse(message);
+    // Get bot response
+    try {
+      const botResponseText = await getOpenRouterResponse(userInput);
       const botResponse: MessageType = {
         id: (Date.now() + 1).toString(),
         text: botResponseText,
@@ -388,7 +505,9 @@ export default function ChatbotScreen() {
 
       // Speak the response
       speakMessage(botResponseText);
-    }, 500);
+    } catch (error) {
+      console.error('Error getting bot response:', error);
+    }
   };
 
   // Scroll to bottom when messages change
