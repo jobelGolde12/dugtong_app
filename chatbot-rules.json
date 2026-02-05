@@ -4,7 +4,15 @@
       "id": 1,
       "title": "Summarize Analytics and Donors Data",
       "description": "The chatbot can summarize all the analytics and donors data available in the system",
-      "keywords": ["analytics", "summary", "data", "donors", "report", "statistics", "metrics"],
+      "keywords": [
+        "analytics",
+        "summary",
+        "data",
+        "donors",
+        "report",
+        "statistics",
+        "metrics"
+      ],
       "response_templates": [
         "I can help you with analytics and donor data summaries. Here's what I found: {{data_summary}}",
         "Based on the analytics data, {{data_summary}}",
@@ -41,7 +49,16 @@
       "id": 4,
       "title": "Helpful Responses",
       "description": "Responses when users ask questions or need help",
-      "keywords": ["what", "how", "when", "where", "why", "question", "help", "assist"],
+      "keywords": [
+        "what",
+        "how",
+        "when",
+        "where",
+        "why",
+        "question",
+        "help",
+        "assist"
+      ],
       "response_templates": [
         "I'd be happy to help you with that!",
         "Sure thing! Let me see what I can do.",
@@ -83,7 +100,14 @@
     },
     "donor_data_access": {
       "enabled": true,
-      "fields": ["name", "amount", "date", "frequency", "location", "contact_info"],
+      "fields": [
+        "name",
+        "amount",
+        "date",
+        "frequency",
+        "location",
+        "contact_info"
+      ],
       "privacy_compliant": true
     }
   }

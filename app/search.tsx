@@ -296,7 +296,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
         styles.donorCard,
         {
           backgroundColor: colors.card,
-          borderColor: isDark ? '#333' : 'transparent',
+          borderColor: 'transparent',
           transform: [{ scale: expanded ? 1.01 : 1 }]
         }
       ]}
@@ -944,7 +944,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: IS_SMALL_DEVICE ? 10 : 20,
     marginBottom: 12,
-    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',

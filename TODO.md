@@ -1,66 +1,26 @@
-You are working on an existing React Native + TypeScript application.
+Objective:
+Modify the chatbot.tsx file to integrate a chatbot configuration system that loads its rules and behavior from chatbot-rules.json.
 
-Task Overview
+Requirements:
 
-Add a new navigation link called "Map" in the file:
+Import JSON Data:
+Load and parse the configuration from chatbot-rules.json in the chatbot.tsx component.
 
-@app/components/DashboardLayout.tsx
+Add Chatbot Link Mind:
+Implement logic for the chatbot to process messages and generate responses that include relevant links based on the rules defined in the JSON configuration.
+Ensure the chatbot can identify key topics or keywords and respond with appropriate links as specified in the configuration.
 
-This new link must navigate to a new page/screen called:
+Preservation of Existing Code:
 
-Blood Donation Map
+Do not modify or remove any code unrelated to this integration.
 
-Detailed Requirements
+Only add or adjust code necessary to connect chatbot.tsx with chatbot-rules.json and implement the chatbot's "link mind" feature.
 
-Dashboard Layout Update
+Implementation Details:
 
-Add a new navigation item labeled "Map".
+Use a method such as fetch or import to load chatbot-rules.json (choose based on project setup).
 
-Ensure it follows the same styling and navigation pattern as the existing links.
+Map chatbot interactions to the rules in the JSON file to determine when and which links to provide.
 
-The link must route correctly to the new Blood Donation Map screen.
-
-Create Blood Donation Map Page
-
-Create a new screen/page component for Blood Donation Map.
-
-Use TypeScript and follow the project’s existing screen/component structure.
-
-The screen title should clearly display:
-Blood Donation Map
-
-Google Map Integration
-
-Embed a Google Map in the Blood Donation Map screen.
-
-The map must be centered on:
-
-Sorsogon City, Philippines
-
-Use proper React Native map embedding (e.g., WebView with Google Maps embed OR react-native-maps if already installed).
-
-Set an appropriate zoom level so Sorsogon City is clearly visible.
-
-Navigation & Routing
-
-Ensure the new screen is properly registered in the app’s navigation system.
-
-Verify that tapping Map from the dashboard successfully opens the Blood Donation Map screen.
-
-Code Quality
-
-Use TypeScript types.
-
-Match existing project patterns and conventions.
-
-Do not break existing navigation or layouts.
-
-Expected Output
-
-Updated DashboardLayout.tsx with a new Map link.
-
-A new Blood Donation Map screen/page.
-
-Working embedded Google Map focused on Sorsogon City.
-
-Fully functional navigation between Dashboard and Map screen.
+Output:
+Provide only the updated chatbot.tsx code, clearly indicating the changes made for this integration. No additional explanations or modifications to other files should be included.
