@@ -1,6 +1,6 @@
 import * as Speech from 'expo-speech';
 import { Bot, Mic, Send } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -22,14 +21,30 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import chatbotRules from '../chatbot-rules.json';
 import { useTheme } from '../contexts/ThemeContext';
 import DashboardLayout from './components/DashboardLayout';
-import chatbotRules from '../chatbot-rules.json';
 
 type MessageType = {
   id: string;
   text: string;
   sender: 'user' | 'bot';
+};
+
+// OpenRouter free models in fallback order
+const FREE_MODELS = [
+  'mistralai/mistral-7b-instruct:free',
+  'huggingfaceh4/zephyr-7b-beta:free',
+  'openchat/openchat-7b:free',
+  'gryphe/mythomist-7b:free'
+] as const;
+
+type OpenRouterError = {
+  error?: {
+    message?: string;
+    code?: number;
+  };
 };
 
 export default function ChatbotScreen() {
@@ -268,11 +283,11 @@ export default function ChatbotScreen() {
     return processedTemplate;
   };
 
-  // OpenRouter API integration with retry mechanism
+  // OpenRouter API integration with model fallback mechanism
   const getOpenRouterResponse = async (input: string): Promise<string> => {
     // Retry configuration
-    const maxRetries = 3;
-    const baseDelay = 1000; // 1 second
+    const maxRetries = 2;
+    const baseDelay = 1000;
     
     // Validate API key first
     if (!process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY) {
@@ -291,96 +306,111 @@ Rules to follow:
 - Keep responses concise and conversational
 - If asked about analytics or donor data, use the provided summaries above`;
 
-    // Using a free model that might have rate limits - consider alternatives for production
-    const model = 'meta-llama/llama-3.2-3b-instruct:free'; // Alternative: 'google/gemma-2-9b-it:free'
-    
-    const requestBody = {
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: input }
-      ],
-      max_tokens: 150,
-      temperature: 0.7,
-    };
+    let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`🔍 Starting OpenRouter API call (attempt ${attempt + 1})...`);
-        console.log('📝 Input:', input);
-        
-        console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
+    // Try each model in order
+    for (let modelIndex = 0; modelIndex < FREE_MODELS.length; modelIndex++) {
+      const currentModel = FREE_MODELS[modelIndex];
+      console.log(`🔄 Trying model ${modelIndex + 1}/${FREE_MODELS.length}: ${currentModel}`);
 
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        console.log('📡 Response status:', response.status);
-        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
-
-        const responseText = await response.text();
-        console.log('📄 Raw response:', responseText);
-
-        let data;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          data = JSON.parse(responseText);
-          console.log('✅ Parsed response:', JSON.stringify(data, null, 2));
-        } catch (parseError) {
-          console.error('❌ JSON parse error:', parseError);
-          console.log('📄 Response was not valid JSON:', responseText);
-          return getHumanLikeResponse(input);
-        }
-
-        if (!response.ok) {
-          console.error('❌ API Error:', data);
+          console.log(`🔍 OpenRouter API call (model: ${currentModel}, attempt ${attempt + 1})`);
           
-          // Handle rate limit errors specifically
-          if (response.status === 429) {
-            console.log(`⏳ Rate limited (429). Attempt ${attempt + 1}/${maxRetries}`);
-            console.log('💡 Tip: Consider upgrading to a paid model or adding your own API key to avoid rate limits');
-            
+          const requestBody = {
+            model: currentModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: input }
+            ],
+            max_tokens: 150,
+            temperature: 0.7,
+          };
+
+          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          const responseText = await response.text();
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('❌ JSON parse error:', parseError);
             if (attempt < maxRetries) {
-              // Calculate delay with exponential backoff
-              const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
-              console.log(`⏳ Waiting ${delay}ms before retry...`);
+              const delay = baseDelay * Math.pow(2, attempt);
+              console.log(`⏳ Retrying in ${delay}ms...`);
               await new Promise(resolve => setTimeout(resolve, delay));
-              continue; // Retry
-            } else {
-              console.log('❌ Max retries exceeded for rate limit');
-              console.log('🔄 Falling back to rule-based responses');
-              return getHumanLikeResponse(input);
+              continue;
             }
+            break; // Try next model
           }
+
+          if (!response.ok) {
+            const errorCode = response.status;
+            console.error(`❌ API Error ${errorCode}:`, data.error?.message || 'Unknown error');
+            
+            // Handle retryable errors
+            if (errorCode === 429 || errorCode === 502 || errorCode === 503) {
+              if (attempt < maxRetries) {
+                const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+                console.log(`⏳ Retryable error ${errorCode}, waiting ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+            } 
+            // Non-retryable errors (401, 403, etc.) - move to next model
+            else if (errorCode === 401 || errorCode === 403) {
+              console.error(`🔑 Authentication error ${errorCode}, trying next model`);
+              break; // Move to next model
+            }
+            // Provider error or other 4xx/5xx
+            else {
+              if (attempt < maxRetries) {
+                const delay = baseDelay * Math.pow(2, attempt);
+                console.log(`⏳ Provider error ${errorCode}, retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+            }
+            
+            // If we've exhausted retries for this model, break to try next one
+            break;
+          }
+
+          // Success! Return the content
+          const content = data.choices?.[0]?.message?.content;
+          console.log(`✅ Success with model: ${currentModel}`);
+          return content || 'Sorry, I had trouble processing that.';
+
+        } catch (error) {
+          lastError = error as Error;
+          console.error(`❌ Network/request error on attempt ${attempt + 1}:`, error);
           
-          return getHumanLikeResponse(input);
-        }
-
-        const content = data.choices?.[0]?.message?.content;
-        console.log('💬 Final content:', content);
-
-        return content || 'Sorry, I had trouble processing that.';
-      } catch (error) {
-        console.error(`❌ OpenRouter API error on attempt ${attempt + 1}:`, error);
-        
-        if (attempt < maxRetries) {
-          // Calculate delay with exponential backoff
-          const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
-          console.log(`⏳ Waiting ${delay}ms before retry due to error...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue; // Retry
-        } else {
-          console.error('❌ Max retries exceeded after error');
-          return getHumanLikeResponse(input);
+          if (attempt < maxRetries) {
+            const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+            console.log(`⏳ Network error, waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          // If network error persists after retries, try next model
+          console.log(`🌐 Network error with ${currentModel}, trying next model`);
+          break;
         }
       }
+      
+      // If we've tried all retries for this model, continue to next model
+      console.log(`❌ Model ${currentModel} failed, trying next...`);
     }
     
-    // This should not be reached, but added for completeness
+    // All models failed
+    console.error('❌ All OpenRouter models failed, falling back to rule-based responses');
+    console.error('Last error:', lastError?.message);
     return getHumanLikeResponse(input);
   };
 

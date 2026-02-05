@@ -1,26 +1,61 @@
-Objective:
-Modify the chatbot.tsx file to integrate a chatbot configuration system that loads its rules and behavior from chatbot-rules.json.
+You are a senior React Native + TypeScript engineer with deep experience in Expo, expo-router, Android builds, and API integrations.
 
-Requirements:
+Analyze the following Android runtime logs and React Native behavior, then explain:
 
-Import JSON Data:
-Load and parse the configuration from chatbot-rules.json in the chatbot.tsx component.
+Which logs are errors vs warnings vs normal behavior
 
-Add Chatbot Link Mind:
-Implement logic for the chatbot to process messages and generate responses that include relevant links based on the rules defined in the JSON configuration.
-Ensure the chatbot can identify key topics or keywords and respond with appropriate links as specified in the configuration.
+Root cause analysis for each real issue
 
-Preservation of Existing Code:
+Whether the issue is caused by Expo, native linking, configuration, or API usage
 
-Do not modify or remove any code unrelated to this integration.
+Step-by-step fixes with code or config examples
 
-Only add or adjust code necessary to connect chatbot.tsx with chatbot-rules.json and implement the chatbot's "link mind" feature.
+What can be safely ignored and why
 
-Implementation Details:
+Best practices to prevent this in a real-world mobile app
 
-Use a method such as fetch or import to load chatbot-rules.json (choose based on project setup).
+Context
 
-Map chatbot interactions to the rules in the JSON file to determine when and which links to provide.
+Framework: React Native with TypeScript
 
-Output:
-Provide only the updated chatbot.tsx code, clearly indicating the changes made for this integration. No additional explanations or modifications to other files should be included.
+Platform: Android
+
+Environment: Expo (expo-router)
+
+App includes an OpenRouter API call
+
+This is a real production-style mobile app, not a demo
+
+Logs to Analyze
+Android Bundled 268ms node_modules/expo-router/entry.js
+LOG JS Exception Handler setup successful
+WARN Native Exception Handler setup failed:
+[TypeError: Cannot read property 'setHandlerforNativeException' of null]
+WARN This is expected on some platforms or if the native module is not properly linked
+
+LOG [BooleanConversion] prop.showsHorizontalScrollIndicator: undefined -> true
+LOG [BooleanConversion] prop.scrollEnabled: undefined -> true
+LOG [BooleanConversion] prop.removeClippedSubviews: undefined -> false
+
+LOG 🔍 Starting OpenRouter API call (attempt 1)...
+LOG 📝 Input: Hi
+LOG 📦 Request body: { model: "meta-llama/llama-3.2-3b-instruct:free", ... }
+
+LOG 📡 Response status: 401
+LOG 📄 Raw response: {"error":{"message":"User not found.","code":401}}
+
+Expectations
+
+Clearly distinguish Expo warnings vs actual bugs
+
+Explain why the Native Exception Handler warning appears
+
+Explain the 401 OpenRouter error and how to fix it properly
+
+Suggest secure API handling for mobile apps
+
+Provide code snippets or config fixes where relevant
+
+Assume the developer wants production-ready solutions
+
+Respond concisely, technically, and practically—like a real senior engineer doing a bug investigation.
