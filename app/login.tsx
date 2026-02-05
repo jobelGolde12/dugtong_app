@@ -32,13 +32,6 @@ type FormValues = {
 
 type InputField = 'fullName' | 'contactNumber';
 
-// Dummy data for testing
-const DUMMY_AUTHORIZED_USERS = [
-  { fullName: 'Admin User', contactNumber: '09123456789' },
-  { fullName: 'Hospital Staff', contactNumber: '09987654321' },
-  { fullName: 'Health Officer', contactNumber: '09111222333' },
-];
-
 export default function LoginScreen() {
   const router = useRouter();
   const [formValues, setFormValues] = useState<FormValues>({
@@ -199,36 +192,25 @@ export default function LoginScreen() {
 
     // Simulate API call
     setTimeout(() => {
-      const formattedContactNumber = formValues.contactNumber.replace(/\D/g, '');
-      
-      const userExists = DUMMY_AUTHORIZED_USERS.some(
-        user =>
-          user.fullName.toLowerCase().trim() === formValues.fullName.toLowerCase().trim() &&
-          user.contactNumber === formattedContactNumber
-      );
-
       setIsLoading(false);
-
-      if (userExists) {
-        router.push('/dashboard');
-      } else {
-        setFormErrors({
-          contactNumber: 'Invalid credentials. Please try again.'
-        });
-      }
+      router.push('/dashboard');
     }, 1500);
   };
 
-  const handleDummyLogin = (dummyUser: typeof DUMMY_AUTHORIZED_USERS[0]) => {
+  const handleTestCredentials = () => {
+    // Pre-fill form with test credentials
     setFormValues({
-      fullName: dummyUser.fullName,
-      contactNumber: dummyUser.contactNumber
+      fullName: 'Test User',
+      contactNumber: '0912-345-6789'
     });
     
     // Clear any existing errors
     setFormErrors({});
     
-    router.push('/dashboard');
+    // Focus the contact number field
+    if (formValues.contactNumber) {
+      animateLabel('contactNumber', 1);
+    }
   };
 
   const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
@@ -468,47 +450,21 @@ export default function LoginScreen() {
                       </TouchableOpacity>
                     </Animated.View>
 
-                    {/* Divider */}
-                    <View style={styles.divider}>
-                      <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>Quick Test</Text>
-                      <View style={styles.dividerLine} />
-                    </View>
-
-                    {/* Dummy Data Section */}
-                    <View style={styles.dummySection}>
-                      <Text style={styles.dummyDataTitle}>
-                        Use test credentials:
-                      </Text>
-                      {DUMMY_AUTHORIZED_USERS.map((user, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.dummyButton}
-                          onPress={() => handleDummyLogin(user)}
-                          disabled={isLoading}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.dummyButtonContent}>
-                            <Feather 
-                              name="user" 
-                              size={16} 
-                              color="rgba(255, 255, 255, 0.9)" 
-                            />
-                            <Text style={styles.dummyButtonText}>
-                              {user.fullName}
-                            </Text>
-                            <Text style={styles.dummyButtonPhone}>
-                              {user.contactNumber}
-                            </Text>
-                          </View>
-                          <Feather 
-                            name="chevron-right" 
-                            size={16} 
-                            color="rgba(255, 255, 255, 0.6)" 
-                          />
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                    {/* Test Credentials Button */}
+                    <TouchableOpacity
+                      style={styles.testCredentialsButton}
+                      onPress={handleTestCredentials}
+                      disabled={isLoading}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.testCredentialsContent}>
+                        <Feather name="user-check" size={18} color="rgba(255, 255, 255, 0.9)" />
+                        <Text style={styles.testCredentialsText}>
+                          Use Test Credentials
+                        </Text>
+                      </View>
+                      <Feather name="chevron-right" size={16} color="rgba(255, 255, 255, 0.6)" />
+                    </TouchableOpacity>
 
                     {/* Register Link */}
                     <TouchableOpacity
@@ -699,7 +655,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E90FF',
     borderRadius: 16,
     paddingVertical: 18,
-    marginBottom: 24,
+    marginBottom: 16,
     shadowColor: '#1E90FF',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
@@ -724,59 +680,27 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginLeft: 12,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  dividerText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 14,
-    fontWeight: '600',
-    marginHorizontal: 16,
-  },
-  dummySection: {
-    marginBottom: 24,
-  },
-  dummyDataTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  dummyButton: {
+  testCredentialsButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  dummyButtonContent: {
+  testCredentialsContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  dummyButtonText: {
+  testCredentialsText: {
     color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 12,
-    marginRight: 8,
-  },
-  dummyButtonPhone: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 13,
-    fontWeight: '500',
   },
   registerButton: {
     paddingVertical: 16,
