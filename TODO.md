@@ -1,61 +1,59 @@
-You are a senior React Native + TypeScript engineer with deep experience in Expo, expo-router, Android builds, and API integrations.
+You are a senior React / TypeScript engineer working on a chatbot application.
 
-Analyze the following Android runtime logs and React Native behavior, then explain:
+The chatbot is currently unable to receive messages due to an external limitation (for example: API downtime, rate-limit, provider error, or maintenance mode).
 
-Which logs are errors vs warnings vs normal behavior
+Your task is to add handling for a “cannot receive message” state, without breaking or changing any existing behavior.
 
-Root cause analysis for each real issue
+Core Requirement
 
-Whether the issue is caused by Expo, native linking, configuration, or API usage
+Clearly indicate that the chatbot cannot receive messages.
 
-Step-by-step fixes with code or config examples
+Prevent the chatbot from accepting or sending new messages while in this state.
 
-What can be safely ignored and why
+Strict Rules (Must Follow)
 
-Best practices to prevent this in a real-world mobile app
+DO NOT remove, refactor, or modify any existing code that is not directly related to this task.
 
-Context
+DO NOT change UI design, layout, styling, or components unless strictly necessary to display the “cannot receive message” state.
 
-Framework: React Native with TypeScript
+DO NOT alter existing API logic, request payloads, or model selection logic, unless required to detect this specific state.
 
-Platform: Android
+Only add minimal logic and UI feedback required to support this behavior.
 
-Environment: Expo (expo-router)
+Functional Behavior
 
-App includes an OpenRouter API call
+When the chatbot is unable to receive messages:
 
-This is a real production-style mobile app, not a demo
+Disable the message input and send button.
 
-Logs to Analyze
-Android Bundled 268ms node_modules/expo-router/entry.js
-LOG JS Exception Handler setup successful
-WARN Native Exception Handler setup failed:
-[TypeError: Cannot read property 'setHandlerforNativeException' of null]
-WARN This is expected on some platforms or if the native module is not properly linked
+Display a clear, user-friendly message such as:
 
-LOG [BooleanConversion] prop.showsHorizontalScrollIndicator: undefined -> true
-LOG [BooleanConversion] prop.scrollEnabled: undefined -> true
-LOG [BooleanConversion] prop.removeClippedSubviews: undefined -> false
+“The chatbot is temporarily unavailable.”
 
-LOG 🔍 Starting OpenRouter API call (attempt 1)...
-LOG 📝 Input: Hi
-LOG 📦 Request body: { model: "meta-llama/llama-3.2-3b-instruct:free", ... }
+or “The chatbot cannot receive messages right now. Please try again later.”
 
-LOG 📡 Response status: 401
-LOG 📄 Raw response: {"error":{"message":"User not found.","code":401}}
+Ensure the user cannot submit messages while this state is active.
 
-Expectations
+The state must be reversible when normal operation resumes.
 
-Clearly distinguish Expo warnings vs actual bugs
+Technical Expectations
 
-Explain why the Native Exception Handler warning appears
+Use TypeScript.
 
-Explain the 401 OpenRouter error and how to fix it properly
+Use existing state management patterns already present in the codebase.
 
-Suggest secure API handling for mobile apps
+Keep the implementation minimal, safe, and production-ready.
 
-Provide code snippets or config fixes where relevant
+Add comments only where necessary to explain the new logic.
 
-Assume the developer wants production-ready solutions
+Output Requirements
 
-Respond concisely, technically, and practically—like a real senior engineer doing a bug investigation.
+Provide one complete, copy-paste-ready code solution.
+
+Do not include explanations outside the code.
+
+Do not rename existing variables or components unless absolutely required.
+
+Goal
+
+The chatbot should gracefully inform the user that it cannot receive messages, while preserving all existing functionality, structure, and design not related to this specific task.

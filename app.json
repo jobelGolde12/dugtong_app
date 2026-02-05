@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app-project",
-    "slug": "app-project",
+    "name": "Dugtong",
+    "slug": "dugtong",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,7 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "jsEngine": "hermes",
-      "bundleIdentifier": "com.anonymous.appproject"
+      "bundleIdentifier": "com.anonymous.appproject",
+      "displayName": "Dugtong"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +24,8 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "jsEngine": "hermes",
-      "package": "com.anonymous.appproject"
+      "package": "com.anonymous.appproject",
+      "displayName": "Dugtong"
     },
     "web": {
       "output": "static",

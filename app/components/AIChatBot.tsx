@@ -17,6 +17,7 @@ import DashboardLayout from './DashboardLayout';
 const AIChatPage = () => {
   const { colors } = useTheme();
   const [message, setMessage] = useState('');
+  const [isChatbotUnavailable, setIsChatbotUnavailable] = useState(false);
   const styles = createStyles(colors);
 
   return (
@@ -59,17 +60,29 @@ const AIChatPage = () => {
             </View>
           </ScrollView>
 
+          {isChatbotUnavailable && (
+            <View style={styles.unavailableMessageContainer}>
+              <Text style={styles.unavailableMessageText}>
+                The chatbot cannot receive messages right now. Please try again later.
+              </Text>
+            </View>
+          )}
+
           {/* Input Footer */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, isChatbotUnavailable && styles.footerDisabled]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isChatbotUnavailable && styles.inputDisabled]}
               placeholder="Type something to send..."
               value={message}
               onChangeText={setMessage}
-              placeholderTextColor="#999"
+              placeholderTextColor={isChatbotUnavailable ? colors.secondaryText : "#999"}
+              editable={!isChatbotUnavailable}
             />
-            <TouchableOpacity style={styles.sendButton}>
-              <Send color="#FFF" size={20} />
+            <TouchableOpacity
+              style={[styles.sendButton, isChatbotUnavailable && styles.sendButtonDisabled]}
+              disabled={isChatbotUnavailable}
+            >
+              <Send color={isChatbotUnavailable ? colors.secondaryText : "#FFF"} size={20} />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -162,6 +175,19 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text,
     lineHeight: 20,
   },
+  unavailableMessageContainer: {
+    padding: 10,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  unavailableMessageText: {
+    color: colors.secondaryText,
+    fontSize: 14,
+    textAlign: 'center',
+  },
   footer: {
     flexDirection: 'row',
     padding: 15,
@@ -169,6 +195,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     alignItems: 'center',
+  },
+  footerDisabled: {
+    opacity: 0.6,
   },
   input: {
     flex: 1,
@@ -180,6 +209,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
   },
+  inputDisabled: {
+    backgroundColor: colors.muted,
+  },
   sendButton: {
     backgroundColor: colors.primary,
     width: 40,
@@ -187,6 +219,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: colors.muted,
   },
 });
 

@@ -344,6 +344,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <View style={styles.mainContent}>
           {/* Dashboard Header Area */}
           <View style={styles.dashboardHeader}>
+            <Text style={styles.mainHeaderTitle}>Dugtong</Text>
             <View style={styles.headerLeftSpacer} />
           </View>
           {children}
@@ -500,6 +501,12 @@ const createStyles = (colors: any, insets: any, headerTopPadding: number, isOpen
     },
     headerLeftSpacer: {
       flex: 1,
+    },
+    mainHeaderTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginLeft: 16, // Adjust as needed for proper spacing
     },
     mainContent: {
       flex: 1,

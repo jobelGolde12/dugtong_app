@@ -61,6 +61,9 @@ export default function ChatbotScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const introAnim = useRef(new RNAnimated.Value(1)).current;
 
+  // NEW: State to track when chatbot cannot receive messages
+  const [cannotReceiveMessages, setCannotReceiveMessages] = useState(false);
+
   // Animation values for microphone
   const micScale = useSharedValue(1);
   const borderScale = useSharedValue(1);
@@ -222,7 +225,7 @@ export default function ChatbotScreen() {
     micScale.value = withTiming(1, { duration: 200 });
   };
 
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, cannotReceiveMessages); // Updated to include cannotReceiveMessages
 
   const speakMessage = async (text: string) => {
     try {
@@ -285,6 +288,9 @@ export default function ChatbotScreen() {
 
   // OpenRouter API integration with model fallback mechanism
   const getOpenRouterResponse = async (input: string): Promise<string> => {
+    // NEW: Set cannot receive messages state when starting API call
+    setCannotReceiveMessages(true);
+    
     // Retry configuration
     const maxRetries = 2;
     const baseDelay = 1000;
@@ -292,7 +298,10 @@ export default function ChatbotScreen() {
     // Validate API key first
     if (!process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY) {
       console.error('❌ OpenRouter API key is not set');
-      return getHumanLikeResponse(input);
+      const response = getHumanLikeResponse(input);
+      // NEW: Reset state after fallback response
+      setCannotReceiveMessages(false);
+      return response;
     }
     
     const systemPrompt = `You are Dugtong Bot, a helpful assistant for a blood donation app. Use this context about available features:
@@ -386,6 +395,8 @@ Rules to follow:
           // Success! Return the content
           const content = data.choices?.[0]?.message?.content;
           console.log(`✅ Success with model: ${currentModel}`);
+          // NEW: Reset state on successful response
+          setCannotReceiveMessages(false);
           return content || 'Sorry, I had trouble processing that.';
 
         } catch (error) {
@@ -411,6 +422,8 @@ Rules to follow:
     // All models failed
     console.error('❌ All OpenRouter models failed, falling back to rule-based responses');
     console.error('Last error:', lastError?.message);
+    // NEW: Reset state after all models fail and fallback is used
+    setCannotReceiveMessages(false);
     return getHumanLikeResponse(input);
   };
 
@@ -454,6 +467,9 @@ Rules to follow:
   };
 
   const handleMicPress = async () => {
+    // NEW: Prevent mic press when chatbot cannot receive messages
+    if (cannotReceiveMessages) return;
+    
     handleTapPress();
     
     // Start animation
@@ -498,7 +514,8 @@ Rules to follow:
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim()) return;
+    // NEW: Prevent sending when chatbot cannot receive messages
+    if (cannotReceiveMessages || !message.trim()) return;
 
     const userInput = message.trim();
     
@@ -537,6 +554,8 @@ Rules to follow:
       speakMessage(botResponseText);
     } catch (error) {
       console.error('Error getting bot response:', error);
+      // NEW: Ensure state is reset even on error
+      setCannotReceiveMessages(false);
     }
   };
 
@@ -548,6 +567,21 @@ Rules to follow:
       }, 100);
     }
   }, [messages]);
+
+  // NEW: Add status message when chatbot cannot receive messages
+  const renderStatusMessage = () => {
+    if (!cannotReceiveMessages) return null;
+    
+    return (
+      <View style={styles.statusContainer}>
+        <View style={styles.statusBubble}>
+          <Text style={styles.statusText}>
+            The chatbot is temporarily unavailable while connecting to a model.
+          </Text>
+        </View>
+      </View>
+    );
+  };
 
   const renderMessageBubble = (msg: MessageType) => {
     const isUser = msg.sender === 'user';
@@ -629,11 +663,12 @@ Rules to follow:
                 ]}
               >
                 <TouchableOpacity
-                  style={styles.bigTalkButton}
+                  style={[styles.bigTalkButton, cannotReceiveMessages && styles.disabledButton]}
                   onPressIn={handleTapPress}
                   onPressOut={handleTapRelease}
                   onPress={handleMicPress}
-                  activeOpacity={1}
+                  activeOpacity={cannotReceiveMessages ? 1 : 0.8} // NEW: Adjust opacity when disabled
+                  disabled={cannotReceiveMessages} // NEW: Disable when cannot receive messages
                 >
                   {/* Dual ring effect for active state */}
                   <Animated.View style={[
@@ -673,12 +708,15 @@ Rules to follow:
 
             {/* Chat Messages */}
             {messages.map(renderMessageBubble)}
+            
+            {/* NEW: Status message when chatbot cannot receive messages */}
+            {renderStatusMessage()}
           </ScrollView>
 
           {/* Input Footer */}
           <View style={styles.footer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, cannotReceiveMessages && styles.disabledInput]}
               placeholder="Type something to send..."
               value={message}
               onChangeText={setMessage}
@@ -686,11 +724,13 @@ Rules to follow:
               onSubmitEditing={handleSendMessage}
               returnKeyType="send"
               blurOnSubmit={false}
+              editable={!cannotReceiveMessages} // NEW: Disable input when cannot receive messages
             />
             <TouchableOpacity 
-              style={styles.sendButton}
+              style={[styles.sendButton, cannotReceiveMessages && styles.disabledSendButton]}
               onPress={handleSendMessage}
               activeOpacity={0.8}
+              disabled={cannotReceiveMessages} // NEW: Disable send button when cannot receive messages
             >
               <Send color="#FFF" size={20} />
             </TouchableOpacity>
@@ -701,7 +741,7 @@ Rules to follow:
   );
 }
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -771,6 +811,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
     position: 'relative', // For border animation positioning
+  },
+  disabledButton: {
+    opacity: 0.5, // NEW: Visual indicator for disabled state
   },
   borderAnimationContainer: {
     position: 'absolute',
@@ -864,6 +907,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
   },
+  disabledInput: {
+    opacity: 0.5, // NEW: Visual indicator for disabled input
+  },
   sendButton: {
     backgroundColor: colors.primary,
     width: 40,
@@ -876,5 +922,32 @@ const createStyles = (colors: any) => StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
+  },
+  disabledSendButton: {
+    opacity: 0.5, // NEW: Visual indicator for disabled send button
+  },
+  // NEW: Styles for status message
+  statusContainer: {
+    marginVertical: 10,
+    alignSelf: 'center',
+    maxWidth: '80%',
+  },
+  statusBubble: {
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statusText: {
+    color: colors.secondaryText,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
