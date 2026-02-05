@@ -1,0 +1,90 @@
+{
+  "rules": [
+    {
+      "id": 1,
+      "title": "Summarize Analytics and Donors Data",
+      "description": "The chatbot can summarize all the analytics and donors data available in the system",
+      "keywords": ["analytics", "summary", "data", "donors", "report", "statistics", "metrics"],
+      "response_templates": [
+        "I can help you with analytics and donor data summaries. Here's what I found: {{data_summary}}",
+        "Based on the analytics data, {{data_summary}}",
+        "Here's a summary of donor information: {{donor_summary}}"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Greeting Protocol",
+      "description": "How the chatbot should greet users",
+      "keywords": ["hello", "hi", "hey", "greetings"],
+      "response_templates": [
+        "Hey there! How can I assist you today?",
+        "Hi! I'm here to help. What do you need?",
+        "Hello! What can I do for you?",
+        "Good to hear from you! How can I help?",
+        "Hi there! What brings you here today?"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Acknowledgment Responses",
+      "description": "Standard responses to acknowledge user input",
+      "keywords": [],
+      "response_templates": [
+        "That makes sense. Tell me more!",
+        "I understand. What else can I help with?",
+        "Thanks for sharing that with me.",
+        "Got it! Is there anything else?",
+        "I see. How else can I assist you?"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Helpful Responses",
+      "description": "Responses when users ask questions or need help",
+      "keywords": ["what", "how", "when", "where", "why", "question", "help", "assist"],
+      "response_templates": [
+        "I'd be happy to help you with that!",
+        "Sure thing! Let me see what I can do.",
+        "Absolutely! I'm here for that.",
+        "Great question! Let me think...",
+        "I'm glad you asked about that."
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Thank You Responses",
+      "description": "How to respond when users say thank you",
+      "keywords": ["thank", "thanks", "appreciate"],
+      "response_templates": [
+        "You're welcome! Is there anything else I can help with?",
+        "Happy to help! What else do you need?",
+        "My pleasure! Let me know if you need anything else."
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Fallback Responses",
+      "description": "Responses when the chatbot doesn't understand",
+      "keywords": [],
+      "response_templates": [
+        "I'm still learning, but I'm here to help in any way I can!",
+        "Hmm, let me see if I can assist with that.",
+        "I appreciate you reaching out. How else can I help?",
+        "I'm working on improving every day. What else would you like to know?",
+        "Thanks for your patience as I continue to learn and grow!"
+      ]
+    }
+  ],
+  "features": {
+    "analytics_summarization": {
+      "enabled": true,
+      "data_sources": ["donors", "contributions", "engagement", "demographics"],
+      "summary_types": ["daily", "weekly", "monthly", "yearly", "custom"]
+    },
+    "donor_data_access": {
+      "enabled": true,
+      "fields": ["name", "amount", "date", "frequency", "location", "contact_info"],
+      "privacy_compliant": true
+    }
+  }
+}

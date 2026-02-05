@@ -24,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '../contexts/ThemeContext';
 import DashboardLayout from './components/DashboardLayout';
+import chatbotRules from '../chatbot-rules.json';
 
 type MessageType = {
   id: string;
@@ -220,61 +221,90 @@ export default function ChatbotScreen() {
     }
   };
 
-  // Array of more human-like responses
-  const getHumanLikeResponse = (input: string = ''): string => {
-    const greetings = [
-      "Hey there! How can I assist you today?",
-      "Hi! I'm here to help. What do you need?",
-      "Hello! What can I do for you?",
-      "Good to hear from you! How can I help?",
-      "Hi there! What brings you here today?"
-    ];
+  // Generate sample analytics and donor data summaries
+  const generateAnalyticsSummary = (): string => {
+    return `Here's a summary of the analytics data:
+    
+- Total Donors: 1,245
+- Total Contributions: $42,560
+- Average Donation: $34.20
+- Top Donor: Maria Santos ($2,400)
+- Monthly Growth: 12% increase
+- Engagement Rate: 78%
+- Active Donors: 892`;
+  };
 
-    const acknowledgments = [
-      "That makes sense. Tell me more!",
-      "I understand. What else can I help with?",
-      "Thanks for sharing that with me.",
-      "Got it! Is there anything else?",
-      "I see. How else can I assist you?"
-    ];
+  const generateDonorDataSummary = (): string => {
+    return `Here's a summary of donor information:
+    
+- Individual Donors: 980
+- Corporate Donors: 265
+- Recurring Donors: 456
+- New Donors (this month): 42
+- Donor Retention Rate: 85%
+- Top Donor Categories: Education (35%), Health (28%), Environment (22%)`;
+  };
 
-    const helpfulResponses = [
-      "I'd be happy to help you with that!",
-      "Sure thing! Let me see what I can do.",
-      "Absolutely! I'm here for that.",
-      "Great question! Let me think...",
-      "I'm glad you asked about that."
-    ];
-
-    const fallbackResponses = [
-      "I'm still learning, but I'm here to help in any way I can!",
-      "Hmm, let me see if I can assist with that.",
-      "I appreciate you reaching out. How else can I help?",
-      "I'm working on improving every day. What else would you like to know?",
-      "Thanks for your patience as I continue to learn and grow!"
-    ];
-
-    // Check for greeting keywords
+  // Function to check if input matches keywords for a specific rule
+  const matchesKeywords = (input: string, keywords: string[]): boolean => {
     const lowerInput = input.toLowerCase();
-    if (lowerInput.includes('hi') || lowerInput.includes('hello') || lowerInput.includes('hey')) {
-      return greetings[Math.floor(Math.random() * greetings.length)];
+    return keywords.some(keyword => lowerInput.includes(keyword.toLowerCase()));
+  };
+
+  // Function to get a random response template from a rule
+  const getRandomResponseTemplate = (rule: any): string => {
+    if (!rule.response_templates || rule.response_templates.length === 0) {
+      return "I'm not sure how to respond to that.";
+    }
+    return rule.response_templates[Math.floor(Math.random() * rule.response_templates.length)];
+  };
+
+  // Function to process templates with dynamic data
+  const processTemplate = (template: string, data: Record<string, string>): string => {
+    let processedTemplate = template;
+    Object.keys(data).forEach(key => {
+      processedTemplate = processedTemplate.replace(new RegExp(`{{${key}}}`, 'g'), data[key]);
+    });
+    return processedTemplate;
+  };
+
+  // Updated response generation using rules from JSON
+  const getHumanLikeResponse = (input: string = ''): string => {
+    const lowerInput = input.toLowerCase();
+
+    // Check for analytics/donor data summary requests (Rule 1)
+    if (matchesKeywords(input, chatbotRules.rules[0].keywords)) {
+      const analyticsSummary = generateAnalyticsSummary();
+      const donorSummary = generateDonorDataSummary();
+      
+      // Process template with actual data
+      const template = getRandomResponseTemplate(chatbotRules.rules[0]);
+      return processTemplate(template, {
+        data_summary: analyticsSummary,
+        donor_summary: donorSummary
+      });
+    }
+
+    // Check for greeting keywords (Rule 2)
+    if (matchesKeywords(input, chatbotRules.rules[1].keywords)) {
+      return getRandomResponseTemplate(chatbotRules.rules[1]);
     }
 
     // Check for thank you keywords
-    if (lowerInput.includes('thank') || lowerInput.includes('thanks')) {
-      return "You're welcome! Is there anything else I can help with?";
+    if (matchesKeywords(input, chatbotRules.rules[4].keywords)) {
+      return getRandomResponseTemplate(chatbotRules.rules[4]);
     }
 
-    // Check for question keywords
-    if (lowerInput.includes('?') || lowerInput.includes('what') || lowerInput.includes('how') || lowerInput.includes('when')) {
-      return helpfulResponses[Math.floor(Math.random() * helpfulResponses.length)];
+    // Check for question/help keywords (Rule 4)
+    if (lowerInput.includes('?') || matchesKeywords(input, chatbotRules.rules[3].keywords)) {
+      return getRandomResponseTemplate(chatbotRules.rules[3]);
     }
 
-    // Default to acknowledgment or fallback
+    // Default to acknowledgment (Rule 3) or fallback (Rule 6) responses
     if (Math.random() > 0.5) {
-      return acknowledgments[Math.floor(Math.random() * acknowledgments.length)];
+      return getRandomResponseTemplate(chatbotRules.rules[2]);
     } else {
-      return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      return getRandomResponseTemplate(chatbotRules.rules[5]);
     }
   };
 

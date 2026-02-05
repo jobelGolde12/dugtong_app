@@ -1,12 +1,16 @@
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  Easing,
   FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,103 +19,122 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import SafeScrollView from '../lib/SafeScrollView';
-import { Donor } from '../types/donor.types';
 import DashboardLayout from './components/DashboardLayout';
-import DonorCard from './components/DonorCard';
 import EmptyState from './components/EmptyState';
 
-// Mock donor data - realistic for UI testing
-const MOCK_DONORS: Donor[] = [
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const IS_SMALL_DEVICE = SCREEN_WIDTH < 375;
+
+// Mock donor data
+const MOCK_DONORS = [
   {
     id: '1',
     name: 'Sarah Johnson',
     bloodType: 'A+',
-    municipality: 'New York',
+    municipality: 'Manila',
     availabilityStatus: 'Available',
     lastDonation: '2024-01-15',
-    contactNumber: '+1 (555) 123-4567',
+    contactNumber: '+63 912 345 6789',
     email: 'sarah.j@example.com',
+    age: 28,
+    gender: 'Female',
+    donationCount: 5
   },
   {
     id: '2',
     name: 'Michael Chen',
     bloodType: 'O-',
-    municipality: 'Los Angeles',
+    municipality: 'Quezon City',
     availabilityStatus: 'Available',
     lastDonation: '2024-02-01',
-    contactNumber: '+1 (555) 987-6543',
+    contactNumber: '+63 917 654 3210',
     email: 'michael.c@example.com',
+    age: 32,
+    gender: 'Male',
+    donationCount: 8
   },
   {
     id: '3',
     name: 'Emma Rodriguez',
     bloodType: 'B+',
-    municipality: 'Chicago',
+    municipality: 'Cebu City',
     availabilityStatus: 'Unavailable',
     lastDonation: '2023-12-20',
-    contactNumber: '+1 (555) 456-7890',
+    contactNumber: '+63 918 765 4321',
     email: 'emma.r@example.com',
+    age: 25,
+    gender: 'Female',
+    donationCount: 3
   },
   {
     id: '4',
     name: 'James Wilson',
     bloodType: 'AB-',
-    municipality: 'Miami',
+    municipality: 'Davao City',
     availabilityStatus: 'Available',
     lastDonation: '2024-01-30',
-    contactNumber: '+1 (555) 234-5678',
+    contactNumber: '+63 919 876 5432',
     email: 'james.w@example.com',
+    age: 35,
+    gender: 'Male',
+    donationCount: 6
   },
   {
     id: '5',
     name: 'Lisa Park',
     bloodType: 'O+',
-    municipality: 'Seattle',
+    municipality: 'Makati',
     availabilityStatus: 'Available',
     lastDonation: '2024-02-10',
-    contactNumber: '+1 (555) 876-5432',
+    contactNumber: '+63 920 987 6543',
     email: 'lisa.p@example.com',
+    age: 29,
+    gender: 'Female',
+    donationCount: 4
   },
   {
     id: '6',
     name: 'Robert Davis',
     bloodType: 'A-',
-    municipality: 'New York',
+    municipality: 'Manila',
     availabilityStatus: 'Available',
     lastDonation: '2024-01-25',
-    contactNumber: '+1 (555) 345-6789',
+    contactNumber: '+63 921 234 5678',
     email: 'robert.d@example.com',
+    age: 31,
+    gender: 'Male',
+    donationCount: 7
   },
   {
     id: '7',
     name: 'Maria Garcia',
     bloodType: 'B-',
-    municipality: 'Los Angeles',
+    municipality: 'Quezon City',
     availabilityStatus: 'Unavailable',
     lastDonation: '2023-11-15',
-    contactNumber: '+1 (555) 765-4321',
+    contactNumber: '+63 922 345 6789',
     email: 'maria.g@example.com',
+    age: 27,
+    gender: 'Female',
+    donationCount: 2
   },
   {
     id: '8',
     name: 'David Kim',
     bloodType: 'AB+',
-    municipality: 'Chicago',
+    municipality: 'Cebu City',
     availabilityStatus: 'Available',
     lastDonation: '2024-02-05',
-    contactNumber: '+1 (555) 543-2167',
+    contactNumber: '+63 923 456 7890',
     email: 'david.k@example.com',
+    age: 33,
+    gender: 'Male',
+    donationCount: 9
   },
 ];
 
-// Available blood types for filtering
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-
-// Available municipalities extracted from mock data
-const MUNICIPALITIES = ['New York', 'Los Angeles', 'Chicago', 'Miami', 'Seattle'];
-
-// Status options
+const MUNICIPALITIES = ['Manila', 'Quezon City', 'Cebu City', 'Davao City', 'Makati', 'Taguig', 'Pasig', 'Mandaluyong'];
 const STATUS_OPTIONS = ['All', 'Available', 'Unavailable'];
 
 interface FilterModalProps {
@@ -132,57 +155,283 @@ const FilterModal: React.FC<FilterModalProps> = ({
   onSelect,
 }) => {
   const { colors, isDark } = useTheme();
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 300,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }).start();
+    }
+  }, [visible]);
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback>
-            <View style={[
-              styles.modalContent,
-              { backgroundColor: isDark ? '#1a1a1a' : '#ffffff' }
-            ]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  {title}
-                </Text>
-                <TouchableOpacity onPress={onClose}>
-                  <Ionicons name="close" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={options}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.modalOption,
-                      { borderBottomColor: colors.border }
-                    ]}
-                    onPress={() => {
-                      onSelect(item);
-                      onClose();
-                    }}
-                  >
-                    <Text style={[styles.modalOptionText, { color: colors.text }]}>
-                      {item}
+      <View style={styles.modalOverlay}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <Animated.View style={[styles.modalBackdrop, { opacity: slideAnim.interpolate({
+            inputRange: [0, SCREEN_HEIGHT],
+            outputRange: [1, 0]
+          }) }]} />
+        </TouchableWithoutFeedback>
+        
+        <Animated.View style={[
+          styles.modalContainer,
+          {
+            transform: [{ translateY: slideAnim }],
+            backgroundColor: isDark ? colors.card : '#fff',
+          }
+        ]}>
+          <View style={styles.modalHandleContainer}>
+            <View style={[styles.modalHandle, { backgroundColor: isDark ? '#444' : '#ddd' }]} />
+          </View>
+
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {title}
+            </Text>
+            <TouchableOpacity 
+              onPress={onClose}
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={options}
+            keyExtractor={(item) => item}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  { 
+                    backgroundColor: selectedValue === item 
+                      ? colors.primary + '15' 
+                      : 'transparent',
+                  }
+                ]}
+                onPress={() => {
+                  onSelect(item);
+                  onClose();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.optionLeft}>
+                  <View style={[
+                    styles.optionIcon,
+                    { backgroundColor: selectedValue === item ? colors.primary + '20' : colors.border }
+                  ]}>
+                    <Text style={[
+                      styles.optionIconText,
+                      { color: selectedValue === item ? colors.primary : colors.textSecondary }
+                    ]}>
+                      {item.charAt(0)}
                     </Text>
-                    {selectedValue === item && (
-                      <Ionicons name="checkmark" size={20} color={colors.primary} />
-                    )}
-                  </TouchableOpacity>
+                  </View>
+                  <Text style={[styles.modalOptionText, { 
+                    color: colors.text,
+                    fontWeight: selectedValue === item ? '600' : '400'
+                  }]}>
+                    {item}
+                  </Text>
+                </View>
+                {selectedValue === item && (
+                  <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                 )}
-              />
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+              </TouchableOpacity>
+            )}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalOptionsContainer}
+          />
+        </Animated.View>
+      </View>
     </Modal>
+  );
+};
+
+interface DonorCardProps {
+  donor: typeof MOCK_DONORS[0];
+  onPress: (donor: typeof MOCK_DONORS[0]) => void;
+}
+
+const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
+  const { colors, isDark } = useTheme();
+  const [expanded, setExpanded] = useState(false);
+
+  const getBloodTypeColor = (type: string) => {
+    const colorsMap: Record<string, string> = {
+      'O+': '#DC2626',
+      'O-': '#DC2626',
+      'A+': '#2563EB',
+      'A-': '#2563EB',
+      'B+': '#059669',
+      'B-': '#059669',
+      'AB+': '#7C3AED',
+      'AB-': '#7C3AED',
+    };
+    return colorsMap[type] || colors.primary;
+  };
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.donorCard,
+        {
+          backgroundColor: colors.card,
+          borderColor: isDark ? '#333' : 'transparent',
+          transform: [{ scale: expanded ? 1.01 : 1 }]
+        }
+      ]}
+      onPress={() => setExpanded(!expanded)}
+      onLongPress={() => onPress(donor)}
+      activeOpacity={0.9}
+      delayLongPress={500}
+    >
+      <View style={styles.cardHeader}>
+        <View style={styles.userInfo}>
+          <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
+            <Text style={[styles.avatarText, { color: colors.primary }]}>
+              {donor.name.charAt(0)}
+            </Text>
+          </View>
+          <View style={styles.userDetails}>
+            <Text style={[styles.donorName, { color: colors.text }]} numberOfLines={1}>
+              {donor.name}
+            </Text>
+            <View style={styles.donorMeta}>
+              <View style={[styles.badge, { backgroundColor: colors.primary + '10' }]}>
+                <Ionicons name="person" size={12} color={colors.primary} />
+                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                  {donor.age}y
+                </Text>
+              </View>
+              <View style={[styles.badge, { backgroundColor: colors.textSecondary + '10' }]}>
+                <FontAwesome name="transgender" size={12} color={colors.textSecondary} />
+                <Text style={[styles.badgeText, { color: colors.textSecondary }]}>
+                  {donor.gender.charAt(0)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.bloodTypeContainer}>
+          <View style={[
+            styles.bloodTypeBadge,
+            { backgroundColor: getBloodTypeColor(donor.bloodType) + '20' }
+          ]}>
+            <Text style={[
+              styles.bloodTypeText,
+              { color: getBloodTypeColor(donor.bloodType) }
+            ]}>
+              {donor.bloodType}
+            </Text>
+          </View>
+          <View style={[
+            styles.statusBadge,
+            { 
+              backgroundColor: donor.availabilityStatus === 'Available' 
+                ? '#10B98120' 
+                : '#EF444420',
+              borderColor: donor.availabilityStatus === 'Available'
+                ? '#10B981'
+                : '#EF4444'
+            }
+          ]}>
+            <View style={[
+              styles.statusDot,
+              { 
+                backgroundColor: donor.availabilityStatus === 'Available' 
+                  ? '#10B981' 
+                  : '#EF4444'
+              }
+            ]} />
+            <Text style={[
+              styles.statusText,
+              { 
+                color: donor.availabilityStatus === 'Available' 
+                  ? '#10B981' 
+                  : '#EF4444'
+              }
+            ]}>
+              {donor.availabilityStatus}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.cardBody}>
+        <View style={styles.infoRow}>
+          <View style={styles.infoItem}>
+            <Ionicons name="location" size={16} color={colors.textSecondary} />
+            <Text style={[styles.infoText, { color: colors.text }]} numberOfLines={1}>
+              {donor.municipality}
+            </Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Ionicons name="calendar" size={16} color={colors.textSecondary} />
+            <Text style={[styles.infoText, { color: colors.text }]}>
+              Last: {new Date(donor.lastDonation).toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric' 
+              })}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.infoRow}>
+          <View style={styles.infoItem}>
+            <Ionicons name="water" size={16} color={colors.textSecondary} />
+            <Text style={[styles.infoText, { color: colors.text }]}>
+              {donor.donationCount} donations
+            </Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Ionicons name="call" size={16} color={colors.textSecondary} />
+            <Text style={[styles.infoText, { color: colors.text }]} numberOfLines={1}>
+              {donor.contactNumber}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <Animated.View 
+        style={[
+          styles.cardFooter,
+          {
+            height: expanded ? 50 : 0,
+            opacity: expanded ? 1 : 0,
+          }
+        ]}
+      >
+        <TouchableOpacity
+          style={[styles.contactButton, { backgroundColor: colors.primary }]}
+          onPress={() => onPress(donor)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="chatbubble-ellipses" size={18} color="#fff" />
+          <Text style={styles.contactButtonText}>Contact Donor</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </TouchableOpacity>
   );
 };
 
@@ -199,51 +448,74 @@ export default function FindDonorScreen() {
   const [showMunicipalityModal, setShowMunicipalityModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const searchInputRef = useRef<TextInput>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const headerScale = useRef(new Animated.Value(0.95)).current;
 
-  // Debounced search function
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.spring(headerScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   useEffect(() => {
     setIsLoading(true);
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
     }, 300);
-
     return () => clearTimeout(timeoutId);
   }, [searchQuery, filters]);
 
-  // Filter donors based on search query and filters
   const filteredDonors = useMemo(() => {
     return MOCK_DONORS.filter(donor => {
-      // Search query filter
       const matchesSearch = searchQuery === '' || 
         donor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         donor.bloodType.toLowerCase().includes(searchQuery.toLowerCase()) ||
         donor.municipality.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Blood type filter
       const matchesBloodType = !filters.bloodType || donor.bloodType === filters.bloodType;
-
-      // Municipality filter
       const matchesMunicipality = !filters.municipality || donor.municipality === filters.municipality;
-
-      // Status filter
-      const matchesStatus = filters.status === 'All' || 
-        donor.availabilityStatus === filters.status;
+      const matchesStatus = filters.status === 'All' || donor.availabilityStatus === filters.status;
 
       return matchesSearch && matchesBloodType && matchesMunicipality && matchesStatus;
     });
   }, [searchQuery, filters]);
 
-  const handleDonorPress = useCallback((donor: Donor) => {
+  const handleDonorPress = useCallback((donor: typeof MOCK_DONORS[0]) => {
     Alert.alert(
-      'Donor Details',
-      `Name: ${donor.name}\nBlood Type: ${donor.bloodType}\nLocation: ${donor.municipality}\nStatus: ${donor.availabilityStatus}\nLast Donation: ${donor.lastDonation}`,
-      [{ text: 'OK' }]
+      'Contact Donor',
+      `Would you like to contact ${donor.name}?\n\n📞 ${donor.contactNumber}\n✉️ ${donor.email}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Call', 
+          onPress: () => Alert.alert('Call', `Would call ${donor.contactNumber}`) 
+        },
+        { 
+          text: 'Message', 
+          onPress: () => Alert.alert('Message', `Would message ${donor.contactNumber}`) 
+        },
+      ]
     );
   }, []);
 
-  const renderDonorItem = useCallback(({ item }: { item: Donor }) => (
-    <DonorCard donor={item} onPress={handleDonorPress} />
-  ), [handleDonorPress]);
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const clearFilters = useCallback(() => {
     setSearchQuery('');
@@ -252,139 +524,258 @@ export default function FindDonorScreen() {
       municipality: '',
       status: 'All',
     });
+    searchInputRef.current?.blur();
   }, []);
 
   const hasActiveFilters = filters.bloodType || filters.municipality || filters.status !== 'All';
+
+  const renderDonorItem = useCallback(({ item }: { item: typeof MOCK_DONORS[0] }) => (
+    <DonorCard donor={item} onPress={handleDonorPress} />
+  ), [handleDonorPress]);
 
   return (
     <DashboardLayout>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <SafeScrollView
-          style={[styles.scrollView, { backgroundColor: colors.background }]}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <Animated.View 
+          style={[
+            styles.container,
+            { 
+              backgroundColor: colors.background,
+              opacity: fadeAnim,
+            }
+          ]}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>Find a Donor</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Search for available blood donors in your area
-            </Text>
-          </View>
-
-          {/* Search Bar */}
-          <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search by name, blood type, or location..."
-              placeholderTextColor={colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              returnKeyType="search"
-              clearButtonMode="while-editing"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Filter Chips */}
-          <View style={styles.filterRow}>
-            <TouchableOpacity
-              style={[styles.filterChip, { backgroundColor: colors.card }]}
-              onPress={() => setShowBloodTypeModal(true)}
-            >
-              <Text style={[styles.filterChipText, { color: colors.text }]}>
-                {filters.bloodType || 'Blood Type'}
-              </Text>
-              <MaterialIcons 
-                name="arrow-drop-down" 
-                size={20} 
-                color={colors.textSecondary} 
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <ScrollView
+                refreshControl={
+                  <Animated.View />
+                }
               />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.filterChip, { backgroundColor: colors.card }]}
-              onPress={() => setShowMunicipalityModal(true)}
+            }
+          >
+            {/* Header */}
+            <Animated.View 
+              style={[
+                styles.header,
+                {
+                  transform: [{ scale: headerScale }],
+                }
+              ]}
             >
-              <Text style={[styles.filterChipText, { color: colors.text }]}>
-                {filters.municipality || 'Location'}
-              </Text>
-              <MaterialIcons 
-                name="arrow-drop-down" 
-                size={20} 
-                color={colors.textSecondary} 
-              />
-            </TouchableOpacity>
+              <View>
+                <Text style={[styles.title, { color: colors.text }]}>
+                  Find Donors
+                </Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  Connect with available blood donors in your area
+                </Text>
+              </View>
+              
+              {hasActiveFilters && (
+                <TouchableOpacity
+                  style={[styles.clearAllButton, { 
+                    backgroundColor: colors.primary + '15',
+                  }]}
+                  onPress={clearFilters}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close-circle" size={18} color={colors.primary} />
+                  <Text style={[styles.clearAllText, { color: colors.primary }]}>
+                    Clear All
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </Animated.View>
 
-            <TouchableOpacity
-              style={[styles.filterChip, { backgroundColor: colors.card }]}
-              onPress={() => setShowStatusModal(true)}
+            {/* Search Bar */}
+            <View style={[
+              styles.searchContainer,
+              { 
+                backgroundColor: isDark ? colors.card : '#fff',
+              }
+            ]}>
+              <Ionicons 
+                name="search" 
+                size={20} 
+                color={colors.textSecondary}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                ref={searchInputRef}
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search donors..."
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+                autoCapitalize="words"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity 
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearSearchButton}
+                >
+                  <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Filter Chips */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScrollContent}
             >
-              <Text style={[styles.filterChipText, { color: colors.text }]}>
-                {filters.status}
-              </Text>
-              <MaterialIcons 
-                name="arrow-drop-down" 
-                size={20} 
-                color={colors.textSecondary} 
-              />
-            </TouchableOpacity>
-
-            {hasActiveFilters && (
               <TouchableOpacity
-                style={[styles.clearFilterChip, { backgroundColor: colors.primary + '20' }]}
-                onPress={clearFilters}
+                style={[
+                  styles.filterChip,
+                  { 
+                    backgroundColor: filters.bloodType 
+                      ? colors.primary + '20' 
+                      : isDark ? colors.card : '#f8f9fa',
+                    borderColor: filters.bloodType 
+                      ? colors.primary
+                      : colors.border,
+                  }
+                ]}
+                onPress={() => setShowBloodTypeModal(true)}
+                activeOpacity={0.7}
               >
-                <Ionicons name="close" size={16} color={colors.primary} />
-                <Text style={[styles.clearFilterText, { color: colors.primary }]}>
-                  Clear
+                <Ionicons 
+                  name="water" 
+                  size={16} 
+                  color={filters.bloodType ? colors.primary : colors.textSecondary}
+                />
+                <Text style={[
+                  styles.filterChipText,
+                  { 
+                    color: filters.bloodType ? colors.primary : colors.text,
+                    fontSize: IS_SMALL_DEVICE ? 13 : 14,
+                  }
+                ]}>
+                  {filters.bloodType || 'Blood Type'}
                 </Text>
               </TouchableOpacity>
-            )}
-          </View>
 
-          {/* Results Header */}
-          <View style={styles.resultsHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Available Donors
-            </Text>
-            <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
-              {filteredDonors.length} {filteredDonors.length === 1 ? 'donor' : 'donors'} found
-            </Text>
-          </View>
-
-          {/* Loading Indicator */}
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            /* Results List */
-            <FlatList
-              data={filteredDonors}
-              renderItem={renderDonorItem}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={false}
-              ListEmptyComponent={
-                <EmptyState
-                  icon="search"
-                  title="No donors found"
-                  message="Try adjusting your search or filters"
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  { 
+                    backgroundColor: filters.municipality 
+                      ? colors.primary + '20' 
+                      : isDark ? colors.card : '#f8f9fa',
+                    borderColor: filters.municipality 
+                      ? colors.primary
+                      : colors.border,
+                  }
+                ]}
+                onPress={() => setShowMunicipalityModal(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name="location" 
+                  size={16} 
+                  color={filters.municipality ? colors.primary : colors.textSecondary}
                 />
-              }
-              contentContainerStyle={styles.listContent}
-            />
-          )}
+                <Text style={[
+                  styles.filterChipText,
+                  { 
+                    color: filters.municipality ? colors.primary : colors.text,
+                    fontSize: IS_SMALL_DEVICE ? 13 : 14,
+                  }
+                ]}>
+                  {filters.municipality || 'Location'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  { 
+                    backgroundColor: filters.status !== 'All'
+                      ? colors.primary + '20' 
+                      : isDark ? colors.card : '#f8f9fa',
+                    borderColor: filters.status !== 'All'
+                      ? colors.primary
+                      : colors.border,
+                  }
+                ]}
+                onPress={() => setShowStatusModal(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name="time" 
+                  size={16} 
+                  color={filters.status !== 'All' ? colors.primary : colors.textSecondary}
+                />
+                <Text style={[
+                  styles.filterChipText,
+                  { 
+                    color: filters.status !== 'All' ? colors.primary : colors.text,
+                    fontSize: IS_SMALL_DEVICE ? 13 : 14,
+                  }
+                ]}>
+                  {filters.status}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {/* Results Header */}
+            <View style={styles.resultsHeader}>
+              <View>
+                <Text style={[styles.resultsTitle, { color: colors.text }]}>
+                  Available Donors
+                </Text>
+                <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
+                  {filteredDonors.length} {filteredDonors.length === 1 ? 'donor' : 'donors'} found
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.sortButton}>
+                <Ionicons name="filter" size={18} color={colors.textSecondary} />
+                <Text style={[styles.sortText, { color: colors.textSecondary }]}>
+                  Filter
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Loading State */}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  Searching...
+                </Text>
+              </View>
+            ) : (
+              /* Results List */
+              <FlatList
+                data={filteredDonors}
+                renderItem={renderDonorItem}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                ListEmptyComponent={
+                  <EmptyState
+                    icon="search-outline"
+                    title="No donors found"
+                    message="Try adjusting your search criteria"
+                    actionText="Clear Filters"
+                    onAction={clearFilters}
+                  />
+                }
+                contentContainerStyle={styles.listContent}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+              />
+            )}
+          </ScrollView>
 
           {/* Filter Modals */}
           <FilterModal
@@ -413,145 +804,339 @@ export default function FindDonorScreen() {
             selectedValue={filters.status}
             onSelect={(value) => setFilters(prev => ({ ...prev, status: value }))}
           />
-        </SafeScrollView>
+        </Animated.View>
       </KeyboardAvoidingView>
     </DashboardLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
+  container: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+    paddingHorizontal: Math.max(16, SCREEN_WIDTH * 0.04),
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 100,
+    minHeight: SCREEN_HEIGHT,
   },
   header: {
     marginBottom: 24,
-    marginTop: 8,
   },
   title: {
-    fontSize: 28,
+    fontSize: IS_SMALL_DEVICE ? 28 : 32,
     fontWeight: '800',
-    marginBottom: 8,
     letterSpacing: -0.5,
+    lineHeight: IS_SMALL_DEVICE ? 34 : 38,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: IS_SMALL_DEVICE ? 14 : 15,
     fontWeight: '400',
-    opacity: 0.7,
+    lineHeight: 20,
+    maxWidth: '90%',
+  },
+  clearAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  clearAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    marginLeft: 12,
-    marginRight: 8,
+    fontSize: IS_SMALL_DEVICE ? 15 : 16,
+    fontWeight: '400',
     padding: 0,
+    includeFontPadding: false,
   },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  clearSearchButton: {
+    padding: 4,
+  },
+  filterScrollContent: {
+    paddingBottom: 16,
     gap: 8,
-    marginBottom: 24,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 8,
+    minHeight: 44,
   },
   filterChipText: {
-    fontSize: 14,
     fontWeight: '500',
-    marginRight: 4,
-  },
-  clearFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  clearFilterText: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 4,
+    marginLeft: 8,
   },
   resultsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    marginTop: 8,
   },
-  sectionTitle: {
-    fontSize: 20,
+  resultsTitle: {
+    fontSize: IS_SMALL_DEVICE ? 18 : 20,
     fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 4,
   },
   resultCount: {
+    fontSize: 13,
+    fontWeight: '400',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  sortText: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: SCREEN_HEIGHT * 0.3,
+  },
+  loadingText: {
+    marginTop: 12,
     fontSize: 14,
     fontWeight: '500',
   },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
   listContent: {
+    paddingBottom: 20,
+  },
+  separator: {
+    height: 12,
+  },
+  donorCard: {
+    borderRadius: 20,
+    padding: IS_SMALL_DEVICE ? 10 : 20,
+    marginBottom: 12,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatar: {
+    width: IS_SMALL_DEVICE ? 44 : 48,
+    height: IS_SMALL_DEVICE ? 44 : 48,
+    borderRadius: IS_SMALL_DEVICE ? 22 : 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: IS_SMALL_DEVICE ? 18 : 20,
+    fontWeight: '700',
+  },
+  userDetails: {
+    flex: 1,
+  },
+  donorName: {
+    fontSize: IS_SMALL_DEVICE ? 16 : 18,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  donorMeta: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  bloodTypeContainer: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  bloodTypeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  bloodTypeText: {
+    fontSize: IS_SMALL_DEVICE ? 14 : 16,
+    fontWeight: '800',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cardBody: {
     gap: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 8,
+  },
+  infoText: {
+    fontSize: IS_SMALL_DEVICE ? 13 : 14,
+    fontWeight: '400',
+    flex: 1,
+  },
+  cardFooter: {
+    overflow: 'hidden',
+    marginTop: 16,
+  },
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  contactButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
   },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '80%',
-    paddingTop: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  modalHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  closeButton: {
+    padding: 4,
+    borderRadius: 12,
+  },
+  modalOptionsContainer: {
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   modalOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
-    borderBottomWidth: 1,
+    borderRadius: 12,
+    marginHorizontal: 12,
+    marginVertical: 2,
+  },
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  optionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  optionIconText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   modalOptionText: {
     fontSize: 16,
+    flex: 1,
   },
 });

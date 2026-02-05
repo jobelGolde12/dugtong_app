@@ -2,7 +2,6 @@ import {
   CheckCircle,
   ChevronRight,
   Edit2,
-  Filter,
   Plus,
   RefreshCw,
   Search,
@@ -508,22 +507,7 @@ const Header: React.FC = () => (
           {SCREEN_WIDTH > 768 ? 'Manage and monitor blood donors in your network' : 'Monitor blood donors'}
         </Text>
       </View>
-      <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          leftIcon={<Filter size={18} color={COLORS.neutral[500]} />}
-        >
-          {SCREEN_WIDTH > 768 ? 'Filter' : ''}
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          leftIcon={<Users size={18} color={COLORS.neutral[500]} />}
-        >
-          {SCREEN_WIDTH > 768 ? 'Groups' : ''}
-        </Button>
-      </View>
+      
     </View>
   </Animated.View>
 );
