@@ -1,4 +1,4 @@
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import DashboardLayout from './components/DashboardLayout';
+import DonorCard from './components/DonorCard';
 import EmptyState from './components/EmptyState';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -33,11 +34,11 @@ const MOCK_DONORS = [
     bloodType: 'A+',
     municipality: 'Manila',
     availabilityStatus: 'Available',
-    lastDonation: '2024-01-15',
+    lastDonationDate: '2024-01-15',
     contactNumber: '+63 912 345 6789',
     email: 'sarah.j@example.com',
     age: 28,
-    gender: 'Female',
+    sex: 'Female',
     donationCount: 5
   },
   {
@@ -46,11 +47,11 @@ const MOCK_DONORS = [
     bloodType: 'O-',
     municipality: 'Quezon City',
     availabilityStatus: 'Available',
-    lastDonation: '2024-02-01',
+    lastDonationDate: '2024-02-01',
     contactNumber: '+63 917 654 3210',
     email: 'michael.c@example.com',
     age: 32,
-    gender: 'Male',
+    sex: 'Male',
     donationCount: 8
   },
   {
@@ -59,11 +60,11 @@ const MOCK_DONORS = [
     bloodType: 'B+',
     municipality: 'Cebu City',
     availabilityStatus: 'Unavailable',
-    lastDonation: '2023-12-20',
+    lastDonationDate: '2023-12-20',
     contactNumber: '+63 918 765 4321',
     email: 'emma.r@example.com',
     age: 25,
-    gender: 'Female',
+    sex: 'Female',
     donationCount: 3
   },
   {
@@ -72,11 +73,11 @@ const MOCK_DONORS = [
     bloodType: 'AB-',
     municipality: 'Davao City',
     availabilityStatus: 'Available',
-    lastDonation: '2024-01-30',
+    lastDonationDate: '2024-01-30',
     contactNumber: '+63 919 876 5432',
     email: 'james.w@example.com',
     age: 35,
-    gender: 'Male',
+    sex: 'Male',
     donationCount: 6
   },
   {
@@ -85,11 +86,11 @@ const MOCK_DONORS = [
     bloodType: 'O+',
     municipality: 'Makati',
     availabilityStatus: 'Available',
-    lastDonation: '2024-02-10',
+    lastDonationDate: '2024-02-10',
     contactNumber: '+63 920 987 6543',
     email: 'lisa.p@example.com',
     age: 29,
-    gender: 'Female',
+    sex: 'Female',
     donationCount: 4
   },
   {
@@ -98,11 +99,11 @@ const MOCK_DONORS = [
     bloodType: 'A-',
     municipality: 'Manila',
     availabilityStatus: 'Available',
-    lastDonation: '2024-01-25',
+    lastDonationDate: '2024-01-25',
     contactNumber: '+63 921 234 5678',
     email: 'robert.d@example.com',
     age: 31,
-    gender: 'Male',
+    sex: 'Male',
     donationCount: 7
   },
   {
@@ -111,11 +112,11 @@ const MOCK_DONORS = [
     bloodType: 'B-',
     municipality: 'Quezon City',
     availabilityStatus: 'Unavailable',
-    lastDonation: '2023-11-15',
+    lastDonationDate: '2023-11-15',
     contactNumber: '+63 922 345 6789',
     email: 'maria.g@example.com',
     age: 27,
-    gender: 'Female',
+    sex: 'Female',
     donationCount: 2
   },
   {
@@ -124,11 +125,11 @@ const MOCK_DONORS = [
     bloodType: 'AB+',
     municipality: 'Cebu City',
     availabilityStatus: 'Available',
-    lastDonation: '2024-02-05',
+    lastDonationDate: '2024-02-05',
     contactNumber: '+63 923 456 7890',
     email: 'david.k@example.com',
     age: 33,
-    gender: 'Male',
+    sex: 'Male',
     donationCount: 9
   },
 ];
@@ -264,174 +265,6 @@ const FilterModal: React.FC<FilterModalProps> = ({
         </Animated.View>
       </View>
     </Modal>
-  );
-};
-
-interface DonorCardProps {
-  donor: typeof MOCK_DONORS[0];
-  onPress: (donor: typeof MOCK_DONORS[0]) => void;
-}
-
-const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
-  const { colors, isDark } = useTheme();
-  const [expanded, setExpanded] = useState(false);
-
-  const getBloodTypeColor = (type: string) => {
-    const colorsMap: Record<string, string> = {
-      'O+': '#DC2626',
-      'O-': '#DC2626',
-      'A+': '#2563EB',
-      'A-': '#2563EB',
-      'B+': '#059669',
-      'B-': '#059669',
-      'AB+': '#7C3AED',
-      'AB-': '#7C3AED',
-    };
-    return colorsMap[type] || colors.primary;
-  };
-
-  return (
-    <TouchableOpacity
-      style={[
-        styles.donorCard,
-        {
-          backgroundColor: colors.card,
-          borderColor: 'transparent',
-          transform: [{ scale: expanded ? 1.01 : 1 }]
-        }
-      ]}
-      onPress={() => setExpanded(!expanded)}
-      onLongPress={() => onPress(donor)}
-      activeOpacity={0.9}
-      delayLongPress={500}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.userInfo}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
-            <Text style={[styles.avatarText, { color: colors.primary }]}>
-              {donor.name.charAt(0)}
-            </Text>
-          </View>
-          <View style={styles.userDetails}>
-            <Text style={[styles.donorName, { color: colors.text }]} numberOfLines={1}>
-              {donor.name}
-            </Text>
-            <View style={styles.donorMeta}>
-              <View style={[styles.badge, { backgroundColor: colors.primary + '10' }]}>
-                <Ionicons name="person" size={12} color={colors.primary} />
-                <Text style={[styles.badgeText, { color: colors.primary }]}>
-                  {donor.age}y
-                </Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: colors.textSecondary + '10' }]}>
-                <FontAwesome name="transgender" size={12} color={colors.textSecondary} />
-                <Text style={[styles.badgeText, { color: colors.textSecondary }]}>
-                  {donor.gender.charAt(0)}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.bloodTypeContainer}>
-          <View style={[
-            styles.bloodTypeBadge,
-            { backgroundColor: getBloodTypeColor(donor.bloodType) + '20' }
-          ]}>
-            <Text style={[
-              styles.bloodTypeText,
-              { color: getBloodTypeColor(donor.bloodType) }
-            ]}>
-              {donor.bloodType}
-            </Text>
-          </View>
-          <View style={[
-            styles.statusBadge,
-            { 
-              backgroundColor: donor.availabilityStatus === 'Available' 
-                ? '#10B98120' 
-                : '#EF444420',
-              borderColor: donor.availabilityStatus === 'Available'
-                ? '#10B981'
-                : '#EF4444'
-            }
-          ]}>
-            <View style={[
-              styles.statusDot,
-              { 
-                backgroundColor: donor.availabilityStatus === 'Available' 
-                  ? '#10B981' 
-                  : '#EF4444'
-              }
-            ]} />
-            <Text style={[
-              styles.statusText,
-              { 
-                color: donor.availabilityStatus === 'Available' 
-                  ? '#10B981' 
-                  : '#EF4444'
-              }
-            ]}>
-              {donor.availabilityStatus}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.cardBody}>
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Ionicons name="location" size={16} color={colors.textSecondary} />
-            <Text style={[styles.infoText, { color: colors.text }]} numberOfLines={1}>
-              {donor.municipality}
-            </Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="calendar" size={16} color={colors.textSecondary} />
-            <Text style={[styles.infoText, { color: colors.text }]}>
-              Last: {new Date(donor.lastDonation).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric' 
-              })}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Ionicons name="water" size={16} color={colors.textSecondary} />
-            <Text style={[styles.infoText, { color: colors.text }]}>
-              {donor.donationCount} donations
-            </Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="call" size={16} color={colors.textSecondary} />
-            <Text style={[styles.infoText, { color: colors.text }]} numberOfLines={1}>
-              {donor.contactNumber}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <Animated.View 
-        style={[
-          styles.cardFooter,
-          {
-            height: expanded ? 50 : 0,
-            opacity: expanded ? 1 : 0,
-          }
-        ]}
-      >
-        <TouchableOpacity
-          style={[styles.contactButton, { backgroundColor: colors.primary }]}
-          onPress={() => onPress(donor)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="chatbubble-ellipses" size={18} color="#fff" />
-          <Text style={styles.contactButtonText}>Contact Donor</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </TouchableOpacity>
   );
 };
 
@@ -939,125 +772,6 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 12,
-  },
-  donorCard: {
-    borderRadius: 20,
-    padding: IS_SMALL_DEVICE ? 10 : 20,
-    marginBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatar: {
-    width: IS_SMALL_DEVICE ? 44 : 48,
-    height: IS_SMALL_DEVICE ? 44 : 48,
-    borderRadius: IS_SMALL_DEVICE ? 22 : 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: IS_SMALL_DEVICE ? 18 : 20,
-    fontWeight: '700',
-  },
-  userDetails: {
-    flex: 1,
-  },
-  donorName: {
-    fontSize: IS_SMALL_DEVICE ? 16 : 18,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  donorMeta: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  bloodTypeContainer: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  bloodTypeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  bloodTypeText: {
-    fontSize: IS_SMALL_DEVICE ? 14 : 16,
-    fontWeight: '800',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  cardBody: {
-    gap: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 8,
-  },
-  infoText: {
-    fontSize: IS_SMALL_DEVICE ? 13 : 14,
-    fontWeight: '400',
-    flex: 1,
-  },
-  cardFooter: {
-    overflow: 'hidden',
-    marginTop: 16,
-  },
-  contactButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  contactButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
