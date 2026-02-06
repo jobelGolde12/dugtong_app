@@ -1,13 +1,19 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ThemeOption, ProfileInfo } from '../types/theme';
+import { ThemeOption, ProfileInfo, ThemeMode } from '../types/theme';
+import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const useSettings = () => {
-  const [profile, setProfile] = useState<ProfileInfo>({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    initials: 'JD',
-    avatarUrl: undefined,
-  });
+  const { user, preferences, updateProfile, updatePreferences, isSaving, error } = useUser();
+  const { mode, setTheme } = useTheme();
+
+  // Transform user data to ProfileInfo format
+  const profile: ProfileInfo = {
+    name: user?.name || 'Loading...',
+    email: user?.email || 'No email',
+    initials: user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??',
+    avatarUrl: user?.avatar_url,
+  };
 
   const themeOptions: ThemeOption[] = [
     {
@@ -30,9 +36,28 @@ export const useSettings = () => {
     },
   ];
 
-  const updateProfile = useCallback((newProfile: Partial<ProfileInfo>) => {
-    setProfile((prev) => ({ ...prev, ...newProfile }));
-  }, []);
+  // Update profile using UserContext
+  const updateProfileData = useCallback(async (newProfile: Partial<ProfileInfo>) => {
+    if (!user) return;
+
+    const updateData: any = {};
+    if (newProfile.name) updateData.name = newProfile.name;
+    if (newProfile.email) updateData.email = newProfile.email;
+    if (newProfile.avatarUrl !== undefined) updateData.avatar_url = newProfile.avatarUrl;
+
+    await updateProfile(updateData);
+  }, [user, updateProfile]);
+
+  // Handle theme change and sync with backend
+  const handleThemeChange = useCallback(async (themeKey: string) => {
+    // Update local theme immediately
+    setTheme(themeKey as ThemeMode);
+    
+    // Sync with backend preferences
+    if (preferences) {
+      await updatePreferences({ theme_mode: themeKey as ThemeMode });
+    }
+  }, [setTheme, preferences, updatePreferences]);
 
   const handleProfileEdit = useCallback(() => {
     // Navigate to edit profile screen
@@ -47,8 +72,12 @@ export const useSettings = () => {
   return {
     profile,
     themeOptions,
-    updateProfile,
+    updateProfile: updateProfileData,
+    handleThemeChange,
     handleProfileEdit,
     handleProfilePress,
+    isSaving,
+    error,
+    currentTheme: preferences?.theme_mode || mode,
   };
 };

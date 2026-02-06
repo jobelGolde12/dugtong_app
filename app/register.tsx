@@ -18,7 +18,8 @@ import {
   useWindowDimensions,
   View
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createDonorRegistration, DonorRegistrationRequest } from '../api/donor-registrations';
+import { getApiErrorMessage } from '../api/client';
 import SafeScrollView from '../lib/SafeScrollView';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -88,6 +89,7 @@ export default function RegisterScreen() {
   const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
   const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions>({ width: 0, height: 0 });
@@ -218,38 +220,41 @@ export default function RegisterScreen() {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      const donorData = {
-        fullName: formData.fullName,
-        age: formData.age,
-        sex: formData.sex,
-        bloodType: formData.bloodType,
-        contactNumber: formData.contactNumber,
+      const registrationData: DonorRegistrationRequest = {
+        full_name: formData.fullName,
+        age: parseInt(formData.age, 10),
+        sex: formData.sex as 'Male' | 'Female',
+        blood_type: formData.bloodType,
+        contact_number: formData.contactNumber,
         municipality: formData.municipality,
-        availabilityStatus: formData.availabilityStatus,
-        synced: false,
-        created_at: new Date().toISOString()
+        availability_status: formData.availabilityStatus as 'Available' | 'Temporarily Unavailable',
       };
 
-      console.log('Saving donor data locally:', donorData);
+      console.log('Submitting donor registration:', registrationData);
       
-      await AsyncStorage.setItem('donorProfile', JSON.stringify(donorData));
+      const response = await createDonorRegistration(registrationData);
       
       Alert.alert(
-        'Registration Successful 🎉',
-        'Thank you for registering as a voluntary donor! Your data has been saved.',
+        'Registration Submitted 🎉',
+        `Thank you for registering as a voluntary donor! Your registration has been submitted with status: ${response.status}. You will be notified once it's approved.`,
         [
           { 
             text: 'OK', 
             onPress: () => {
-              router.push('/DonorDashboard');
+              router.push('/login');
             }
           }
         ]
       );
     } catch (error) {
-      console.error('Error saving donor data:', error);
-      Alert.alert('Error', 'Failed to save your registration. Please try again.');
+      console.error('Error submitting donor registration:', error);
+      const errorMessage = getApiErrorMessage(error);
+      Alert.alert('Registration Error', errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -487,11 +492,17 @@ export default function RegisterScreen() {
 
                 {/* Submit Button */}
                 <TouchableOpacity 
-                  style={styles.submitButton} 
+                  style={[
+                    styles.submitButton,
+                    isSubmitting && styles.submitButtonDisabled
+                  ]} 
                   onPress={handleSubmit}
+                  disabled={isSubmitting}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.submitButtonText}>Submit Registration</Text>
+                  <Text style={styles.submitButtonText}>
+                    {isSubmitting ? 'Submitting...' : 'Submit Registration'}
+                  </Text>
                 </TouchableOpacity>
 
                 
@@ -712,6 +723,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  submitButtonDisabled: {
+    backgroundColor: 'rgba(108, 117, 125, 0.8)',
+    opacity: 0.6,
   },
   errorText: {
     color: '#FF6B6B',

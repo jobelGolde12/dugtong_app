@@ -22,13 +22,14 @@ const SettingsScreen: React.FC = memo(() => {
     themeOptions,
     handleProfileEdit,
     handleProfilePress,
+    handleThemeChange,
+    isSaving,
+    error,
   } = useSettings();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const handleThemeChange = useCallback((themeKey: string) => {
-    setTheme(themeKey);
-  }, [setTheme]);
+  
 
   return (
     <DashboardLayout>
