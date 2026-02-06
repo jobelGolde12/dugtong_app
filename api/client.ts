@@ -183,7 +183,7 @@ apiClient.interceptors.response.use(
       if (url.includes('/donors')) {
         return Promise.resolve({
           data: {
-            donors: [],
+            items: [],  // The donor API expects 'items' property
             total: 0,
             page: 1,
             page_size: 10,
