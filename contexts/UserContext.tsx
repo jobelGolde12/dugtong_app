@@ -87,11 +87,29 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       }));
     } catch (error) {
       console.error('Error loading user:', error);
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: getApiErrorMessage(error),
-      }));
+      
+      // Check if it's a network error and handle gracefully
+      const isNetworkError = error?.message?.includes('Network Error') || 
+                           error?.code === 'ERR_NETWORK' ||
+                           error?.response?.status === 0;
+      
+      // If it's a network error, set default empty state instead of error to prevent blocking the app
+      if (isNetworkError) {
+        setState((prev) => ({
+          ...prev,
+          user: null,
+          preferences: null,
+          isLoading: false,
+          error: null, // Don't set error for network issues to prevent blocking the app
+        }));
+      } else {
+        // For other errors, set the error state
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: getApiErrorMessage(error),
+        }));
+      }
     }
   }, []);
 

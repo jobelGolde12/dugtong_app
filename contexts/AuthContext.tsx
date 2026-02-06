@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const initializeAuth = async () => {
     try {
       const accessToken = await getAccessToken();
-      
+
       if (!accessToken) {
         setState((prev) => ({ ...prev, isLoading: false }));
         return;
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const user = await getCurrentUser();
         const role = extractUserRole(user);
-        
+
         setState({
           isLoading: false,
           isAuthenticated: true,
@@ -73,30 +73,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           accessToken,
         });
       } catch (error) {
-        // Token might be invalid, try refresh
-        const refreshToken = await getRefreshToken();
-        if (refreshToken) {
-          // Token refresh will be handled by API client interceptor
-          // For now, just try to get user again
-          try {
-            const user = await getCurrentUser();
-            const role = extractUserRole(user);
-            
-            setState({
-              isLoading: false,
-              isAuthenticated: true,
-              user,
-              userRole: role,
-              accessToken,
-            });
-          } catch {
-            // Refresh failed too, clear auth
+        // Check if it's a network error
+        const isNetworkError = error?.message?.includes('Network Error') || 
+                             error?.code === 'ERR_NETWORK' ||
+                             error?.response?.status === 0;
+        
+        if (isNetworkError) {
+          // For network errors, clear auth and continue without blocking the app
+          await clearAuthState();
+          setState((prev) => ({ ...prev, isLoading: false }));
+        } else {
+          // Token might be invalid, try refresh
+          const refreshToken = await getRefreshToken();
+          if (refreshToken) {
+            // Token refresh will be handled by API client interceptor
+            // For now, just try to get user again
+            try {
+              const user = await getCurrentUser();
+              const role = extractUserRole(user);
+
+              setState({
+                isLoading: false,
+                isAuthenticated: true,
+                user,
+                userRole: role,
+                accessToken,
+              });
+            } catch (refreshError) {
+              // Check if refresh also failed due to network
+              const isRefreshNetworkError = refreshError?.message?.includes('Network Error') || 
+                                          refreshError?.code === 'ERR_NETWORK' ||
+                                          refreshError?.response?.status === 0;
+              
+              if (isRefreshNetworkError) {
+                // For network errors during refresh, clear auth and continue
+                await clearAuthState();
+                setState((prev) => ({ ...prev, isLoading: false }));
+              } else {
+                // Refresh failed too, clear auth
+                await clearAuthState();
+                setState((prev) => ({ ...prev, isLoading: false }));
+              }
+            }
+          } else {
             await clearAuthState();
             setState((prev) => ({ ...prev, isLoading: false }));
           }
-        } else {
-          await clearAuthState();
-          setState((prev) => ({ ...prev, isLoading: false }));
         }
       }
     } catch (error) {
