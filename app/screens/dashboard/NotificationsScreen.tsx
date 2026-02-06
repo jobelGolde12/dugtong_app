@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   FlatList,
   Modal,
   ScrollView,
@@ -13,10 +12,8 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { notificationService } from '../../../lib/services/notificationService';
+import { useNotifications } from '../../../contexts/NotificationContext';
 import { Notification } from '../../../types/notification.types';
-
-const { width } = Dimensions.get('window');
 
 // Notification groups
 type NotificationGroup = {
@@ -27,18 +24,18 @@ type NotificationGroup = {
 const FILTER_OPTIONS = [
   { id: 'all', label: 'All', icon: 'apps' },
   { id: 'unread', label: 'Unread', icon: 'mail-unread' },
-  { id: 'mentions', label: 'Mentions', icon: 'at' },
-  { id: 'system', label: 'System', icon: 'notifications' },
-  { id: 'follows', label: 'Follows', icon: 'person-add' },
+  { id: 'System', label: 'System', icon: 'notifications' },
+  { id: 'Emergency', label: 'Emergency', icon: 'alert-circle' },
+  { id: 'Update', label: 'Update', icon: 'information-circle' },
 ];
 
-// ADDED: Modal component for notification details
 const NotificationModal: React.FC<{
   visible: boolean;
   notification: Notification | null;
   onClose: () => void;
   onMarkAsRead: (id: string) => Promise<void>;
-}> = ({ visible, notification, onClose, onMarkAsRead }) => {
+  onDelete: (id: string) => Promise<void>;
+}> = ({ visible, notification, onClose, onMarkAsRead, onDelete }) => {
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -49,9 +46,9 @@ const NotificationModal: React.FC<{
         tension: 50,
         friction: 7,
       }).start();
-      
+
       // Mark as read when modal opens
-      if (!notification.isRead) {
+      if (!notification.is_read) {
         onMarkAsRead(notification.id);
       }
     } else {
@@ -62,11 +59,9 @@ const NotificationModal: React.FC<{
   const getIconName = () => {
     if (!notification) return 'notifications';
     switch (notification.type) {
-      case 'mention': return 'at';
-      case 'system': return 'notifications';
-      case 'follow': return 'person-add';
-      case 'like': return 'heart';
-      case 'comment': return 'chatbubble';
+      case 'Emergency': return 'alert-circle';
+      case 'Update': return 'information-circle';
+      case 'System': return 'notifications';
       default: return 'notifications';
     }
   };
@@ -74,11 +69,9 @@ const NotificationModal: React.FC<{
   const getIconColor = () => {
     if (!notification) return '#6B7280';
     switch (notification.type) {
-      case 'mention': return '#3B82F6';
-      case 'system': return '#6B7280';
-      case 'follow': return '#10B981';
-      case 'like': return '#EF4444';
-      case 'comment': return '#8B5CF6';
+      case 'Emergency': return '#EF4444';
+      case 'Update': return '#3B82F6';
+      case 'System': return '#10B981';
       default: return '#6B7280';
     }
   };
@@ -139,7 +132,7 @@ const NotificationModal: React.FC<{
                 </View>
                 <View style={styles.modalHeaderText}>
                   <Text style={styles.modalTitle}>{notification.title}</Text>
-                  <Text style={styles.modalTime}>{formatDate(notification.createdAt)}</Text>
+                  <Text style={styles.modalTime}>{formatDate(notification.created_at)}</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
@@ -150,20 +143,16 @@ const NotificationModal: React.FC<{
             {/* Modal Body */}
             <View style={styles.modalBody}>
               <Text style={styles.modalMessage}>{notification.message}</Text>
-              
+
               {/* Action Buttons */}
               <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.modalActionButton}>
-                  <Ionicons name="arrow-redo" size={20} color="#3B82F6" />
-                  <Text style={styles.modalActionText}>Reply</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.modalActionButton}>
-                  <Ionicons name="archive" size={20} color="#6B7280" />
-                  <Text style={[styles.modalActionText, { color: '#6B7280' }]}>Archive</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.modalActionButton}>
+                <TouchableOpacity
+                  style={styles.modalActionButton}
+                  onPress={() => {
+                    onDelete(notification.id);
+                    onClose();
+                  }}
+                >
                   <Ionicons name="trash" size={20} color="#EF4444" />
                   <Text style={[styles.modalActionText, { color: '#EF4444' }]}>Delete</Text>
                 </TouchableOpacity>
@@ -176,78 +165,119 @@ const NotificationModal: React.FC<{
   );
 };
 
-const NotificationsScreen: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([]);
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  
-  const searchAnim = useRef(new Animated.Value(0)).current;
-  const headerAnim = useRef(new Animated.Value(1)).current;
+const NotificationItem: React.FC<{
+  notification: Notification;
+  onPress: () => void;
+  onMarkAsRead: (id: string) => Promise<void>;
+}> = ({ notification, onPress, onMarkAsRead }) => {
+  const handleActionPress = async () => {
+    await onMarkAsRead(notification.id);
+  };
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  useEffect(() => {
-    filterNotifications();
-  }, [notifications, activeFilter, searchQuery]);
-
-  const loadNotifications = async () => {
-    try {
-      setLoading(true);
-      const result = await notificationService.getNotifications({});
-      
-      // Group notifications by time (Today, Yesterday, Earlier)
-      const grouped = groupNotificationsByTime(result);
-      setNotifications(grouped);
-    } catch (error) {
-      console.error('Failed to load notifications:', error);
-    } finally {
-      setLoading(false);
+  const getIconName = () => {
+    switch (notification.type) {
+      case 'Emergency': return 'alert-circle';
+      case 'Update': return 'information-circle';
+      case 'System': return 'notifications';
+      default: return 'notifications';
     }
   };
 
-  const groupNotificationsByTime = (notifs: Notification[]): Notification[] => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    return notifs.map(notif => {
-      const notifDate = new Date(notif.createdAt);
-      
-      if (notifDate >= today) {
-        return { ...notif, group: 'Today' };
-      } else if (notifDate >= yesterday) {
-        return { ...notif, group: 'Yesterday' };
-      } else {
-        return { ...notif, group: 'Earlier' };
-      }
-    });
+  const getIconColor = () => {
+    switch (notification.type) {
+      case 'Emergency': return '#EF4444';
+      case 'Update': return '#3B82F6';
+      case 'System': return '#10B981';
+      default: return '#6B7280';
+    }
   };
 
-  const filterNotifications = () => {
+  return (
+    <TouchableOpacity
+      style={[styles.notificationItem, !notification.is_read && styles.notificationUnread]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.notificationIconContainer}>
+        <View style={[styles.notificationIcon, { backgroundColor: `${getIconColor()}15` }]}>
+          <Ionicons
+            name={getIconName() as any}
+            size={20}
+            color={getIconColor()}
+          />
+        </View>
+        {!notification.is_read && <View style={styles.unreadDot} />}
+      </View>
+
+      <View style={styles.notificationContent}>
+        <Text style={styles.notificationTitle} numberOfLines={1}>
+          {notification.title}
+        </Text>
+        <Text style={styles.notificationMessage} numberOfLines={2}>
+          {notification.message}
+        </Text>
+        <Text style={styles.notificationTime}>
+          {new Date(notification.created_at).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          })}
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.notificationAction}
+        onPress={handleActionPress}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons
+          name={notification.is_read ? 'ellipsis-horizontal' : 'checkmark-circle'}
+          size={20}
+          color={notification.is_read ? '#9CA3AF' : '#3B82F6'}
+        />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+};
+
+const NotificationsScreen: React.FC = () => {
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    loadNotifications,
+    markAllAsRead,
+    markAsRead,
+    deleteNotification
+  } = useNotifications();
+
+  // Local state for UI
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const searchAnim = useRef(new Animated.Value(0)).current;
+  const headerAnim = useRef(new Animated.Value(1)).current;
+
+  // Initial load
+  useEffect(() => {
+    // Context already loads notifications on mount, but we can trigger refresh here if needed
+    // loadNotifications(); 
+  }, []);
+
+  const filteredNotifications = useMemo(() => {
     let filtered = [...notifications];
 
     // Apply type filter
     if (activeFilter !== 'all') {
       filtered = filtered.filter(notif => {
-        switch (activeFilter) {
-          case 'unread': return !notif.isRead;
-          case 'mentions': return notif.type === 'mention';
-          case 'system': return notif.type === 'system';
-          case 'follows': return notif.type === 'follow';
-          default: return true;
-        }
+        if (activeFilter === 'unread') return !notif.is_read;
+        return notif.type === activeFilter;
       });
     }
 
-    // Apply search filter - UPDATED to be more robust
+    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(notif => {
@@ -257,26 +287,39 @@ const NotificationsScreen: React.FC = () => {
       });
     }
 
-    setFilteredNotifications(filtered);
-  };
+    return filtered;
+  }, [notifications, activeFilter, searchQuery]);
 
   const groupNotifications = (): NotificationGroup[] => {
     const groups: { [key: string]: Notification[] } = {};
-    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
     filteredNotifications.forEach(notif => {
-      const group = notif.group || 'Earlier';
+      const notifDate = new Date(notif.created_at);
+      let group = 'Earlier';
+
+      if (notifDate >= today) {
+        group = 'Today';
+      } else if (notifDate >= yesterday) {
+        group = 'Yesterday';
+      }
+
       if (!groups[group]) groups[group] = [];
       groups[group].push(notif);
     });
 
-    // Order: Today, Yesterday, Earlier
-    const orderedGroups = ['Today', 'Yesterday', 'Earlier'].filter(g => groups[g]);
-    
+    const orderedGroups = ['Today', 'Yesterday', 'Earlier'].filter(g => groups[g] && groups[g].length > 0);
+
     return orderedGroups.map(group => ({
       title: group,
       data: groups[group]
     }));
   };
+
+  const groups = groupNotifications();
 
   const toggleSearch = () => {
     if (showSearch) {
@@ -312,38 +355,12 @@ const NotificationsScreen: React.FC = () => {
     }
   };
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      await notificationService.markAllAsRead();
-      setNotifications(prev =>
-        prev.map(notif => ({ ...notif, isRead: true }))
-      );
-    } catch (error) {
-      console.error('Failed to mark all as read:', error);
-    }
-  };
-
-  const handleMarkAsRead = async (id: string) => {
-    try {
-      await notificationService.markAsRead(id);
-      setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === id ? { ...notif, isRead: true } : notif
-        )
-      );
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
-    }
-  };
-
-  // ADDED: Handle notification press
   const handleNotificationPress = (notification: Notification) => {
     setSelectedNotification(notification);
     setModalVisible(true);
-    
-    // Mark as read if unread
-    if (!notification.isRead) {
-      handleMarkAsRead(notification.id);
+
+    if (!notification.is_read) {
+      markAsRead(notification.id);
     }
   };
 
@@ -382,7 +399,7 @@ const NotificationsScreen: React.FC = () => {
     <NotificationItem
       notification={item}
       onPress={() => handleNotificationPress(item)}
-      onMarkAsRead={handleMarkAsRead}
+      onMarkAsRead={markAsRead}
     />
   );
 
@@ -396,20 +413,17 @@ const NotificationsScreen: React.FC = () => {
     </View>
   );
 
-  const groups = groupNotifications();
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* ADDED: Notification Modal */}
       <NotificationModal
         visible={modalVisible}
         notification={selectedNotification}
         onClose={() => setModalVisible(false)}
-        onMarkAsRead={handleMarkAsRead}
+        onMarkAsRead={markAsRead}
+        onDelete={deleteNotification}
       />
 
-      {/* Animated Header - UPDATED to always show search icon */}
+      {/* Animated Header */}
       <Animated.View style={[
         styles.header,
         {
@@ -432,20 +446,19 @@ const NotificationsScreen: React.FC = () => {
             )}
           </View>
           <View style={styles.headerActions}>
-            {/* Search button always visible */}
             <TouchableOpacity
               style={styles.headerButton}
               onPress={toggleSearch}
             >
-              <Ionicons 
-                name={showSearch ? "close" : "search"} 
-                size={22} 
-                color="#374151" 
+              <Ionicons
+                name={showSearch ? "close" : "search"}
+                size={22}
+                color="#374151"
               />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerButton}
-              onPress={handleMarkAllAsRead}
+              onPress={() => markAllAsRead()}
               disabled={unreadCount === 0}
             >
               <Ionicons
@@ -458,7 +471,7 @@ const NotificationsScreen: React.FC = () => {
         </View>
       </Animated.View>
 
-      {/* Search Bar - FIXED to always be in view when toggled */}
+      {/* Search Bar */}
       {showSearch && (
         <View style={styles.searchBarContainer}>
           <View style={styles.searchBar}>
@@ -480,7 +493,7 @@ const NotificationsScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Filter Chips - FIXED height */}
+      {/* Filter Chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -490,7 +503,7 @@ const NotificationsScreen: React.FC = () => {
       </ScrollView>
 
       {/* Notifications List */}
-      {loading ? (
+      {isLoading ? (
         <View style={styles.loadingContainer}>
           <Ionicons name="notifications" size={48} color="#E5E7EB" />
           <Text style={styles.loadingText}>Loading notifications...</Text>
@@ -514,6 +527,8 @@ const NotificationsScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={renderEmptyState}
+          refreshing={isLoading}
+          onRefresh={loadNotifications}
         />
       )}
 
@@ -521,7 +536,7 @@ const NotificationsScreen: React.FC = () => {
       {unreadCount > 0 && !showSearch && (
         <TouchableOpacity
           style={styles.fab}
-          onPress={handleMarkAllAsRead}
+          onPress={() => markAllAsRead()}
         >
           <View style={styles.fabContent}>
             <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
@@ -533,85 +548,6 @@ const NotificationsScreen: React.FC = () => {
         </TouchableOpacity>
       )}
     </SafeAreaView>
-  );
-};
-
-// UPDATED: NotificationItem component with onPress prop
-const NotificationItem: React.FC<{
-  notification: Notification;
-  onPress: () => void;
-  onMarkAsRead: (id: string) => Promise<void>;
-}> = ({ notification, onPress, onMarkAsRead }) => {
-  const handleActionPress = async () => {
-    await onMarkAsRead(notification.id);
-  };
-
-  const getIconName = () => {
-    switch (notification.type) {
-      case 'mention': return 'at';
-      case 'system': return 'notifications';
-      case 'follow': return 'person-add';
-      case 'like': return 'heart';
-      case 'comment': return 'chatbubble';
-      default: return 'notifications';
-    }
-  };
-
-  const getIconColor = () => {
-    switch (notification.type) {
-      case 'mention': return '#3B82F6';
-      case 'system': return '#6B7280';
-      case 'follow': return '#10B981';
-      case 'like': return '#EF4444';
-      case 'comment': return '#8B5CF6';
-      default: return '#6B7280';
-    }
-  };
-
-  return (
-    <TouchableOpacity
-      style={[styles.notificationItem, !notification.isRead && styles.notificationUnread]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.notificationIconContainer}>
-        <View style={[styles.notificationIcon, { backgroundColor: `${getIconColor()}15` }]}>
-          <Ionicons
-            name={getIconName() as any}
-            size={20}
-            color={getIconColor()}
-          />
-        </View>
-        {!notification.isRead && <View style={styles.unreadDot} />}
-      </View>
-
-      <View style={styles.notificationContent}>
-        <Text style={styles.notificationTitle} numberOfLines={1}>
-          {notification.title}
-        </Text>
-        <Text style={styles.notificationMessage} numberOfLines={2}>
-          {notification.message}
-        </Text>
-        <Text style={styles.notificationTime}>
-          {new Date(notification.createdAt).toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        style={styles.notificationAction}
-        onPress={handleActionPress}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Ionicons
-          name={notification.isRead ? 'ellipsis-horizontal' : 'checkmark-circle'}
-          size={20}
-          color={notification.isRead ? '#9CA3AF' : '#3B82F6'}
-        />
-      </TouchableOpacity>
-    </TouchableOpacity>
   );
 };
 
@@ -653,14 +589,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // FIXED: Search bar styles
   searchBarContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingTop: 44, // Safe area top padding + additional space
+    paddingTop: 44,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
     zIndex: 1000,
@@ -684,7 +619,6 @@ const styles = StyleSheet.create({
     color: '#111827',
     paddingVertical: 10,
   },
-  // FIXED: Filter chip height
   filterContainer: {
     paddingHorizontal: 16,
     paddingBottom: 16,
@@ -693,14 +627,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10, // Increased from 8 to 10
+    paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: '#F9FAFB',
     marginRight: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    height: 40, // Added fixed height
-    minWidth: 80, // Added minimum width
+    height: 40,
+    minWidth: 80,
   },
   filterChipActive: {
     backgroundColor: '#3B82F6',
@@ -716,6 +650,9 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: '#FFFFFF',
+  },
+  listContent: {
+    paddingBottom: 100,
   },
   groupContainer: {
     marginBottom: 24,
@@ -798,56 +735,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     marginHorizontal: 16,
   },
-  listContent: {
-    paddingTop: 8,
-    paddingBottom: 100,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 40,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 100,
   },
   loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 100,
+  },
+  emptyStateTitle: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  emptyStateSubtitle: {
+    marginTop: 8,
     fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 12,
+    color: '#6B7280',
   },
   fab: {
     position: 'absolute',
     bottom: 24,
     right: 16,
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B82F6',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   fabContent: {
     flexDirection: 'row',
@@ -855,26 +785,22 @@ const styles = StyleSheet.create({
   },
   fabText: {
     color: '#FFFFFF',
-    fontSize: 14,
     fontWeight: '600',
+    fontSize: 16,
     marginLeft: 8,
   },
   fabBadge: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: 6,
+    paddingVertical: 2,
     marginLeft: 8,
   },
   fabBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
+    color: '#3B82F6',
+    fontSize: 12,
     fontWeight: '700',
   },
-  // ADDED: Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -884,16 +810,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingBottom: 34,
-    maxHeight: '85%',
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    minHeight: 300,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    marginBottom: 24,
   },
   modalIconContainer: {
     flexDirection: 'row',
@@ -913,7 +840,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
@@ -923,35 +850,33 @@ const styles = StyleSheet.create({
   },
   modalCloseButton: {
     padding: 4,
-    marginLeft: 12,
   },
   modalBody: {
-    padding: 20,
+    marginBottom: 24,
   },
   modalMessage: {
     fontSize: 16,
+    color: '#4B5563',
     lineHeight: 24,
-    color: '#374151',
-    marginBottom: 32,
+    marginBottom: 24,
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
+    justifyContent: 'flex-end',
+    gap: 12,
   },
   modalActionButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
-    minWidth: 100,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
   },
   modalActionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
-    marginTop: 6,
+    marginLeft: 8,
   },
 });
 

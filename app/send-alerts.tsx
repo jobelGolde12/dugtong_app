@@ -36,6 +36,7 @@ import Animated, {
   useSharedValue,
   withSpring
 } from 'react-native-reanimated';
+import { alertApi } from '../api/alerts';
 import { useTheme } from '../contexts/ThemeContext';
 import SafeScrollView from '../lib/SafeScrollView';
 import { ThemeColors } from '../types/theme';
@@ -51,7 +52,7 @@ const FormCard: React.FC<{
   styles: any;
 }> = ({ children, title, icon, style, styles }) => {
   return (
-    <Animated.View 
+    <Animated.View
       entering={FadeInDown.duration(500)}
       style={[
         styles.formCard,
@@ -85,12 +86,12 @@ const FormInput: React.FC<{
   required?: boolean;
   styles: any;
   colors: ThemeColors;
-}> = ({ 
-  label, 
-  placeholder, 
-  value, 
-  onChangeText, 
-  multiline = false, 
+}> = ({
+  label,
+  placeholder,
+  value,
+  onChangeText,
+  multiline = false,
   numberOfLines = 1,
   icon,
   error,
@@ -98,68 +99,68 @@ const FormInput: React.FC<{
   styles,
   colors
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const scale = useSharedValue(1);
+    const [isFocused, setIsFocused] = useState(false);
+    const scale = useSharedValue(1);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
 
-  const handleFocus = () => {
-    setIsFocused(true);
-    scale.value = withSpring(1.02);
-  };
+    const handleFocus = () => {
+      setIsFocused(true);
+      scale.value = withSpring(1.02);
+    };
 
-  const handleBlur = () => {
-    setIsFocused(false);
-    scale.value = withSpring(1);
-  };
+    const handleBlur = () => {
+      setIsFocused(false);
+      scale.value = withSpring(1);
+    };
 
-  return (
-    <View style={styles.formInputContainer}>
-      <View style={styles.formLabelContainer}>
-        <Text style={styles.formLabel}>
-          {label}
-          {required && <Text style={styles.requiredStar}> *</Text>}
-        </Text>
-      </View>
-      
-      <Animated.View style={[
-        styles.formInputWrapper,
-        animatedStyle,
-        isFocused && styles.formInputFocused,
-        error && styles.formInputError,
-      ]}>
-        {icon && (
-          <View style={styles.formInputIcon}>
-            {icon}
-          </View>
+    return (
+      <View style={styles.formInputContainer}>
+        <View style={styles.formLabelContainer}>
+          <Text style={styles.formLabel}>
+            {label}
+            {required && <Text style={styles.requiredStar}> *</Text>}
+          </Text>
+        </View>
+
+        <Animated.View style={[
+          styles.formInputWrapper,
+          animatedStyle,
+          isFocused && styles.formInputFocused,
+          error && styles.formInputError,
+        ]}>
+          {icon && (
+            <View style={styles.formInputIcon}>
+              {icon}
+            </View>
+          )}
+          <RNTextInput
+            style={[
+              styles.formInput,
+              multiline && styles.formInputMultiline,
+              icon && styles.formInputWithIcon,
+            ]}
+            placeholder={placeholder}
+            placeholderTextColor={colors.disabled}
+            value={value}
+            onChangeText={onChangeText}
+            multiline={multiline}
+            numberOfLines={multiline ? numberOfLines : 1}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+          />
+        </Animated.View>
+
+        {error && (
+          <Animated.Text entering={FadeIn} style={styles.formError}>
+            {error}
+          </Animated.Text>
         )}
-        <RNTextInput
-          style={[
-            styles.formInput,
-            multiline && styles.formInputMultiline,
-            icon && styles.formInputWithIcon,
-          ]}
-          placeholder={placeholder}
-          placeholderTextColor={colors.disabled}
-          value={value}
-          onChangeText={onChangeText}
-          multiline={multiline}
-          numberOfLines={multiline ? numberOfLines : 1}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-        />
-      </Animated.View>
-      
-      {error && (
-        <Animated.Text entering={FadeIn} style={styles.formError}>
-          {error}
-        </Animated.Text>
-      )}
-    </View>
-  );
-};
+      </View>
+    );
+  };
 
 const FormSelect: React.FC<{
   label: string;
@@ -193,7 +194,7 @@ const FormSelect: React.FC<{
           {required && <Text style={styles.requiredStar}> *</Text>}
         </Text>
       </View>
-      
+
       <TouchableOpacity
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -266,7 +267,7 @@ const FormDatePicker: React.FC<{
           {required && <Text style={styles.requiredStar}> *</Text>}
         </Text>
       </View>
-      
+
       <TouchableOpacity
         onPress={() => setShowPicker(true)}
         onPressIn={handlePressIn}
@@ -343,7 +344,7 @@ const FormCheckbox: React.FC<{
           )}
         </View>
       </Animated.View>
-      
+
       <View style={styles.checkboxContent}>
         <Text style={styles.checkboxLabel}>{label}</Text>
         {description && (
@@ -416,7 +417,7 @@ const Chip: React.FC<{
 const CreateAlertsScreen: React.FC = () => {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     title: '',
@@ -435,13 +436,13 @@ const CreateAlertsScreen: React.FC = () => {
   const [showAudienceModal, setShowAudienceModal] = useState(false);
 
   const audienceOptions = [
-    { id: 'all', label: 'All Donors', icon: <Globe size={16} color={colors.textSecondary}/> },
-    { id: 'blood_a', label: 'Blood Type A', icon: <Target size={16} color={colors.textSecondary}/> },
-    { id: 'blood_b', label: 'Blood Type B', icon: <Target size={16} color={colors.textSecondary}/> },
-    { id: 'blood_o', label: 'Blood Type O', icon: <Target size={16} color={colors.textSecondary}/> },
-    { id: 'blood_ab', label: 'Blood Type AB', icon: <Target size={16} color={colors.textSecondary}/> },
-    { id: 'available', label: 'Available Donors', icon: <Users size={16} color={colors.textSecondary}/> },
-    { id: 'location', label: 'Specific Location', icon: <MapPin size={16} color={colors.textSecondary}/> },
+    { id: 'all', label: 'All Donors', icon: <Globe size={16} color={colors.textSecondary} /> },
+    { id: 'blood_a', label: 'Blood Type A', icon: <Target size={16} color={colors.textSecondary} /> },
+    { id: 'blood_b', label: 'Blood Type B', icon: <Target size={16} color={colors.textSecondary} /> },
+    { id: 'blood_o', label: 'Blood Type O', icon: <Target size={16} color={colors.textSecondary} /> },
+    { id: 'blood_ab', label: 'Blood Type AB', icon: <Target size={16} color={colors.textSecondary} /> },
+    { id: 'available', label: 'Available Donors', icon: <Users size={16} color={colors.textSecondary} /> },
+    { id: 'location', label: 'Specific Location', icon: <MapPin size={16} color={colors.textSecondary} /> },
   ];
 
   const alertTypes = [
@@ -463,7 +464,7 @@ const CreateAlertsScreen: React.FC = () => {
       ...prev,
       [field]: value
     }));
-    
+
     // Clear error for this field
     if (errors[field]) {
       setErrors(prev => {
@@ -521,11 +522,19 @@ const CreateAlertsScreen: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await alertApi.createAlert({
+        title: formData.title,
+        message: formData.message,
+        alert_type: formData.alertType,
+        priority: formData.priority,
+        target_audience: formData.targetAudience,
+        location: formData.location || undefined,
+        schedule_at: formData.sendNow ? undefined : formData.scheduleDate.toISOString(),
+        send_now: formData.sendNow,
+      });
+
       Alert.alert(
         'Success!',
         `Alert "${formData.title}" has been created successfully.`,
@@ -537,13 +546,13 @@ const CreateAlertsScreen: React.FC = () => {
           },
           {
             text: 'View Alerts',
-            onPress: () => {},
+            onPress: () => { },
             style: 'cancel'
           }
         ]
       );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create alert. Please try again.');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create alert. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -568,11 +577,11 @@ const CreateAlertsScreen: React.FC = () => {
     if (formData.targetAudience.length === 0) {
       return 'Select target audience';
     }
-    
+
     if (formData.targetAudience.includes('all')) {
       return 'All Donors';
     }
-    
+
     const count = formData.targetAudience.length;
     return `${count} audience${count > 1 ? 's' : ''} selected`;
   };
@@ -591,7 +600,7 @@ const CreateAlertsScreen: React.FC = () => {
         bounces={true}
       >
         {/* Header */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInDown.duration(500)}
           style={styles.header}
         >
@@ -608,8 +617,8 @@ const CreateAlertsScreen: React.FC = () => {
               </View>
             </View>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.draftButton}
             onPress={resetForm}
           >
@@ -707,7 +716,7 @@ const CreateAlertsScreen: React.FC = () => {
             icon={<Target size={20} color={colors.disabled} />}
             required
           />
-          
+
           {errors.targetAudience && (
             <Animated.Text entering={FadeIn} style={styles.formError}>
               {errors.targetAudience}
@@ -779,7 +788,7 @@ const CreateAlertsScreen: React.FC = () => {
           </View>
 
           {!formData.sendNow && (
-            <Animated.View 
+            <Animated.View
               entering={FadeInDown}
               style={styles.scheduleDateContainer}
             >
@@ -823,7 +832,7 @@ const CreateAlertsScreen: React.FC = () => {
         </FormCard>
 
         {/* Action Buttons */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp.delay(300).duration(500)}
           style={styles.actionButtons}
         >
@@ -834,7 +843,7 @@ const CreateAlertsScreen: React.FC = () => {
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[
               styles.submitButton,
@@ -896,10 +905,10 @@ const CreateAlertsScreen: React.FC = () => {
                   <View style={styles.audienceOptionContent}>
                     <Text style={styles.audienceOptionLabel}>{audience.label}</Text>
                     <Text style={styles.audienceOptionDescription}>
-                      {audience.id === 'all' ? 'Send to all registered donors' : 
-                       audience.id.includes('blood') ? 'Send to donors with specific blood type' :
-                       audience.id === 'available' ? 'Send only to currently available donors' :
-                       'Send to donors in specific locations'}
+                      {audience.id === 'all' ? 'Send to all registered donors' :
+                        audience.id.includes('blood') ? 'Send to donors with specific blood type' :
+                          audience.id === 'available' ? 'Send only to currently available donors' :
+                            'Send to donors in specific locations'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -916,7 +925,7 @@ const CreateAlertsScreen: React.FC = () => {
               >
                 <Text style={styles.modalSelectAllText}>Select All Donors</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.modalDoneButton}
                 onPress={() => setShowAudienceModal(false)}

@@ -1,7 +1,7 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getApiErrorMessage } from '../api/client';
 import * as notificationsApi from '../api/notifications';
-import { Notification } from '../api/notifications';
+import { Notification } from '../types/notification.types';
 
 // ==================== Types ====================
 
@@ -14,7 +14,7 @@ interface NotificationState {
 }
 
 interface NotificationContextValue extends NotificationState {
-  loadNotifications: (filters?: notificationsApi.NotificationFilter) => Promise<void>;
+  loadNotifications: (filters?: NotificationFilter) => Promise<void>;
   refreshNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
@@ -47,7 +47,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   }, []);
 
   // Load notifications
-  const loadNotifications = useCallback(async (filters?: notificationsApi.NotificationFilter) => {
+  const loadNotifications = useCallback(async (filters?: NotificationFilter) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -176,11 +176,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
 export const useNotifications = (): NotificationContextValue => {
   const context = useContext(NotificationContext);
-  
+
   if (context === undefined) {
     throw new Error('useNotifications must be used within a NotificationProvider');
   }
-  
+
   return context;
 };
 
