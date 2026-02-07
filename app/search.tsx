@@ -494,7 +494,7 @@ export default function FindDonorScreen() {
                   Available Donors
                 </Text>
                 <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
-                  {donors.length} {donors.length === 1 ? 'donor' : 'donors'} found
+                  {donors?.length || 0} {(donors?.length || 0) === 1 ? 'donor' : 'donors'} found
                 </Text>
               </View>
               <TouchableOpacity style={styles.sortButton}>
@@ -516,7 +516,7 @@ export default function FindDonorScreen() {
             ) : (
               /* Results List */
               <FlatList
-                data={donors}
+                data={donors || []}
                 renderItem={renderDonorItem}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}

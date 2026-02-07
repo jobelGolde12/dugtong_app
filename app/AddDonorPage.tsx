@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SafeScrollView from '../lib/SafeScrollView';
+import { createDonorRegistration } from '../api/donor-registrations';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const MUNICIPALITIES = [
@@ -92,6 +93,7 @@ export default function AddDonorPage() {
 
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions>({ width: 0, height: 0 });
   const [containerHeight, setContainerHeight] = useState(0);
+  const [isLoading, setIsLoading] = useState(false); // Moved here
 
   useEffect(() => {
     try {
@@ -214,41 +216,36 @@ export default function AddDonorPage() {
       return;
     }
 
-    try {
-      const donorData = {
-        fullName: formData.fullName,
-        age: formData.age,
-        sex: formData.sex,
-        bloodType: formData.bloodType,
-        contactNumber: formData.contactNumber,
-        municipality: formData.municipality,
-        availabilityStatus: formData.availabilityStatus,
-        synced: false,
-        created_at: new Date().toISOString()
-      };
+    setIsLoading(true);
 
-      // Get existing donors or create new array
-      const existingDonors = await AsyncStorage.getItem('adminDonors');
-      let donorsArray = existingDonors ? JSON.parse(existingDonors) : [];
-      donorsArray.push(donorData);
-      
-      await AsyncStorage.setItem('adminDonors', JSON.stringify(donorsArray));
-      
+    try {
+      await createDonorRegistration({
+        full_name: formData.fullName,
+        age: Number(formData.age),
+        sex: formData.sex as 'Male' | 'Female',
+        blood_type: formData.bloodType,
+        contact_number: formData.contactNumber,
+        municipality: formData.municipality,
+        availability_status: formData.availabilityStatus as 'Available' | 'Temporarily Unavailable',
+      });
+
       Alert.alert(
-        'Donor Added Successfully 🎉',
-        `${formData.fullName} has been added to the system.`,
+        'Registration Submitted! 🎉',
+        `${formData.fullName}, your registration has been submitted for review.`,
         [
-          { 
-            text: 'OK', 
+          {
+            text: 'OK',
             onPress: () => {
               router.back();
-            }
-          }
+            },
+          },
         ]
       );
-    } catch (error) {
-      console.error('Error adding donor:', error);
-      Alert.alert('Error', 'Failed to add donor. Please try again.');
+    } catch (error: any) {
+      console.error('Error submitting registration:', error);
+      Alert.alert('Error', error.message || 'Failed to submit registration. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

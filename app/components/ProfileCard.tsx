@@ -16,7 +16,7 @@ interface ProfileCardProps extends ProfileInfo {
   onEditPress?: () => void;
 }
 
-const ProfileCard: React.FC<ProfileCardProps> = memo(({
+const ProfileCard: React.FC<ProfileCardProps> = ({
   name,
   email,
   initials,
@@ -91,7 +91,7 @@ const ProfileCard: React.FC<ProfileCardProps> = memo(({
       </View>
     </TouchableOpacity>
   );
-});
+};
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -164,4 +164,4 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
 });
 
-export default ProfileCard;
+export default memo(ProfileCard);

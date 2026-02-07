@@ -3,8 +3,11 @@ import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 
 // Environment configuration
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+import Constants from "expo-constants";
+
+// Base URL configuration
+const API_BASE_URL = "https://backend-blood-donor-api.onrender.com/api/v1";
+console.log("🚀 [API Config] API_BASE_URL:", API_BASE_URL);
 
 // Create axios instance
 export const apiClient = axios.create({
@@ -107,105 +110,10 @@ apiClient.interceptors.response.use(
     };
 
     // Check if it's a network error
-    const isNetworkError = error?.message?.includes('Network Error') || 
-                         error?.code === 'ERR_NETWORK' ||
-                         error?.response?.status === 0;
-    
-    // For network errors, return mock responses for certain endpoints to prevent blocking the app
-    if (isNetworkError) {
-      const url = originalRequest?.url || '';
-      
-      // Mock response for user profile endpoint
-      if (url.includes('/users/me')) {
-        return Promise.resolve({
-          data: null,
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config: originalRequest,
-        });
-      }
-      
-      // Mock response for user preferences endpoint
-      if (url.includes('/users/me/preferences')) {
-        return Promise.resolve({
-          data: {
-            theme_mode: 'system',
-            notifications_enabled: true,
-            email_notifications: true,
-            sms_notifications: false,
-            language: 'en',
-          },
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config: originalRequest,
-        });
-      }
-      
-      // Mock response for notifications endpoint
-      if (url.includes('/notifications')) {
-        // Determine which notification endpoint is being called
-        if (url.includes('/unread-count')) {
-          return Promise.resolve({
-            data: { unread_count: 0 },
-            status: 200,
-            statusText: 'OK',
-            headers: {},
-            config: originalRequest,
-          });
-        } else if (url.includes('/read-all') || url.includes('/read')) {
-          return Promise.resolve({
-            data: {},
-            status: 200,
-            statusText: 'OK',
-            headers: {},
-            config: originalRequest,
-          });
-        } else {
-          return Promise.resolve({
-            data: {
-              items: [],
-              total: 0,
-              page: 1,
-              page_size: 10,
-              unread_count: 0,
-            },
-            status: 200,
-            statusText: 'OK',
-            headers: {},
-            config: originalRequest,
-          });
-        }
-      }
-      
-      // Mock response for donors endpoint
-      if (url.includes('/donors')) {
-        return Promise.resolve({
-          data: {
-            items: [],  // The donor API expects 'items' property
-            total: 0,
-            page: 1,
-            page_size: 10,
-          },
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config: originalRequest,
-        });
-      }
-      
-      // For other network errors, return a generic response to prevent blocking
-      return Promise.resolve({
-        data: {},
-        status: 200,
-        statusText: 'OK',
-        headers: {},
-        config: originalRequest,
-      });
-    }
+    const isNetworkError = error?.message?.includes('Network Error') ||
+      error?.code === 'ERR_NETWORK' ||
+      error?.response?.status === 0;
 
-    // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -232,12 +140,12 @@ apiClient.interceptors.response.use(
         // Retry original request with new access token
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return apiClient(originalRequest);
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         // Check if refresh also failed due to network
-        const isRefreshNetworkError = refreshError?.message?.includes('Network Error') || 
-                                    refreshError?.code === 'ERR_NETWORK' ||
-                                    refreshError?.response?.status === 0;
-        
+        const isRefreshNetworkError = refreshError?.message?.includes('Network Error') ||
+          refreshError?.code === 'ERR_NETWORK' ||
+          refreshError?.response?.status === 0;
+
         if (isRefreshNetworkError) {
           // For network errors during refresh, clear tokens and continue without blocking
           await clearTokens();

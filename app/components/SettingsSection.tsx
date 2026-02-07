@@ -10,7 +10,7 @@ interface SettingsSectionProps {
   testID?: string;
 }
 
-const SettingsSection: React.FC<SettingsSectionProps> = memo(({
+const SettingsSection: React.FC<SettingsSectionProps> = ({
   title,
   description,
   children,
@@ -39,7 +39,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = memo(({
       </View>
     </View>
   );
-});
+};
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {

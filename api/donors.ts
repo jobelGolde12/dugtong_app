@@ -21,14 +21,35 @@ export const donorApi = {
       if (filter.bloodType) params.append("blood_type", filter.bloodType);
       if (filter.municipality) params.append("municipality", filter.municipality);
       if (filter.availability !== null && filter.availability !== undefined) {
-        params.append("availability", filter.availability ? "true" : "false");
+        params.append("availability", filter.availability);
       }
-      if (filter.searchQuery) params.append("q", filter.searchQuery);
-      if (filter.page) params.append("page", filter.page.toString());
-      if (filter.page_size) params.append("page_size", filter.page_size.toString());
+      if (filter.searchQuery) params.append("search", filter.searchQuery);
+      if (filter.page) params.append("skip", filter.page.toString());
+      if (filter.page_size) params.append("limit", filter.page_size.toString());
 
-      const response = await apiClient.get<GetDonorsResponse>(`/donors?${params.toString()}`);
-      return response.data;
+      const response = await apiClient.get<any[]>(`/donors?${params.toString()}`);
+      
+      // Transform backend response to frontend format
+      const transformedDonors: Donor[] = response.data.map((backendDonor: any) => ({
+        id: backendDonor.id.toString(),
+        name: backendDonor.full_name,
+        age: backendDonor.age,
+        sex: '', // Backend doesn't provide sex field
+        bloodType: backendDonor.blood_type,
+        contactNumber: backendDonor.contact_number,
+        municipality: backendDonor.municipality,
+        availabilityStatus: backendDonor.availability === 'available' ? 'Available' : 'Temporarily Unavailable',
+        lastDonationDate: undefined, // Backend doesn't provide this field
+        dateRegistered: backendDonor.created_at,
+        notes: '', // Backend doesn't provide this field
+      }));
+
+      return {
+        items: transformedDonors,
+        total: transformedDonors.length,
+        page: filter.page || 0,
+        page_size: filter.page_size || 50,
+      };
     } catch (error) {
       throw new Error(getApiErrorMessage(error));
     }

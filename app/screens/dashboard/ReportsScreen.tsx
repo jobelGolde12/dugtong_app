@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from '../../../contexts/ThemeContext';
-import { reportService } from '../../../lib/services/reportService';
+import { reportsApi } from '../../../api/reports';
 import type {
   AvailabilityTrend,
   BloodTypeDistribution,
@@ -212,10 +212,10 @@ const ReportsScreen: React.FC = () => {
 
       // Load all report data
       const [summary, bloodType, monthly, trend] = await Promise.all([
-        reportService.getReportSummary(),
-        reportService.getBloodTypeDistribution(),
-        reportService.getMonthlyDonationData(),
-        reportService.getAvailabilityTrend()
+        reportsApi.getSummary(),
+        reportsApi.getBloodTypeDistribution(),
+        reportsApi.getMonthlyDonations(),
+        reportsApi.getAvailabilityTrend(),
       ]);
 
       setReportSummary(summary);

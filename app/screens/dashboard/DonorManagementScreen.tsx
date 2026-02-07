@@ -1107,14 +1107,10 @@ const DonorManagementScreen: React.FC = () => {
       // Actually `api/donors.ts` takes `availability: boolean | null`.
       // I will proceed with fetching and setting state.
 
-      let availabilityBool: boolean | undefined = undefined;
-      if (filters.availability === 'Available') availabilityBool = true;
-      if (filters.availability === 'Temporarily Unavailable' || filters.availability === 'Recently Donated') availabilityBool = false;
-
       const result = await donorApi.getDonors({
         bloodType: filters.bloodType || null,
         municipality: filters.municipality || null,
-        availability: availabilityBool,
+        availability: filters.availability,
         searchQuery: filters.searchQuery,
       });
       setDonors(result.items);

@@ -15,12 +15,33 @@ export interface Donor {
 export interface DonorFilter {
   bloodType: string | null;
   municipality: string | null;
-  availability: boolean | null;
+  availability: string | null;
   searchQuery: string;
 }
 
 export interface SearchParams {
   bloodType: string;
-  municipality?: string;
-  available?: boolean;
-}
+    municipality?: string;
+    available?: boolean;
+  }
+  
+  export interface DonorRegistration {
+    id: string;
+    full_name: string;
+    contact_number: string;
+    age: number;
+    blood_type: string;
+    municipality: string;
+    status: 'pending' | 'approved' | 'rejected';
+    created_at: string;
+  }
+  
+  export interface CreateDonorRegistrationRequest {
+    full_name: string;
+    contact_number: string;
+    age: number;
+    blood_type: string;
+    municipality: string;
+    availability: string;
+  }
+  

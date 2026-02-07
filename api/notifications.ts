@@ -60,16 +60,8 @@ export const markAsRead = async (id: string): Promise<Notification> => {
 /**
  * Mark multiple or all notifications as read
  */
-export const markAllAsRead = async (
-  notificationIds?: string[],
-): Promise<void> => {
-  if (notificationIds && notificationIds.length > 0) {
-    await apiClient.patch("/notifications/read", {
-      notification_ids: notificationIds,
-    });
-  } else {
+export const markAllAsRead = async (): Promise<void> => {
     await apiClient.patch("/notifications/read-all");
-  }
 };
 
 /**

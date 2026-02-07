@@ -1036,7 +1036,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '400',
     lineHeight: 24,
     color: colors.text,
-    fontWeight: '500',
   },
   requiredStar: {
     color: colors.error,
@@ -1117,7 +1116,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '400',
     lineHeight: 24,
     color: colors.text,
-    fontWeight: '500',
     marginBottom: 8,
   },
   chipsContainer: {

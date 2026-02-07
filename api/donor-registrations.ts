@@ -90,7 +90,7 @@ export const updateDonorRegistrationStatus = async (
   status: 'approved' | 'rejected',
 ): Promise<DonorRegistrationResponse> => {
   const response = await apiClient.patch<DonorRegistrationResponse>(
-    `/donor-registrations/${id}/status`,
+    `/donor-registrations/${id}`,
     { status },
   );
   return response.data;

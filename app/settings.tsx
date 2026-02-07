@@ -15,7 +15,7 @@ import ProfileCard from './components/ProfileCard';
 import ThemeOption from './components/ThemeOption';
 import { useSettings } from '../hooks/useSettings';
 
-const SettingsScreen: React.FC = memo(() => {
+function SettingsScreen() {
   const { mode, setTheme, colors, isDark } = useTheme();
   const {
     profile,
@@ -97,7 +97,7 @@ const SettingsScreen: React.FC = memo(() => {
       </SafeAreaView>
     </DashboardLayout>
   );
-});
+}
 
 const createStyles = (colors: any) =>
   StyleSheet.create({
@@ -136,4 +136,4 @@ const createStyles = (colors: any) =>
     },
   });
 
-export default SettingsScreen;
+export default memo(SettingsScreen);

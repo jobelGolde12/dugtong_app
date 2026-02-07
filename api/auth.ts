@@ -122,8 +122,11 @@ export const decodeToken = (token: string): Record<string, unknown> | null => {
 /**
  * Get user role from token
  */
-export const getUserRole = (): "admin" | "donor" | null => {
-  const token = localStorage.getItem("access_token");
+/**
+ * Get user role from storage
+ */
+export const getUserRoleFromStorage = async (): Promise<"admin" | "donor" | null> => {
+  const token = await getAccessToken();
   if (!token) return null;
 
   const decoded = decodeToken(token);

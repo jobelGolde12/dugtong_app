@@ -16,7 +16,7 @@ interface ThemeOptionProps {
   isLast?: boolean;
 }
 
-const ThemeOption: React.FC<ThemeOptionProps> = memo(({
+const ThemeOption: React.FC<ThemeOptionProps> = ({
   option,
   isActive,
   onPress,
@@ -57,7 +57,7 @@ const ThemeOption: React.FC<ThemeOptionProps> = memo(({
       </View>
     </TouchableOpacity>
   );
-});
+};
 
 const createStyles = (colors: any, isActive: boolean, isLast: boolean) =>
   StyleSheet.create({

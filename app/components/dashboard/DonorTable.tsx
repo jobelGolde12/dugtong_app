@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { Donor } from '../../types/donor.types';
+import { Donor } from '../../../types/donor.types';
 
 interface DonorTableProps {
   donors: Donor[];
