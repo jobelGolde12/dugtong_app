@@ -2,6 +2,7 @@ import React, { createContext, ReactNode, useCallback, useContext, useEffect, us
 import { getApiErrorMessage } from '../api/client';
 import { getUserPreferences, getUserProfile, updateUserPreferences, updateUserProfile } from '../api/users';
 import { UserPreferences, UserProfile } from '../types/user.types';
+import { useAuth } from './AuthContext';
 
 // ==================== Types ====================
 
@@ -31,6 +32,7 @@ interface UserProviderProps {
 }
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [state, setState] = useState<UserState>({
     user: null,
     preferences: null,
@@ -39,13 +41,17 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     error: null,
   });
 
-  // Load user data on mount
+  // Load user data when authenticated
   useEffect(() => {
-    loadUser();
-  }, []);
+    if (!authLoading && isAuthenticated) {
+      loadUser();
+    }
+  }, [isAuthenticated, authLoading]);
 
   // Load user profile and preferences
   const loadUser = useCallback(async () => {
+    if (!isAuthenticated) return;
+
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -63,15 +69,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error loading user:', error);
       const errorMessage = getApiErrorMessage(error);
-      const isAuthError = errorMessage.toLowerCase().includes('not authenticated');
 
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: isAuthError ? null : errorMessage,
+        error: errorMessage,
       }));
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Update user profile
   const updateProfile = useCallback(async (data: Partial<UserProfile>) => {

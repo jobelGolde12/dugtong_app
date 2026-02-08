@@ -1,4 +1,4 @@
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/node";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 

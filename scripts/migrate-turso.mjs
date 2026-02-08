@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/node";
 
 const databaseUrl =
   process.env.EXPO_PUBLIC_TURSO_DATABASE_URL ||
