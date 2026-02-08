@@ -10,7 +10,10 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "turso:migrate": "node scripts/migrate-turso.mjs",
-    "turso:seed": "node scripts/seed-turso.mjs"
+    "turso:seed": "node scripts/seed-turso.mjs",
+    "db:diagnose": "npx tsx scripts/diagnose.ts",
+    "db:test-notifications": "npx tsx scripts/test-notifications.ts",
+    "verify:fix": "./scripts/verify-fix.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

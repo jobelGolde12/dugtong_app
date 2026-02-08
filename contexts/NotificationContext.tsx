@@ -1,8 +1,7 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getApiErrorMessage } from '../api/client';
 import * as notificationsApi from '../api/notifications';
-import { Notification } from '../types/notification.types';
-import { useAuth } from './AuthContext';
+import { Notification, NotificationFilter } from '../types/notification.types';
 
 // ==================== Types ====================
 
@@ -34,7 +33,6 @@ interface NotificationProviderProps {
 }
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [state, setState] = useState<NotificationState>({
     notifications: [],
     unreadCount: 0,
@@ -43,12 +41,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     error: null,
   });
 
-  // Load notifications on mount with error handling - only when authenticated
+  // Load notifications on mount
   useEffect(() => {
-    if (isAuthenticated && !isAuthLoading) {
-      loadNotifications();
-    }
-  }, [isAuthenticated, isAuthLoading]);
+    loadNotifications();
+  }, []);
 
   // Load notifications
   const loadNotifications = useCallback(async (filters?: NotificationFilter) => {
