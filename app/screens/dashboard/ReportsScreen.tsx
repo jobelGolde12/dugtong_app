@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Dimensions,
   Modal,
   Platform,
   ScrollView,
@@ -22,6 +21,7 @@ import type {
   ReportSummary
 } from '../../../types/report.types';
 import LoadingIndicator from '../../components/dashboard/LoadingIndicator';
+import StatsGrid from '../../components/dashboard/StatsGrid';
 
 // ========== TypeScript Interfaces ==========
 
@@ -32,40 +32,14 @@ interface FilterState {
   searchQuery: string;
 }
 
-interface StatCardProps {
-  title: string;
-  value: number | string;
-  subtitle: string;
-  color: string;
-  icon: string;
-}
+
 
 interface AvailabilityOption {
   label: string;
   value: string;
 }
 
-// ========== Reusable Components ==========
-const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color, icon }) => {
-  const { colors } = useTheme();
-  
-  return (
-    <TouchableOpacity 
-      style={[styles.statCard, { backgroundColor: colors.surface }]}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.statIconContainer, { backgroundColor: colors.primary + '20' }]}>
-        <Ionicons name={icon as any} size={24} color={color} />
-      </View>
-      <View style={styles.statContent}>
-        <Text style={[styles.statValue, { color: colors.text }]}>{value.toLocaleString()}</Text>
-        <Text style={[styles.statTitle, { color: colors.text }]}>{title}</Text>
-        <Text style={[styles.statSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
-      </View>
-      <View style={[styles.statIndicator, { backgroundColor: color + '20' }]} />
-    </TouchableOpacity>
-  );
-};
+
 
 const ChartPlaceholder: React.FC<{ title: string; dataPoints: number }> = ({ title, dataPoints }) => {
   const { colors } = useTheme();
@@ -168,9 +142,7 @@ const ReportsScreen: React.FC = () => {
   const router = useRouter();
   const { colors } = useTheme();
   const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
-  const [bloodTypeData, setBloodTypeData] = useState<BloodTypeDistribution[]>([]);
-  const [monthlyData, setMonthlyData] = useState<MonthlyDonationData[]>([]);
-  const [availabilityTrend, setAvailabilityTrend] = useState<AvailabilityTrend[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     bloodType: null,
@@ -211,17 +183,11 @@ const ReportsScreen: React.FC = () => {
       setLoading(true);
 
       // Load all report data
-      const [summary, bloodType, monthly, trend] = await Promise.all([
+      const [summary] = await Promise.all([
         reportsApi.getSummary(),
-        reportsApi.getBloodTypeDistribution(),
-        reportsApi.getMonthlyDonations(),
-        reportsApi.getAvailabilityTrend(),
       ]);
 
       setReportSummary(summary);
-      setBloodTypeData(bloodType);
-      setMonthlyData(monthly);
-      setAvailabilityTrend(trend);
     } catch (error) {
       Alert.alert('Error', 'Failed to load report data');
       console.error('Load reports error:', error);
@@ -331,36 +297,12 @@ const ReportsScreen: React.FC = () => {
           </View>
 
           {/* Stats Grid */}
-          <View style={styles.statsGrid}>
-            <StatCard
-              title="Total Donors"
-              value={reportSummary.totalDonors}
-              subtitle="Registered in system"
-              color="#4A6FFF"
-              icon="people-outline"
-            />
-            <StatCard
-              title="Available Now"
-              value={reportSummary.availableDonors}
-              subtitle="Ready to donate"
-              color="#00C896"
-              icon="checkmark-circle-outline"
-            />
-            <StatCard
-              title="This Month"
-              value={reportSummary.requestsThisMonth}
-              subtitle="Blood requests"
-              color="#FF9F43"
-              icon="calendar-outline"
-            />
-            <StatCard
-              title="Successful"
-              value={reportSummary.successfulDonations}
-              subtitle="Completed donations"
-              color="#9B51E0"
-              icon="trophy-outline"
-            />
-          </View>
+          <StatsGrid
+            totalDonors={reportSummary.totalDonors}
+            availableDonors={reportSummary.availableDonors}
+            requestsThisMonth={reportSummary.requestsThisMonth}
+            successfulDonations={reportSummary.successfulDonations}
+          />
 
            {/* Charts Section */}
            <View style={styles.chartsSection}>
@@ -522,61 +464,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 32,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: Dimensions.get('window').width / 2 - 30,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    position: 'relative',
-    overflow: 'hidden',
-    minHeight: 150,
-    maxHeight: 150,
-  },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statContent: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  statTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  statSubtitle: {
-    fontSize: 11,
-  },
-  statIndicator: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 60,
-    height: 60,
-    borderBottomLeftRadius: 30,
-  },
+
   chartsSection: {
     marginBottom: 32,
   },

@@ -130,13 +130,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   /**
    * Swipe gesture for main content area - swipe right from edge to open sidebar
+   * FIXED: Only activate from the very left edge (15px) and require minimum horizontal movement
    */
   const mainContentSwipe = Gesture.Pan()
-    .activeOffsetX([-10, 10]) // Require horizontal movement to activate
-    .failOffsetY([-10, 10])   // Cancel gesture if vertical movement detected
+    .activeOffsetX([-20, 20]) // Require more horizontal movement to activate (increased from 10 to 20)
+    .failOffsetY([-15, 15])   // Cancel gesture if vertical movement detected (increased from 10 to 15)
+    .activeOffsetY([-1000, 1000]) // Allow vertical movement without cancelling the gesture
+    .hitSlop({ left: -15 }) // Only activate from the left 15px edge
     .onEnd((event) => {
-      // Only open if swiping rightward from left edge area
-      if (event.translationX > 80 && !isOpen) {
+      // Only open if swiping rightward from left edge area with sufficient distance
+      if (event.translationX > 60 && !isOpen && event.velocityX > 0.5) {
         runOnJS(openSidebar)();
       }
     });
@@ -339,8 +342,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </Animated.View>
       </GestureDetector>
 
-      {/* Main Content with swipe detection */}
-      <GestureDetector gesture={mainContentSwipe}>
+      {/* Main Content with swipe detection - ONLY WRAPPED IN GestureDetector IF sidebar is closed */}
+      {!isOpen ? (
+        <GestureDetector gesture={mainContentSwipe}>
+          <View style={styles.mainContent}>
+            {/* Dashboard Header Area */}
+            <View style={styles.dashboardHeader}>
+              <Text style={styles.mainHeaderTitle}>Dugtong</Text>
+              <View style={styles.headerLeftSpacer} />
+            </View>
+            {children}
+          </View>
+        </GestureDetector>
+      ) : (
         <View style={styles.mainContent}>
           {/* Dashboard Header Area */}
           <View style={styles.dashboardHeader}>
@@ -349,7 +363,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </View>
           {children}
         </View>
-      </GestureDetector>
+      )}
     </GestureHandlerRootView>
   );
 }
@@ -513,4 +527,3 @@ const createStyles = (colors: any, insets: any, headerTopPadding: number, isOpen
       backgroundColor: colors.background,
     },
   });
-
