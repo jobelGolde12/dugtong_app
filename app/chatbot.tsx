@@ -2,6 +2,7 @@ import * as Speech from 'expo-speech';
 import { Bot, Mic, Send } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
+  BackHandler,
   KeyboardAvoidingView,
   Platform,
   Animated as RNAnimated,
@@ -10,7 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import Animated, {
   Easing,
@@ -58,6 +59,7 @@ export default function ChatbotScreen() {
     },
   ]);
   const [showIntro, setShowIntro] = useState(true);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const introAnim = useRef(new RNAnimated.Value(1)).current;
 
@@ -211,6 +213,19 @@ export default function ChatbotScreen() {
   useEffect(() => {
     startMicIdleAnimation();
   }, []);
+
+  // Handle back button to collapse footer
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isInputFocused) {
+        setIsInputFocused(false);
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [isInputFocused]);
 
   const handleTapPress = () => {
     // Quick compression feedback
@@ -528,6 +543,7 @@ Rules to follow:
 
     setMessages(prev => [...prev, userMessage]);
     setMessage('');
+    setIsInputFocused(false); // Collapse footer on send
 
     // Hide intro on first user interaction
     if (showIntro) {
@@ -613,127 +629,139 @@ Rules to follow:
 
   return (
     <DashboardLayout>
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* CRITICAL FIX: Proper KeyboardAvoidingView configuration */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
           style={styles.flex}
         >
-          <ScrollView 
-            ref={scrollViewRef}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* AI Profile Section - Conditional */}
-            {showIntro && (
-              <RNAnimated.View 
-                style={[
-                  styles.botProfileContainer,
-                  {
-                    opacity: introAnim,
-                    transform: [{
-                      translateY: introAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-20, 0]
-                      })
-                    }]
-                  }
-                ]}
-              >
-                <View style={styles.botIconCircle}>
-                  <Bot color="#2196F3" size={40} />
-                </View>
-                <Text style={styles.botName}>Dugtong Bot</Text>
-              </RNAnimated.View>
-            )}
-
-            {/* Big Modern Talk Icon - Conditional */}
-            {showIntro && (
-              <RNAnimated.View 
-                style={[
-                  styles.talkSection,
-                  {
-                    opacity: introAnim,
-                    transform: [{
-                      translateY: introAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-30, -10]
-                      })
-                    }]
-                  }
-                ]}
-              >
-                <TouchableOpacity
-                  style={[styles.bigTalkButton, cannotReceiveMessages && styles.disabledButton]}
-                  onPressIn={handleTapPress}
-                  onPressOut={handleTapRelease}
-                  onPress={handleMicPress}
-                  activeOpacity={cannotReceiveMessages ? 1 : 0.8} // NEW: Adjust opacity when disabled
-                  disabled={cannotReceiveMessages} // NEW: Disable when cannot receive messages
-                >
-                  {/* Dual ring effect for active state */}
-                  <Animated.View style={[
-                    styles.ringContainer, 
-                    animatedRing1Style,
-                    { borderColor: colors.primary }
-                  ]} />
-                  <Animated.View style={[
-                    styles.ringContainer, 
-                    animatedRing2Style,
-                    { borderColor: colors.primary }
-                  ]} />
-                  
-                  {/* Main border animation */}
-                  <Animated.View style={[
-                    styles.borderAnimationContainer, 
-                    animatedBorderStyle,
-                    { 
-                      borderColor: colors.primary,
-                      shadowColor: colors.primary,
-                    }
-                  ]} />
-                  
-                  {/* Microphone container with bounce animation */}
-                  <Animated.View style={[styles.micContainer, animatedMicStyle]}>
-                    <Mic color="#FFF" size={48} strokeWidth={1.5} />
-                  </Animated.View>
-                </TouchableOpacity>
-                <Text style={[
-                  styles.talkSubtext,
-                  isDark && styles.darkTalkSubtext
-                ]}>
-                  Tap to speak
-                </Text>
-              </RNAnimated.View>
-            )}
-
-            {/* Chat Messages */}
-            {messages.map(renderMessageBubble)}
-            
-            {/* NEW: Status message when chatbot cannot receive messages */}
-            {renderStatusMessage()}
-          </ScrollView>
-
-          {/* Input Footer */}
-          <View style={styles.footer}>
-            <TextInput
-              style={[styles.input, cannotReceiveMessages && styles.disabledInput]}
-              placeholder="Type something to send..."
-              value={message}
-              onChangeText={setMessage}
-              placeholderTextColor="#999"
-              onSubmitEditing={handleSendMessage}
-              returnKeyType="send"
-              blurOnSubmit={false}
-              editable={!cannotReceiveMessages} // NEW: Disable input when cannot receive messages
-            />
-            <TouchableOpacity 
-              style={[styles.sendButton, cannotReceiveMessages && styles.disabledSendButton]}
-              onPress={handleSendMessage}
-              activeOpacity={0.8}
-              disabled={cannotReceiveMessages} // NEW: Disable send button when cannot receive messages
+          <View style={styles.contentContainer}>
+            <ScrollView 
+              ref={scrollViewRef}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
-              <Send color="#FFF" size={20} />
-            </TouchableOpacity>
+              {/* AI Profile Section - Conditional */}
+              {showIntro && (
+                <RNAnimated.View 
+                  style={[
+                    styles.botProfileContainer,
+                    {
+                      opacity: introAnim,
+                      transform: [{
+                        translateY: introAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-20, 0]
+                        })
+                      }]
+                    }
+                  ]}
+                >
+                  <View style={styles.botIconCircle}>
+                    <Bot color="#2196F3" size={40} />
+                  </View>
+                  <Text style={styles.botName}>Dugtong Bot</Text>
+                </RNAnimated.View>
+              )}
+
+              {/* Big Modern Talk Icon - Conditional */}
+              {showIntro && (
+                <RNAnimated.View 
+                  style={[
+                    styles.talkSection,
+                    {
+                      opacity: introAnim,
+                      transform: [{
+                        translateY: introAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-30, -10]
+                        })
+                      }]
+                    }
+                  ]}
+                >
+                  <TouchableOpacity
+                    style={[styles.bigTalkButton, cannotReceiveMessages && styles.disabledButton]}
+                    onPressIn={handleTapPress}
+                    onPressOut={handleTapRelease}
+                    onPress={handleMicPress}
+                    activeOpacity={cannotReceiveMessages ? 1 : 0.8} // NEW: Adjust opacity when disabled
+                    disabled={cannotReceiveMessages} // NEW: Disable when cannot receive messages
+                  >
+                    {/* Dual ring effect for active state */}
+                    <Animated.View style={[
+                      styles.ringContainer, 
+                      animatedRing1Style,
+                      { borderColor: colors.primary }
+                    ]} />
+                    <Animated.View style={[
+                      styles.ringContainer, 
+                      animatedRing2Style,
+                      { borderColor: colors.primary }
+                    ]} />
+                    
+                    {/* Main border animation */}
+                    <Animated.View style={[
+                      styles.borderAnimationContainer, 
+                      animatedBorderStyle,
+                      { 
+                        borderColor: colors.primary,
+                        shadowColor: colors.primary,
+                      }
+                    ]} />
+                    
+                    {/* Microphone container with bounce animation */}
+                    <Animated.View style={[styles.micContainer, animatedMicStyle]}>
+                      <Mic color="#FFF" size={48} strokeWidth={1.5} />
+                    </Animated.View>
+                  </TouchableOpacity>
+                  <Text style={[
+                    styles.talkSubtext,
+                    isDark && styles.darkTalkSubtext
+                  ]}>
+                    Tap to speak
+                  </Text>
+                </RNAnimated.View>
+              )}
+
+              {/* Chat Messages */}
+              {messages.map(renderMessageBubble)}
+              
+              {/* NEW: Status message when chatbot cannot receive messages */}
+              {renderStatusMessage()}
+            </ScrollView>
+
+            {/* Input Footer - CRITICAL FIX: Removed negative marginTop */}
+            <View style={[
+              styles.footer,
+              isInputFocused && styles.footerExpanded
+            ]}>
+              <TextInput
+                style={[styles.input, cannotReceiveMessages && styles.disabledInput]}
+                placeholder="Type something to send..."
+                value={message}
+                onChangeText={setMessage}
+                placeholderTextColor="#999"
+                onSubmitEditing={handleSendMessage}
+                returnKeyType="send"
+                blurOnSubmit={false}
+                editable={!cannotReceiveMessages}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
+                multiline={isInputFocused}
+                numberOfLines={isInputFocused ? 8 : 1}
+              />
+              <TouchableOpacity 
+                style={[styles.sendButton, cannotReceiveMessages && styles.disabledSendButton]}
+                onPress={handleSendMessage}
+                activeOpacity={0.8}
+                disabled={cannotReceiveMessages}
+              >
+                <Send color="#FFF" size={20} />
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -748,6 +776,10 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
   },
   flex: {
     flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'space-between', // Ensures footer stays at bottom
   },
   header: {
     flexDirection: 'row',
@@ -767,6 +799,7 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
     padding: 20,
     alignItems: 'center',
     paddingTop: 10, // Reduced top padding
+    paddingBottom: 100, // Add bottom padding for footer space when keyboard closed
     minHeight: '100%',
   },
   botProfileContainer: {
@@ -891,15 +924,20 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
   footer: {
     flexDirection: 'row',
     padding: 15,
+    paddingBottom: 25,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    alignItems: 'center',
-    marginTop: -20,
+    alignItems: 'flex-start',
+  },
+  footerExpanded: {
+    height: '60%',
+    alignItems: 'flex-start',
+    paddingTop: 10,
   },
   input: {
     flex: 1,
-    height: 45,
+    minHeight: 45,
     paddingHorizontal: 15,
     fontSize: 16,
     color: colors.text,
