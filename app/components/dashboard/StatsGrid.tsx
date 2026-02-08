@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   Dimensions,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -14,6 +16,98 @@ import {
 import { useTheme } from '../../../contexts/ThemeContext';
 import { queryRows } from '../../../src/lib/turso';
 import LoadingIndicator from './LoadingIndicator';
+
+// ========== Modern Animated Action Button ==========
+interface ActionButtonProps {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  variant: 'call' | 'message';
+}
+
+const ActionButton: React.FC<ActionButtonProps> = ({ icon, label, onPress, variant }) => {
+  const { colors } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 100,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 100,
+    }).start();
+  };
+
+  const buttonColors = variant === 'call'
+    ? { bg: '#10B981', shadow: '#059669' }
+    : { bg: '#3B82F6', shadow: '#2563EB' };
+
+  return (
+    <Animated.View style={[actionButtonStyles.wrapper, { transform: [{ scale: scaleAnim }] }]}>
+      <TouchableOpacity
+        style={[
+          actionButtonStyles.button,
+          {
+            backgroundColor: buttonColors.bg,
+            shadowColor: buttonColors.shadow,
+          }
+        ]}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        activeOpacity={1}
+      >
+        <View style={actionButtonStyles.iconContainer}>
+          <Ionicons name={icon as any} size={20} color="#fff" />
+        </View>
+        <Text style={actionButtonStyles.label}>{label}</Text>
+        <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+const actionButtonStyles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  label: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+});
 
 // ========== TypeScript Interfaces ==========
 interface StatCardProps {
@@ -40,6 +134,7 @@ interface DonorDetail {
   availability: string;
   lastDonation?: string;
   location: string;
+  phoneNumber?: string;
 }
 
 interface RequestDetail {
@@ -62,19 +157,19 @@ interface DonationDetail {
 }
 
 // ========== Reusable Components ==========
-const StatCard: React.FC<StatCardProps> = ({ 
-  title, 
-  value, 
-  subtitle, 
-  color, 
-  icon, 
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  subtitle,
+  color,
+  icon,
   statType,
-  onPress 
+  onPress
 }) => {
   const { colors } = useTheme();
-  
+
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.statCard, { backgroundColor: colors.surface }]}
       activeOpacity={0.7}
       onPress={() => onPress(statType)}
@@ -109,6 +204,36 @@ const StatDetailModal: React.FC<{
     });
   };
 
+  const handleCall = async (phoneNumber: string) => {
+    const url = `tel:${phoneNumber}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Phone call is not available on this device.');
+      }
+    } catch (error) {
+      console.error('Failed to open phone app:', error);
+      Alert.alert('Error', 'Failed to open phone app.');
+    }
+  };
+
+  const handleMessage = async (phoneNumber: string) => {
+    const url = `sms:${phoneNumber}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Messaging is not available on this device.');
+      }
+    } catch (error) {
+      console.error('Failed to open messaging app:', error);
+      Alert.alert('Error', 'Failed to open messaging app.');
+    }
+  };
+
   const renderDetailItem = (item: any, index: number) => {
     switch (statData?.title) {
       case 'Total Donors':
@@ -134,6 +259,22 @@ const StatDetailModal: React.FC<{
                 </Text>
               )}
             </View>
+            {donor.phoneNumber && (
+              <View style={styles.actionButtonsContainer}>
+                <ActionButton
+                  icon="call"
+                  label="Call"
+                  variant="call"
+                  onPress={() => handleCall(donor.phoneNumber!)}
+                />
+                <ActionButton
+                  icon="chatbubble"
+                  label="Message"
+                  variant="message"
+                  onPress={() => handleMessage(donor.phoneNumber!)}
+                />
+              </View>
+            )}
           </View>
         );
 
@@ -155,6 +296,22 @@ const StatDetailModal: React.FC<{
                 ✅ Available Now
               </Text>
             </View>
+            {availableDonor.phoneNumber && (
+              <View style={styles.actionButtonsContainer}>
+                <ActionButton
+                  icon="call"
+                  label="Call"
+                  variant="call"
+                  onPress={() => handleCall(availableDonor.phoneNumber!)}
+                />
+                <ActionButton
+                  icon="chatbubble"
+                  label="Message"
+                  variant="message"
+                  onPress={() => handleMessage(availableDonor.phoneNumber!)}
+                />
+              </View>
+            )}
           </View>
         );
 
@@ -178,8 +335,8 @@ const StatDetailModal: React.FC<{
               <Text style={[styles.detailInfoText, { color: colors.textSecondary }]}>
                 📅 {formatDate(request.createdAt)}
               </Text>
-              <Text style={[styles.detailStatus, { 
-                color: request.status === 'Active' ? '#00C896' : '#9B51E0' 
+              <Text style={[styles.detailStatus, {
+                color: request.status === 'Active' ? '#00C896' : '#9B51E0'
               }]}>
                 {request.status}
               </Text>
@@ -238,8 +395,8 @@ const StatDetailModal: React.FC<{
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
-          
-          <ScrollView 
+
+          <ScrollView
             style={styles.modalScroll}
             showsVerticalScrollIndicator={false}
           >
@@ -292,7 +449,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
       switch (statType) {
         case 'totalDonors': {
           const rows = await queryRows<Record<string, any>>(
-            `SELECT id, full_name, blood_type, availability_status, municipality, last_donation_date 
+            `SELECT id, full_name, blood_type, availability_status, municipality, last_donation_date, contact_number 
              FROM donors 
              WHERE is_deleted = 0
              ORDER BY full_name ASC 
@@ -306,6 +463,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
             availability: row.availability_status,
             location: row.municipality || 'Unknown',
             lastDonation: row.last_donation_date,
+            phoneNumber: row.contact_number,
           }));
 
           setSelectedStatData({
@@ -319,7 +477,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
 
         case 'availableDonors': {
           const rows = await queryRows<Record<string, any>>(
-            `SELECT id, full_name, blood_type, availability_status, municipality 
+            `SELECT id, full_name, blood_type, availability_status, municipality, contact_number 
              FROM donors 
              WHERE availability_status = 'Available' AND is_deleted = 0
              ORDER BY full_name ASC 
@@ -332,6 +490,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
             bloodType: row.blood_type,
             availability: row.availability_status,
             location: row.municipality || 'Unknown',
+            phoneNumber: row.contact_number,
           }));
 
           setSelectedStatData({
@@ -622,6 +781,14 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     textAlign: 'center',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.06)',
   },
 });
 

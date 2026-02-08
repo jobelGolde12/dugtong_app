@@ -11,7 +11,7 @@ Minimal viable offline/online detection and sync system following the cloud_sync
 - Detects connection type (wifi, cellular, none)
 - Returns `isConnected`, `isInternetReachable`, and `type`
 
-### 2. Connection Alert (`app/components/ConnectionAlert.tsx`)
+### 2. Connection Alert (`lib/ConnectionAlert.tsx`)
 - Modern bottom banner style (non-modal)
 - Smooth slide animations
 - Auto-dismisses after 3 seconds when reconnected
@@ -108,14 +108,14 @@ function MyComponent() {
 ## Files Created
 
 1. `hooks/useConnection.ts` - Connection detection hook
-2. `app/components/ConnectionAlert.tsx` - Visual alert component
+2. `lib/ConnectionAlert.tsx` - Visual alert component
 3. `contexts/ConnectionContext.tsx` - Connection state provider
 4. `src/services/OfflineService.ts` - Offline queue management
 5. `src/lib/turso-offline.ts` - Database wrapper with offline support
 
 ## Files Modified
 
-1. `app/_layout.tsx` - Added ConnectionProvider and ConnectionAlert
+1. `app/_layout.tsx` - Added ConnectionProvider and ConnectionAlert from `lib/ConnectionAlert.tsx`
 
 ## Dependencies Added
 

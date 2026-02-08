@@ -1,8 +1,103 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { Donor } from '@/types/donor.types';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Alert, Animated, Linking, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+
+// ========== Modern Animated Action Button ==========
+interface ActionButtonProps {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  variant: 'call' | 'message';
+  disabled?: boolean;
+}
+
+const ActionButton: React.FC<ActionButtonProps> = ({ icon, label, onPress, variant, disabled = false }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    if (disabled) return;
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 100,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 100,
+    }).start();
+  };
+
+  const buttonColors = variant === 'call'
+    ? { bg: '#10B981', shadow: '#059669' }
+    : { bg: '#3B82F6', shadow: '#2563EB' };
+
+  return (
+    <Animated.View style={[actionStyles.wrapper, { transform: [{ scale: scaleAnim }] }]}>
+      <TouchableOpacity
+        style={[
+          actionStyles.button,
+          {
+            backgroundColor: buttonColors.bg,
+            shadowColor: buttonColors.shadow,
+            opacity: disabled ? 0.5 : 1,
+          }
+        ]}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        activeOpacity={1}
+        disabled={disabled}
+      >
+        <View style={actionStyles.iconContainer}>
+          <Ionicons name={icon as any} size={18} color="#fff" />
+        </View>
+        <Text style={actionStyles.label}>{label}</Text>
+        <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.7)" />
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+const actionStyles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  iconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  label: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+});
 
 interface DonorCardProps {
   donor: Donor;
@@ -13,7 +108,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   const { colors, isDark } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const { width } = useWindowDimensions();
-  
+
   // Determine device size thresholds
   const isSmallDevice = width < 375;
   const isVerySmallDevice = width < 340;
@@ -36,6 +131,46 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   const statusColor = donor.availabilityStatus === 'Available' ? '#10B981' : '#EF4444';
   const isAvailable = donor.availabilityStatus === 'Available';
 
+  // Handle call action
+  const handleCall = async () => {
+    if (!donor.contactNumber) {
+      Alert.alert('Error', 'No phone number available for this donor.');
+      return;
+    }
+    const url = `tel:${donor.contactNumber}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Phone call is not available on this device.');
+      }
+    } catch (error) {
+      console.error('Failed to open phone app:', error);
+      Alert.alert('Error', 'Failed to open phone app.');
+    }
+  };
+
+  // Handle message action
+  const handleMessage = async () => {
+    if (!donor.contactNumber) {
+      Alert.alert('Error', 'No phone number available for this donor.');
+      return;
+    }
+    const url = `sms:${donor.contactNumber}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Messaging is not available on this device.');
+      }
+    } catch (error) {
+      console.error('Failed to open messaging app:', error);
+      Alert.alert('Error', 'Failed to open messaging app.');
+    }
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -55,13 +190,13 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
     >
       {/* Main content container */}
       <View style={styles.contentContainer}>
-        
+
         {/* Top row: Avatar + Info + Blood Type */}
         <View style={styles.topRow}>
           <View style={styles.avatarContainer}>
             <View style={[
               styles.avatar,
-              { 
+              {
                 backgroundColor: colors.primary + '15',
                 width: isSmallDevice ? 44 : 50,
                 height: isSmallDevice ? 44 : 50,
@@ -70,15 +205,15 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
             ]}>
               <Text style={[
                 styles.avatarText,
-                { 
+                {
                   fontSize: isSmallDevice ? 18 : 20,
-                  color: colors.primary 
+                  color: colors.primary
                 }
               ]}>
                 {donor.name.charAt(0)}
               </Text>
             </View>
-            
+
             {/* Status indicator dot on avatar */}
             <View style={[
               styles.statusIndicator,
@@ -94,14 +229,14 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
             <View style={styles.nameRow}>
               <Text style={[
                 styles.donorName,
-                { 
+                {
                   color: colors.text,
-                  fontSize: isSmallDevice ? 16 : 18 
+                  fontSize: isSmallDevice ? 16 : 18
                 }
               ]} numberOfLines={1}>
                 {donor.name}
               </Text>
-              
+
               {/* Combined age and gender badge */}
               <View style={[styles.combinedBadge, { backgroundColor: colors.surface }]}>
                 <Text style={[
@@ -115,16 +250,16 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
 
             {/* Location with minimal icon */}
             <View style={styles.locationRow}>
-              <Ionicons 
-                name="location-outline" 
-                size={isSmallDevice ? 13 : 14} 
-                color={colors.textSecondary} 
+              <Ionicons
+                name="location-outline"
+                size={isSmallDevice ? 13 : 14}
+                color={colors.textSecondary}
               />
               <Text style={[
                 styles.locationText,
-                { 
+                {
                   color: colors.text,
-                  fontSize: isSmallDevice ? 13 : 14 
+                  fontSize: isSmallDevice ? 13 : 14
                 }
               ]} numberOfLines={1}>
                 {donor.municipality}
@@ -140,9 +275,9 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
             ]}>
               <Text style={[
                 styles.bloodTypeText,
-                { 
+                {
                   color: bloodTypeColor,
-                  fontSize: isSmallDevice ? 16 : 18 
+                  fontSize: isSmallDevice ? 16 : 18
                 }
               ]}>
                 {donor.bloodType}
@@ -155,40 +290,40 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
         <View style={styles.bottomRow}>
           <View style={styles.contactInfo}>
             <View style={styles.contactItem}>
-              <Ionicons 
-                name="call-outline" 
-                size={isSmallDevice ? 14 : 15} 
-                color={colors.textSecondary} 
+              <Ionicons
+                name="call-outline"
+                size={isSmallDevice ? 14 : 15}
+                color={colors.textSecondary}
               />
               <Text style={[
                 styles.contactText,
-                { 
+                {
                   color: colors.text,
-                  fontSize: isSmallDevice ? 13 : 14 
+                  fontSize: isSmallDevice ? 13 : 14
                 }
               ]} numberOfLines={1}>
                 {donor.contactNumber}
               </Text>
             </View>
-            
+
             <View style={styles.contactItem}>
-              <Ionicons 
-                name="time-outline" 
-                size={isSmallDevice ? 14 : 15} 
-                color={colors.textSecondary} 
+              <Ionicons
+                name="time-outline"
+                size={isSmallDevice ? 14 : 15}
+                color={colors.textSecondary}
               />
               <Text style={[
                 styles.lastDonationText,
-                { 
+                {
                   color: colors.textSecondary,
-                  fontSize: isSmallDevice ? 12 : 13 
+                  fontSize: isSmallDevice ? 12 : 13
                 }
               ]}>
-                {donor.lastDonationDate 
-                  ? `Last: ${new Date(donor.lastDonationDate).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric' 
-                    })}`
+                {donor.lastDonationDate
+                  ? `Last: ${new Date(donor.lastDonationDate).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                  })}`
                   : 'Never donated'}
               </Text>
             </View>
@@ -201,7 +336,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
           ]}>
             <Text style={[
               styles.availabilityText,
-              { 
+              {
                 color: statusColor,
                 fontSize: isSmallDevice ? 10 : 11
               }
@@ -212,40 +347,32 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
         </View>
       </View>
 
-      {/* Expandable contact button */}
-      <Animated.View 
+      {/* Expandable action buttons - Call & Message */}
+      <Animated.View
         style={[
           styles.expandableSection,
           {
-            height: expanded ? (isSmallDevice ? 44 : 48) : 0,
+            height: expanded ? (isSmallDevice ? 56 : 60) : 0,
             opacity: expanded ? 1 : 0,
           }
         ]}
       >
-        <TouchableOpacity
-          style={[
-            styles.contactButton,
-            { 
-              backgroundColor: colors.primary,
-              opacity: isAvailable ? 1 : 0.6
-            }
-          ]}
-          onPress={() => onPress(donor)}
-          activeOpacity={0.8}
-          disabled={!isAvailable}
-        >
-          <Ionicons 
-            name="chatbubble-ellipses-outline" 
-            size={isSmallDevice ? 16 : 18} 
-            color="#fff" 
+        <View style={styles.actionButtonsContainer}>
+          <ActionButton
+            icon="call"
+            label="Call"
+            variant="call"
+            onPress={handleCall}
+            disabled={!isAvailable || !donor.contactNumber}
           />
-          <Text style={[
-            styles.contactButtonText,
-            { fontSize: isSmallDevice ? 13 : 14 }
-          ]}>
-            {isAvailable ? 'Contact Donor' : 'Not Available'}
-          </Text>
-        </TouchableOpacity>
+          <ActionButton
+            icon="chatbubble"
+            label="Message"
+            variant="message"
+            onPress={handleMessage}
+            disabled={!isAvailable || !donor.contactNumber}
+          />
+        </View>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -375,19 +502,12 @@ const styles = StyleSheet.create({
   },
   expandableSection: {
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: 12,
   },
-  contactButton: {
+  actionButtonsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  contactButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    gap: 12,
+    paddingTop: 4,
   },
 });
 

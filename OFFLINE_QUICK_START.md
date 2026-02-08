@@ -102,7 +102,7 @@ Auto-sync on reconnection
 
 - `hooks/useConnection.ts` - Connection detection
 - `contexts/ConnectionContext.tsx` - State management
-- `app/components/ConnectionAlert.tsx` - UI banner
+- `lib/ConnectionAlert.tsx` - UI banner
 - `src/services/OfflineService.ts` - Queue management
 - `src/lib/turso-offline.ts` - Database wrapper
 

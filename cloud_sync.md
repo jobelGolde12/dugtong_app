@@ -89,7 +89,7 @@ typescript
 - Tracks connection quality/strength
 - Provides boolean isOnline/isOffline
 - Exposes connection type for UI
-  1.2 Modern Alert Component (src/components/ConnectionAlert.tsx)
+  1.2 Modern Alert Component (lib/ConnectionAlert.tsx)
 
 typescript
 // Design requirements:

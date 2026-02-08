@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
-import { ConnectionAlert } from './components/ConnectionAlert';
+import { ConnectionAlert } from '../lib/ConnectionAlert';
 import { AuthProvider } from '../contexts/AuthContext';
 import { ConnectionProvider } from '../contexts/ConnectionContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
