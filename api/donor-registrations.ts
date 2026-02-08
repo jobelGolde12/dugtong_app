@@ -4,26 +4,29 @@ import apiClient from './client';
 
 export interface DonorRegistrationRequest {
   full_name: string;
-  age: number;
-  sex: 'Male' | 'Female';
-  blood_type: string;
   contact_number: string;
+  email?: string | null;
+  age: number;
+  blood_type: string;
   municipality: string;
-  availability_status: 'Available' | 'Temporarily Unavailable';
+  availability?: string;
 }
 
 export interface DonorRegistrationResponse {
-  id: string;
+  id: number;
   full_name: string;
-  age: number;
-  sex: 'Male' | 'Female';
-  blood_type: string;
   contact_number: string;
+  email?: string | null;
+  age: number;
+  blood_type: string;
   municipality: string;
-  availability_status: 'Available' | 'Temporarily Unavailable';
-  status: 'pending' | 'approved' | 'rejected';
+  availability: string;
+  status: string;
+  review_reason?: string | null;
+  reviewed_by?: number | null;
+  reviewed_at?: string | null;
   created_at: string;
-  updated_at?: string;
+  updated_at?: string | null;
 }
 
 export interface ValidationError {

@@ -223,14 +223,19 @@ export default function RegisterScreen() {
     setIsSubmitting(true);
 
     try {
+      const normalizedContactNumber = formData.contactNumber.replace(/\D/g, '');
+      const availability =
+        formData.availabilityStatus === 'Available'
+          ? 'available'
+          : 'temporarily_unavailable';
+
       const registrationData: DonorRegistrationRequest = {
         full_name: formData.fullName,
+        contact_number: normalizedContactNumber,
         age: parseInt(formData.age, 10),
-        sex: formData.sex as 'Male' | 'Female',
         blood_type: formData.bloodType,
-        contact_number: formData.contactNumber,
         municipality: formData.municipality,
-        availability_status: formData.availabilityStatus as 'Available' | 'Temporarily Unavailable',
+        availability,
       };
 
       console.log('Submitting donor registration:', registrationData);

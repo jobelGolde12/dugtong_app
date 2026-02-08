@@ -219,14 +219,19 @@ export default function AddDonorPage() {
     setIsLoading(true);
 
     try {
+      const normalizedContactNumber = formData.contactNumber.replace(/\D/g, '');
+      const availability =
+        formData.availabilityStatus === 'Available'
+          ? 'available'
+          : 'temporarily_unavailable';
+
       await createDonorRegistration({
         full_name: formData.fullName,
         age: Number(formData.age),
-        sex: formData.sex as 'Male' | 'Female',
         blood_type: formData.bloodType,
-        contact_number: formData.contactNumber,
+        contact_number: normalizedContactNumber,
         municipality: formData.municipality,
-        availability_status: formData.availabilityStatus as 'Available' | 'Temporarily Unavailable',
+        availability,
       });
 
       Alert.alert(
