@@ -1,7 +1,6 @@
-
 import { useTheme } from '@/contexts/ThemeContext';
 import { Donor } from '@/types/donor.types';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
@@ -15,7 +14,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   const [expanded, setExpanded] = useState(false);
   const { width } = useWindowDimensions();
   
-  // Determine device size thresholds based on actual screen width
+  // Determine device size thresholds
   const isSmallDevice = width < 375;
   const isVerySmallDevice = width < 340;
 
@@ -33,14 +32,19 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
     return colorsMap[type] || colors.primary;
   };
 
+  const bloodTypeColor = getBloodTypeColor(donor.bloodType);
+  const statusColor = donor.availabilityStatus === 'Available' ? '#10B981' : '#EF4444';
+  const isAvailable = donor.availabilityStatus === 'Available';
+
   return (
     <TouchableOpacity
       style={[
         styles.donorCard,
         {
           backgroundColor: colors.card,
-          borderColor: 'transparent',
-          padding: isSmallDevice ? 14 : 20,
+          borderColor: isDark ? colors.border : 'transparent',
+          borderWidth: isDark ? 1 : 0,
+          padding: isSmallDevice ? 16 : 20,
           transform: [{ scale: expanded ? 1.01 : 1 }]
         }
       ]}
@@ -49,163 +53,198 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
       activeOpacity={0.9}
       delayLongPress={500}
     >
-      <View style={styles.cardHeader}>
-        <View style={styles.userInfo}>
-          <View style={[styles.avatar, { 
-            width: isSmallDevice ? 44 : 48,
-            height: isSmallDevice ? 44 : 48,
-            borderRadius: isSmallDevice ? 22 : 24,
-            backgroundColor: colors.primary + '20' 
-          }]}>
-            <Text style={[styles.avatarText, { 
-              fontSize: isSmallDevice ? 18 : 20,
-              color: colors.primary 
-            }]}>
-              {donor.name.charAt(0)}
-            </Text>
+      {/* Main content container */}
+      <View style={styles.contentContainer}>
+        
+        {/* Top row: Avatar + Info + Blood Type */}
+        <View style={styles.topRow}>
+          <View style={styles.avatarContainer}>
+            <View style={[
+              styles.avatar,
+              { 
+                backgroundColor: colors.primary + '15',
+                width: isSmallDevice ? 44 : 50,
+                height: isSmallDevice ? 44 : 50,
+                borderRadius: isSmallDevice ? 22 : 25,
+              }
+            ]}>
+              <Text style={[
+                styles.avatarText,
+                { 
+                  fontSize: isSmallDevice ? 18 : 20,
+                  color: colors.primary 
+                }
+              ]}>
+                {donor.name.charAt(0)}
+              </Text>
+            </View>
+            
+            {/* Status indicator dot on avatar */}
+            <View style={[
+              styles.statusIndicator,
+              {
+                backgroundColor: statusColor,
+                borderColor: colors.card,
+                borderWidth: 2,
+              }
+            ]} />
           </View>
-          <View style={styles.userDetails}>
-            <Text style={[styles.donorName, { 
-              color: colors.text,
-              fontSize: isSmallDevice ? 16 : 18 
-            }]} numberOfLines={1} ellipsizeMode="tail">
-              {donor.name}
-            </Text>
-            <View style={styles.donorMeta}>
-              <View style={[styles.badge, { backgroundColor: colors.primary + '10' }]}>
-                <Ionicons name="person" size={isSmallDevice ? 11 : 12} color={colors.primary} />
-                <Text style={[styles.badgeText, { 
-                  color: colors.primary,
-                  fontSize: isSmallDevice ? 10 : 11 
-                }]}>
-                  {donor.age}y
+
+          <View style={styles.infoContainer}>
+            <View style={styles.nameRow}>
+              <Text style={[
+                styles.donorName,
+                { 
+                  color: colors.text,
+                  fontSize: isSmallDevice ? 16 : 18 
+                }
+              ]} numberOfLines={1}>
+                {donor.name}
+              </Text>
+              
+              {/* Combined age and gender badge */}
+              <View style={[styles.combinedBadge, { backgroundColor: colors.surface }]}>
+                <Text style={[
+                  styles.combinedBadgeText,
+                  { color: colors.textSecondary, fontSize: isSmallDevice ? 11 : 12 }
+                ]}>
+                  {donor.age}y • {donor.sex.charAt(0)}
                 </Text>
               </View>
-              <View style={[styles.badge, { backgroundColor: colors.textSecondary + '10' }]}>
-                <FontAwesome name="transgender" size={isSmallDevice ? 11 : 12} color={colors.textSecondary} />
-                <Text style={[styles.badgeText, { 
-                  color: colors.textSecondary,
-                  fontSize: isSmallDevice ? 10 : 11 
-                }]}>
-                  {donor.sex.charAt(0)}
-                </Text>
-              </View>
+            </View>
+
+            {/* Location with minimal icon */}
+            <View style={styles.locationRow}>
+              <Ionicons 
+                name="location-outline" 
+                size={isSmallDevice ? 13 : 14} 
+                color={colors.textSecondary} 
+              />
+              <Text style={[
+                styles.locationText,
+                { 
+                  color: colors.text,
+                  fontSize: isSmallDevice ? 13 : 14 
+                }
+              ]} numberOfLines={1}>
+                {donor.municipality}
+              </Text>
+            </View>
+          </View>
+
+          {/* Blood type badge */}
+          <View style={styles.bloodTypeWrapper}>
+            <View style={[
+              styles.bloodTypeBadge,
+              { backgroundColor: bloodTypeColor + '10' }
+            ]}>
+              <Text style={[
+                styles.bloodTypeText,
+                { 
+                  color: bloodTypeColor,
+                  fontSize: isSmallDevice ? 16 : 18 
+                }
+              ]}>
+                {donor.bloodType}
+              </Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.bloodTypeContainer}>
-          <View style={[
-            styles.bloodTypeBadge,
-            { backgroundColor: getBloodTypeColor(donor.bloodType) + '20' }
-          ]}>
-            <Text style={[
-              styles.bloodTypeText,
-              { 
-                color: getBloodTypeColor(donor.bloodType),
-                fontSize: isSmallDevice ? 14 : 16 
-              }
-            ]}>
-              {donor.bloodType}
-            </Text>
+        {/* Bottom row: Contact and last donation */}
+        <View style={styles.bottomRow}>
+          <View style={styles.contactInfo}>
+            <View style={styles.contactItem}>
+              <Ionicons 
+                name="call-outline" 
+                size={isSmallDevice ? 14 : 15} 
+                color={colors.textSecondary} 
+              />
+              <Text style={[
+                styles.contactText,
+                { 
+                  color: colors.text,
+                  fontSize: isSmallDevice ? 13 : 14 
+                }
+              ]} numberOfLines={1}>
+                {donor.contactNumber}
+              </Text>
+            </View>
+            
+            <View style={styles.contactItem}>
+              <Ionicons 
+                name="time-outline" 
+                size={isSmallDevice ? 14 : 15} 
+                color={colors.textSecondary} 
+              />
+              <Text style={[
+                styles.lastDonationText,
+                { 
+                  color: colors.textSecondary,
+                  fontSize: isSmallDevice ? 12 : 13 
+                }
+              ]}>
+                {donor.lastDonationDate 
+                  ? `Last: ${new Date(donor.lastDonationDate).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })}`
+                  : 'Never donated'}
+              </Text>
+            </View>
           </View>
+
+          {/* Availability status - simplified */}
           <View style={[
-            styles.statusBadge,
-            { 
-              backgroundColor: donor.availabilityStatus === 'Available' 
-                ? '#10B98120' 
-                : '#EF444420',
-              borderColor: donor.availabilityStatus === 'Available'
-                ? '#10B981'
-                : '#EF4444'
-            }
+            styles.availabilityBadge,
+            { backgroundColor: statusColor + '10' }
           ]}>
-            <View style={[
-              styles.statusDot,
-              { 
-                backgroundColor: donor.availabilityStatus === 'Available' 
-                  ? '#10B981' 
-                  : '#EF4444'
-              }
-            ]} />
             <Text style={[
-              styles.statusText,
+              styles.availabilityText,
               { 
-                color: donor.availabilityStatus === 'Available' 
-                  ? '#10B981' 
-                  : '#EF4444',
+                color: statusColor,
                 fontSize: isSmallDevice ? 10 : 11
               }
             ]}>
-              {donor.availabilityStatus}
+              {isAvailable ? 'Available' : 'Unavailable'}
             </Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.cardBody}>
-        {/* On very small screens, stack location and last donation vertically to prevent overflow */}
-        <View style={[
-          styles.infoRow,
-          isVerySmallDevice && { flexDirection: 'column', gap: 8 }
-        ]}>
-          <View style={styles.infoItem}>
-            <Ionicons name="location" size={isSmallDevice ? 15 : 16} color={colors.textSecondary} />
-            <Text style={[styles.infoText, { 
-              color: colors.text,
-              fontSize: isSmallDevice ? 13 : 14 
-            }]} numberOfLines={1} ellipsizeMode="tail">
-              {donor.municipality}
-            </Text>
-          </View>
-          {!isVerySmallDevice && <View style={{ width: 12 }} />}
-          <View style={styles.infoItem}>
-            <Ionicons name="calendar" size={isSmallDevice ? 15 : 16} color={colors.textSecondary} />
-            <Text style={[styles.infoText, { 
-              color: colors.text,
-              fontSize: isSmallDevice ? 13 : 14 
-            }]} numberOfLines={1} ellipsizeMode="tail">
-              {donor.lastDonationDate 
-                ? `Last: ${new Date(donor.lastDonationDate).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}`
-                : 'No donations yet'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Ionicons name="call" size={isSmallDevice ? 15 : 16} color={colors.textSecondary} />
-            <Text style={[styles.infoText, { 
-              color: colors.text,
-              fontSize: isSmallDevice ? 13 : 14 
-            }]} numberOfLines={1} ellipsizeMode="tail">
-              {donor.contactNumber}
-            </Text>
-          </View>
-        </View>
-      </View>
-
+      {/* Expandable contact button */}
       <Animated.View 
         style={[
-          styles.cardFooter,
+          styles.expandableSection,
           {
-            height: expanded ? (isSmallDevice ? 46 : 50) : 0,
+            height: expanded ? (isSmallDevice ? 44 : 48) : 0,
             opacity: expanded ? 1 : 0,
           }
         ]}
       >
         <TouchableOpacity
-          style={[styles.contactButton, { backgroundColor: colors.primary }]}
+          style={[
+            styles.contactButton,
+            { 
+              backgroundColor: colors.primary,
+              opacity: isAvailable ? 1 : 0.6
+            }
+          ]}
           onPress={() => onPress(donor)}
           activeOpacity={0.8}
+          disabled={!isAvailable}
         >
-          <Ionicons name="chatbubble-ellipses" size={isSmallDevice ? 16 : 18} color="#fff" />
-          <Text style={[styles.contactButtonText, { 
-            fontSize: isSmallDevice ? 13 : 14 
-          }]}>Contact Donor</Text>
+          <Ionicons 
+            name="chatbubble-ellipses-outline" 
+            size={isSmallDevice ? 16 : 18} 
+            color="#fff" 
+          />
+          <Text style={[
+            styles.contactButtonText,
+            { fontSize: isSmallDevice ? 13 : 14 }
+          ]}>
+            {isAvailable ? 'Contact Donor' : 'Not Available'}
+          </Text>
         </TouchableOpacity>
       </Animated.View>
     </TouchableOpacity>
@@ -216,102 +255,127 @@ const styles = StyleSheet.create({
   donorCard: {
     borderRadius: 20,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardHeader: {
+  contentContainer: {
+    gap: 16,
+  },
+  topRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    gap: 12,
   },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    minWidth: 0, // Critical for proper text truncation in flex containers
+  avatarContainer: {
+    position: 'relative',
   },
   avatar: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    overflow: 'hidden',
   },
   avatarText: {
     fontWeight: '700',
   },
-  userDetails: {
+  statusIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  infoContainer: {
     flex: 1,
-    minWidth: 0, // Allows child text elements to truncate properly
+    minWidth: 0,
+    gap: 6,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    flexWrap: 'wrap',
   },
   donorName: {
     fontWeight: '700',
-    marginBottom: 6,
+    flex: 1,
+    minWidth: 0,
   },
-  donorMeta: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  combinedBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    borderRadius: 8,
   },
-  badgeText: {
+  combinedBadgeText: {
     fontWeight: '600',
   },
-  bloodTypeContainer: {
-    alignItems: 'flex-end',
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
-    marginLeft: 8, // Prevents crowding with user info on small screens
+  },
+  locationText: {
+    fontWeight: '400',
+    flex: 1,
+    minWidth: 0,
+  },
+  bloodTypeWrapper: {
+    marginLeft: 'auto',
   },
   bloodTypeBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 60,
   },
   bloodTypeText: {
     fontWeight: '800',
   },
-  statusBadge: {
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontWeight: '600',
-  },
-  cardBody: {
-    gap: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
   },
-  infoItem: {
+  contactInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
+  contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
     gap: 8,
-    minWidth: 0, // Enables proper text truncation within flex items
+    minWidth: 0,
   },
-  infoText: {
-    fontWeight: '400',
+  contactText: {
+    fontWeight: '500',
     flex: 1,
+    minWidth: 0,
   },
-  cardFooter: {
+  lastDonationText: {
+    fontWeight: '400',
+  },
+  availabilityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+  },
+  availabilityText: {
+    fontWeight: '600',
+  },
+  expandableSection: {
     overflow: 'hidden',
-    marginTop: 16,
+    marginTop: 8,
   },
   contactButton: {
     flexDirection: 'row',
