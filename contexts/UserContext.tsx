@@ -1,24 +1,9 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-import { User } from '../api/auth';
-import { apiClient, getApiErrorMessage } from '../api/client';
+import { getApiErrorMessage } from '../api/client';
+import { getUserPreferences, getUserProfile, updateUserPreferences, updateUserProfile } from '../api/users';
+import { UserPreferences, UserProfile } from '../types/user.types';
 
 // ==================== Types ====================
-
-export interface UserPreferences {
-  theme_mode: 'light' | 'dark' | 'system';
-  notifications_enabled: boolean;
-  email_notifications: boolean;
-  sms_notifications: boolean;
-  language: string;
-  updated_at?: string;
-}
-
-export interface UserProfile extends User {
-  email?: string;
-  avatar_url?: string;
-  created_at?: string;
-  updated_at?: string;
-}
 
 interface UserState {
   user: UserProfile | null;
@@ -38,16 +23,6 @@ interface UserContextValue extends UserState {
 // ==================== Context ====================
 
 const UserContext = createContext<UserContextValue | undefined>(undefined);
-
-// ==================== Default Preferences ====================
-
-const DEFAULT_PREFERENCES: UserPreferences = {
-  theme_mode: 'system',
-  notifications_enabled: true,
-  email_notifications: true,
-  sms_notifications: false,
-  language: 'en',
-};
 
 // ==================== Provider ====================
 
@@ -75,41 +50,26 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
     try {
       const [userResponse, preferencesResponse] = await Promise.all([
-        apiClient.get<UserProfile>('/users/me'),
-        apiClient.get<UserPreferences>('/users/me/preferences'),
+        getUserProfile(),
+        getUserPreferences(),
       ]);
 
       setState((prev) => ({
         ...prev,
-        user: userResponse.data,
-        preferences: preferencesResponse.data,
+        user: userResponse,
+        preferences: preferencesResponse,
         isLoading: false,
       }));
     } catch (error) {
       console.error('Error loading user:', error);
-      
-      // Check if it's a network error and handle gracefully
-      const isNetworkError = error?.message?.includes('Network Error') || 
-                           error?.code === 'ERR_NETWORK' ||
-                           error?.response?.status === 0;
-      
-      // If it's a network error, set default empty state instead of error to prevent blocking the app
-      if (isNetworkError) {
-        setState((prev) => ({
-          ...prev,
-          user: null,
-          preferences: null,
-          isLoading: false,
-          error: null, // Don't set error for network issues to prevent blocking the app
-        }));
-      } else {
-        // For other errors, set the error state
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: getApiErrorMessage(error),
-        }));
-      }
+      const errorMessage = getApiErrorMessage(error);
+      const isAuthError = errorMessage.toLowerCase().includes('not authenticated');
+
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: isAuthError ? null : errorMessage,
+      }));
     }
   }, []);
 
@@ -118,18 +78,18 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     setState((prev) => ({ ...prev, isSaving: true, error: null }));
 
     try {
-      const response = await apiClient.put<UserProfile>('/users/me', data);
+      const response = await updateUserProfile(data);
 
       setState((prev) => ({
         ...prev,
-        user: response.data,
+        user: response,
         isSaving: false,
       }));
 
       return { success: true };
     } catch (error) {
       const errorMessage = getApiErrorMessage(error);
-      
+
       setState((prev) => ({
         ...prev,
         isSaving: false,
@@ -145,18 +105,18 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     setState((prev) => ({ ...prev, isSaving: true, error: null }));
 
     try {
-      const response = await apiClient.put<UserPreferences>('/users/me/preferences', preferences);
+      const response = await updateUserPreferences(preferences);
 
       setState((prev) => ({
         ...prev,
-        preferences: response.data,
+        preferences: response,
         isSaving: false,
       }));
 
       return { success: true };
     } catch (error) {
       const errorMessage = getApiErrorMessage(error);
-      
+
       setState((prev) => ({
         ...prev,
         isSaving: false,
@@ -187,13 +147,12 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
 export const useUser = (): UserContextValue => {
   const context = useContext(UserContext);
-  
+
   if (context === undefined) {
     throw new Error('useUser must be used within a UserProvider');
   }
-  
+
   return context;
 };
 
 export default UserContext;
-

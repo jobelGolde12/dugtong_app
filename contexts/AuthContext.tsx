@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getCurrentUser, login as loginApi, LoginRequest, logout as logoutApi, User } from '../api/auth';
-import { clearTokens, getAccessToken, getRefreshToken } from '../api/client';
+import { clearTokens, getAccessToken } from '../api/client';
 
 // ==================== Types ====================
 
@@ -24,7 +24,6 @@ interface AuthContextValue extends AuthState {
 // ==================== Constants ====================
 
 const USER_STORAGE_KEY = 'user_data';
-const AUTH_STATE_KEY = 'auth_state';
 
 // ==================== Context ====================
 
@@ -60,7 +59,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      // Try to get current user from API
       try {
         const user = await getCurrentUser();
         const role = extractUserRole(user);
@@ -73,53 +71,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           accessToken,
         });
       } catch (error) {
-        // Check if it's a network error
-        const isNetworkError = error?.message?.includes('Network Error') || 
-                             error?.code === 'ERR_NETWORK' ||
-                             error?.response?.status === 0;
-        
-        if (isNetworkError) {
-          // For network errors, clear auth and continue without blocking the app
-          await clearAuthState();
-          setState((prev) => ({ ...prev, isLoading: false }));
-        } else {
-          // Token might be invalid, try refresh
-          const refreshToken = await getRefreshToken();
-          if (refreshToken) {
-            // Token refresh will be handled by API client interceptor
-            // For now, just try to get user again
-            try {
-              const user = await getCurrentUser();
-              const role = extractUserRole(user);
-
-              setState({
-                isLoading: false,
-                isAuthenticated: true,
-                user,
-                userRole: role,
-                accessToken,
-              });
-            } catch (refreshError) {
-              // Check if refresh also failed due to network
-              const isRefreshNetworkError = refreshError?.message?.includes('Network Error') || 
-                                          refreshError?.code === 'ERR_NETWORK' ||
-                                          refreshError?.response?.status === 0;
-              
-              if (isRefreshNetworkError) {
-                // For network errors during refresh, clear auth and continue
-                await clearAuthState();
-                setState((prev) => ({ ...prev, isLoading: false }));
-              } else {
-                // Refresh failed too, clear auth
-                await clearAuthState();
-                setState((prev) => ({ ...prev, isLoading: false }));
-              }
-            }
-          } else {
-            await clearAuthState();
-            setState((prev) => ({ ...prev, isLoading: false }));
-          }
-        }
+        await clearAuthState();
+        setState((prev) => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
       console.error('Error initializing auth:', error);
@@ -176,15 +129,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
-      
+
       let errorMessage = 'Login failed. Please try again.';
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
       }
 
       setState((prev) => ({ ...prev, isLoading: false }));
-      
+
       return { success: false, error: errorMessage };
     }
   }, []);
@@ -212,10 +165,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       router.replace('/login');
     } catch (error) {
       console.error('Logout error:', error);
-      
+
       // Still clear local state even if API call fails
       await clearAuthState();
-      
+
       setState({
         isLoading: false,
         isAuthenticated: false,
@@ -266,47 +219,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext);
-  
+
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  
+
   return context;
 };
 
-// ==================== Protected Route Hook ====================
-
-interface ProtectedRouteProps {
-  children: ReactNode;
-  allowedRoles?: ('admin' | 'donor')[];
-  fallbackPath?: string;
-}
-
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  allowedRoles,
-  fallbackPath = '/login',
-}) => {
-  const { isAuthenticated, isLoading, userRole } = useAuth();
-
-  if (isLoading) {
-    // Return loading indicator
-    return null;
-  }
-
-  if (!isAuthenticated) {
-    router.replace(fallbackPath);
-    return null;
-  }
-
-  if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {
-    // User doesn't have required role
-    router.replace('/unauthorized');
-    return null;
-  }
-
-  return <>{children}</>;
-};
-
 export default AuthContext;
-

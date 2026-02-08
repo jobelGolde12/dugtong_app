@@ -1,353 +1,227 @@
-✅ TODO 1 — Replace Mock Services with Real API Layer
+I am migrating my architecture from:
 
-Refactor the React Native (Expo + TypeScript) project to integrate with a FastAPI backend instead of using mock services and AsyncStorage.
+FastAPI + PostgreSQL + SQLAlchemy
 
-Tasks:
+to:
 
-Create a centralized API client using Axios.
+React Native + TypeScript + Turso (LibSQL) directly
 
-Configure baseURL from environment variables.
+I need you to convert my existing Python seed script into a Turso-compatible TypeScript seed system.
 
-Implement request/response interceptors.
+🎯 Objective
 
-Automatically attach Authorization: Bearer <access_token> header.
+Replace this Python SQLAlchemy seed script with:
 
-Handle 401 errors by calling /auth/refresh.
+SQLite-compatible schema
 
-If refresh fails, redirect to login screen.
+Turso (LibSQL) client
 
-Remove all mocked service files under lib/services.
+TypeScript implementation
 
-Output:
+No FastAPI
 
-api/client.ts
+No SQLAlchemy
 
-api/auth.ts
+No backend server
 
-api/donors.ts
+1️⃣ Convert PostgreSQL Models to SQLite Schema (Turso)
 
-api/notifications.ts
+Convert all PostgreSQL-specific features to SQLite-compatible schema:
 
-Proper error handling structure
+Replace:
 
-✅ TODO 2 — Implement Authentication Flow (JWT Based)
+SERIAL → INTEGER PRIMARY KEY AUTOINCREMENT
 
-Prompt to AI:
+BOOLEAN → INTEGER (0 or 1)
 
-Implement full authentication flow using FastAPI endpoints:
+ENUM → TEXT with allowed values
 
-POST /auth/login
+JSON → TEXT (store JSON stringified)
 
-POST /auth/refresh
+TIMESTAMP → TEXT (ISO string)
 
-POST /auth/logout
+Required Tables:
 
-Requirements:
+Create SQLite schema for:
 
-On login, store access_token and refresh_token securely (use Expo SecureStore).
+users
 
-Decode JWT to extract user role.
+donor_registrations
 
-Persist session across app restarts.
+donor_profiles
 
-Auto-refresh token when expired.
+messages
 
-Implement logout by calling /auth/logout and clearing tokens.
+alerts
 
-Redirect users based on role (admin → dashboard, donor → donor home).
+notifications
 
-Remove:
+Ensure foreign keys are defined properly.
 
-AsyncStorage login hacks.
+Enable foreign keys:
 
-Output:
+PRAGMA foreign_keys = ON;
 
-AuthContext with login/logout/refresh logic
+2️⃣ Create Turso Client Setup
 
-Secure token storage implementation
+Create file:
 
-Protected route wrapper
+src/lib/turso.ts
 
-✅ TODO 3 — Implement User Profile & Preferences Integration
+Initialize:
 
-Prompt to AI:
+import { createClient } from "@libsql/client";
 
-Integrate User & Preferences module using:
+export const db = createClient({
+url: process.env.TURSO_DATABASE_URL!,
+authToken: process.env.TURSO_AUTH_TOKEN!,
+});
 
-GET /users/me
+Do NOT hardcode credentials.
 
-PUT /users/me
+3️⃣ Create Seed Script in TypeScript
 
-PUT /users/me/preferences
+Create:
 
-Tasks:
+scripts/seed.ts
 
-On app load, fetch /users/me and store in global context.
+This script should:
 
-Update Settings screen to call /users/me/preferences.
+Connect to Turso
 
-Remove local-only theme persistence.
+Create tables if not exist
 
-Sync theme mode (light/dark/system) with backend.
+Insert realistic Philippine data
 
-Handle loading and optimistic updates.
+Follow the same logic as the Python script
 
-Output:
+4️⃣ Recreate Philippine Data Logic in TypeScript
 
-Updated Settings screen
+Convert:
 
-UserContext
+Filipino names array
 
-API calls with proper types
+Philippine municipalities
 
-✅ TODO 4 — Implement Donor Registration Workflow
+Weighted blood type distribution
 
-Prompt to AI:
+Random PH mobile number generator
 
-Refactor registration screen to use:
+Implement:
 
-POST /donor-registrations
+function weightedBloodType(): string { ... }
+function generatePHMobile(): string { ... }
 
-Requirements:
+Maintain the same blood distribution percentages.
 
-Submit form data to backend.
+5️⃣ Recreate Seeding Logic
 
-Show success message if status = pending.
+Recreate logic for:
 
-Handle validation errors from backend.
+Admin User
 
-Remove AsyncStorage donorProfile logic.
+1 admin
 
-After approval, allow donor to login normally.
+Donor Registrations
 
-Output:
+Random registration status:
 
-Updated register.tsx
+approved (70%)
 
-Error handling UI
+pending (20%)
 
-Loading states
+rejected (10%)
 
-✅ TODO 5 — Implement Donor Search & Management
+Approved Donors
 
-Prompt to AI:
+Create user record
 
-Replace local donor search with real API calls:
+Create donor profile
 
-GET /donors
+Random availability
 
-GET /donors/{id}
+Messages
 
-PATCH /donors/{id}/availability
+Create sample donor inquiries
 
-DELETE /donors/{id}
+Alerts
 
-Requirements:
+Create realistic PH hospital alerts
 
-Implement query-based filtering:
+Notifications
 
-blood_type
+Create alert-based notifications
 
-municipality
+Create welcome system notifications
 
-availability
+6️⃣ Use Transactions Properly
 
-q (search query)
+Wrap seed process inside transaction:
 
-Implement pagination.
+await db.execute("BEGIN");
+try {
+...
+await db.execute("COMMIT");
+} catch (err) {
+await db.execute("ROLLBACK");
+}
 
-Debounce search input.
+7️⃣ Ensure Idempotency
 
-Update availability via PATCH endpoint.
+Before seeding:
 
-Soft delete confirmation modal before DELETE.
+Check if users table already has data
 
-Remove:
+If yes → skip seed
 
-donorService mock.
+8️⃣ Output After Seeding
 
-Output:
+Print summary:
 
-Updated search.tsx
+Admin count
 
-Updated DonorManagementScreen
+Registration count
 
-Proper loading + empty states
+Approved donors
 
-✅ TODO 6 — Implement Alerts & Notification System
+Alerts
 
-Prompt to AI:
+Notifications
 
-Integrate alert and notification endpoints:
+9️⃣ Provide Final Output
 
-POST /alerts
+The final output must include:
 
-GET /alerts
+Complete SQLite schema
 
-POST /alerts/{id}/send
+turso.ts file
 
-GET /notifications
+seed.ts file
 
-PATCH /notifications/{id}/read
+Instructions to run seed:
 
-PATCH /notifications/read-all
+npx ts-node scripts/seed.ts
 
-Requirements:
+🔐 Important
 
-Admin: Create alert and optionally trigger send.
+Do not use:
 
-Donor: View notifications in inbox.
+FastAPI
 
-Show unread badge count.
+SQLAlchemy
 
-Optimistically mark notification as read.
+Alembic
 
-Remove mock notificationService.
+PostgreSQL types
 
-Output:
+Only:
 
-Updated send-alerts.tsx
+TypeScript
 
-Updated NotificationsScreen
+@libsql/client
 
-NotificationContext for unread count
+SQLite-compatible SQL
 
-✅ TODO 7 — Implement Donations & Requests
+If something in the original Python logic cannot be directly translated (like ENUM types), replace with TEXT and enforce allowed values in code.
 
-Prompt to AI:
-
-Integrate:
-
-POST /donations
-
-GET /donations
-
-POST /requests
-
-GET /requests
-
-Requirements:
-
-Admin logs donation → refresh donor availability.
-
-Show donation history in donor detail screen.
-
-Add request blood form for hospitals.
-
-Implement date filtering.
-
-Output:
-
-Donation form screen
-
-Request form screen
-
-History list UI
-
-✅ TODO 8 — Implement Messaging System
-
-Prompt to AI:
-
-Replace local message simulation with:
-
-POST /messages
-
-GET /messages
-
-Requirements:
-
-Donor sends inquiry to admin.
-
-Admin views inquiries list.
-
-Show message status (open/closed).
-
-Display success/failure feedback.
-
-Output:
-
-Updated DonorDashboard message form
-
-Admin messages screen
-
-✅ TODO 9 — Implement Chatbot Proxy Integration
-
-Prompt to AI:
-
-Replace direct OpenRouter API call with:
-
-POST /chatbot/respond
-
-Requirements:
-
-Remove API key from frontend.
-
-Send chat messages to backend proxy.
-
-Display streaming or full response.
-
-Handle rate limiting errors gracefully.
-
-Output:
-
-Updated chatbot.tsx
-
-Secure proxy integration
-
-✅ TODO 10 — Implement Analytics Integration (Admin)
-
-Prompt to AI:
-
-Integrate reporting endpoints:
-
-GET /reports/summary
-
-GET /reports/blood-type-distribution
-
-GET /reports/availability-trend
-
-Requirements:
-
-Replace reportService mock.
-
-Use real data in charts.
-
-Support date range filter.
-
-Handle loading states.
-
-Output:
-
-Updated ReportsScreen
-
-Real API integration
-
-Chart-ready data mapping
-
-✅ TODO 11 — Global Improvements
-
-Prompt to AI:
-
-Apply the following improvements across the project:
-
-Centralized error handling UI (Toast or Snackbar).
-
-Standardized loading skeletons.
-
-Proper empty states.
-
-API retry strategy.
-
-TypeScript types generated from backend OpenAPI schema.
-
-Environment-based API URLs (dev, staging, prod).
-
-Ensure the app is production-ready and no mock services remain.
-
-If you complete all of these, your app transforms from:
-
-“Frontend prototype with fake data”
-
-into
-
-“Real full-stack blood donor system connected to FastAPI.”
+End of instructions.

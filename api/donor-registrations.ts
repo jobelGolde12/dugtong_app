@@ -1,4 +1,5 @@
-import apiClient from './client';
+import { z } from "zod";
+import { db, queryRows, querySingle } from "../src/lib/turso";
 
 // ==================== Types ====================
 
@@ -39,7 +40,41 @@ export interface ApiError {
   validation_errors?: ValidationError[];
 }
 
-// ==================== API Endpoints ====================
+const donorRegistrationSchema = z.object({
+  full_name: z.string().min(2),
+  contact_number: z.string().min(10),
+  email: z.string().email().optional().nullable(),
+  age: z.number().int().min(16),
+  blood_type: z.string().min(1),
+  municipality: z.string().min(1),
+  availability: z.string().optional(),
+});
+
+const normalizeContactNumber = (value: string): string => {
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("63") && digits.length === 12) return `0${digits.slice(2)}`;
+  if (digits.startsWith("9") && digits.length === 10) return `0${digits}`;
+  return digits;
+};
+
+const mapRegistrationRow = (row: Record<string, any>): DonorRegistrationResponse => ({
+  id: Number(row.id),
+  full_name: row.full_name,
+  contact_number: row.contact_number,
+  email: row.email || null,
+  age: Number(row.age),
+  blood_type: row.blood_type,
+  municipality: row.municipality,
+  availability: row.availability,
+  status: row.status,
+  review_reason: row.review_reason || null,
+  reviewed_by: row.reviewed_by ?? null,
+  reviewed_at: row.reviewed_at ?? null,
+  created_at: row.created_at,
+  updated_at: row.updated_at ?? null,
+});
+
+// ==================== DB Endpoints ====================
 
 /**
  * Submit a new donor registration
@@ -47,11 +82,63 @@ export interface ApiError {
 export const createDonorRegistration = async (
   data: DonorRegistrationRequest,
 ): Promise<DonorRegistrationResponse> => {
-  const response = await apiClient.post<DonorRegistrationResponse>(
-    '/donor-registrations',
-    data,
+  const normalized = {
+    ...data,
+    contact_number: normalizeContactNumber(data.contact_number),
+    availability: data.availability || "Available",
+  };
+
+  const parsed = donorRegistrationSchema.safeParse(normalized);
+  if (!parsed.success) {
+    const validationErrors = parsed.error.issues.map((issue) => ({
+      field: issue.path.join("."),
+      message: issue.message,
+    }));
+
+    const error = new Error("Validation error. Please check your input.");
+    (error as any).validation_errors = validationErrors;
+    throw error;
+  }
+
+  const now = new Date().toISOString();
+
+  const result = await db.execute({
+    sql: `INSERT INTO donor_registrations (
+      full_name,
+      contact_number,
+      email,
+      age,
+      blood_type,
+      municipality,
+      availability,
+      status,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ,
+    args: [
+      normalized.full_name,
+      normalized.contact_number,
+      normalized.email ?? null,
+      normalized.age,
+      normalized.blood_type,
+      normalized.municipality,
+      normalized.availability,
+      "pending",
+      now,
+    ],
+  });
+
+  const insertedId = Number(result?.lastInsertRowid ?? 0);
+  const row = await querySingle<Record<string, any>>(
+    "SELECT * FROM donor_registrations WHERE id = ?",
+    [insertedId],
   );
-  return response.data;
+
+  if (!row) {
+    throw new Error("Failed to create donor registration.");
+  }
+
+  return mapRegistrationRow(row);
 };
 
 /**
@@ -60,10 +147,16 @@ export const createDonorRegistration = async (
 export const getDonorRegistration = async (
   id: string,
 ): Promise<DonorRegistrationResponse> => {
-  const response = await apiClient.get<DonorRegistrationResponse>(
-    `/donor-registrations/${id}`,
+  const row = await querySingle<Record<string, any>>(
+    "SELECT * FROM donor_registrations WHERE id = ?",
+    [id],
   );
-  return response.data;
+
+  if (!row) {
+    throw new Error("Registration not found.");
+  }
+
+  return mapRegistrationRow(row);
 };
 
 /**
@@ -71,18 +164,39 @@ export const getDonorRegistration = async (
  */
 export const getDonorRegistrations = async (
   params?: {
-    status?: 'pending' | 'approved' | 'rejected';
+    status?: "pending" | "approved" | "rejected";
     municipality?: string;
     blood_type?: string;
     limit?: number;
     offset?: number;
   },
 ): Promise<DonorRegistrationResponse[]> => {
-  const response = await apiClient.get<DonorRegistrationResponse[]>(
-    '/donor-registrations',
-    { params },
+  const conditions: string[] = [];
+  const args: unknown[] = [];
+
+  if (params?.status) {
+    conditions.push("status = ?");
+    args.push(params.status);
+  }
+  if (params?.municipality) {
+    conditions.push("municipality = ?");
+    args.push(params.municipality);
+  }
+  if (params?.blood_type) {
+    conditions.push("blood_type = ?");
+    args.push(params.blood_type);
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const limit = params?.limit ?? 100;
+  const offset = params?.offset ?? 0;
+
+  const rows = await queryRows<Record<string, any>>(
+    `SELECT * FROM donor_registrations ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    [...args, limit, offset],
   );
-  return response.data;
+
+  return rows.map(mapRegistrationRow);
 };
 
 /**
@@ -90,18 +204,24 @@ export const getDonorRegistrations = async (
  */
 export const updateDonorRegistrationStatus = async (
   id: string,
-  status: 'approved' | 'rejected',
+  status: "approved" | "rejected",
 ): Promise<DonorRegistrationResponse> => {
-  const response = await apiClient.patch<DonorRegistrationResponse>(
-    `/donor-registrations/${id}`,
-    { status },
-  );
-  return response.data;
+  const now = new Date().toISOString();
+
+  await db.execute({
+    sql: "UPDATE donor_registrations SET status = ?, updated_at = ? WHERE id = ?",
+    args: [status, now, id],
+  });
+
+  return getDonorRegistration(id);
 };
 
 /**
  * Delete donor registration (for admin use)
  */
 export const deleteDonorRegistration = async (id: string): Promise<void> => {
-  await apiClient.delete(`/donor-registrations/${id}`);
+  await db.execute({
+    sql: "DELETE FROM donor_registrations WHERE id = ?",
+    args: [id],
+  });
 };

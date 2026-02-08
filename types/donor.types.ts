@@ -15,7 +15,7 @@ export interface Donor {
 export interface DonorFilter {
   bloodType: string | null;
   municipality: string | null;
-  availability: string | null;
+  availability: string | boolean | null;
   searchQuery: string;
 }
 

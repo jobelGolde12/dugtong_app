@@ -1,22 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-
-// Environment configuration
-import Constants from "expo-constants";
-
-// Base URL configuration
-const API_BASE_URL = "https://backend-blood-donor-api.onrender.com/api/v1";
-console.log("🚀 [API Config] API_BASE_URL:", API_BASE_URL);
-
-// Create axios instance
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
 
 // Token storage keys
 const ACCESS_TOKEN_KEY = "access_token";
@@ -83,93 +65,6 @@ export const hasValidTokens = async (): Promise<boolean> => {
   return !!accessToken;
 };
 
-// ==================== Request Interceptor ====================
-
-apiClient.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    const accessToken = await getAccessToken();
-
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  },
-);
-
-// ==================== Response Interceptor ====================
-
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-
-    // Check if it's a network error
-    const isNetworkError = error?.message?.includes('Network Error') ||
-      error?.code === 'ERR_NETWORK' ||
-      error?.response?.status === 0;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = await getRefreshToken();
-
-        if (!refreshToken) {
-          // No refresh token, redirect to login
-          await clearTokens();
-          router.replace("/login");
-          return Promise.reject(error);
-        }
-
-        // Try to refresh the token
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
-
-        const { access_token, refresh_token } = response.data;
-
-        // Store new tokens
-        await storeTokens(access_token, refresh_token);
-
-        // Retry original request with new access token
-        originalRequest.headers.Authorization = `Bearer ${access_token}`;
-        return apiClient(originalRequest);
-      } catch (refreshError: any) {
-        // Check if refresh also failed due to network
-        const isRefreshNetworkError = refreshError?.message?.includes('Network Error') ||
-          refreshError?.code === 'ERR_NETWORK' ||
-          refreshError?.response?.status === 0;
-
-        if (isRefreshNetworkError) {
-          // For network errors during refresh, clear tokens and continue without blocking
-          await clearTokens();
-          return Promise.resolve({
-            data: null,
-            status: 401,
-            statusText: 'Unauthorized',
-            headers: {},
-            config: originalRequest,
-          });
-        } else {
-          // Refresh failed due to other reasons, clear tokens and redirect to login
-          console.error("Token refresh failed:", refreshError);
-          await clearTokens();
-          router.replace("/login");
-          return Promise.reject(refreshError);
-        }
-      }
-    }
-
-    return Promise.reject(error);
-  },
-);
-
 // ==================== API Helper Functions ====================
 
 /**
@@ -190,43 +85,12 @@ export const safeApiCall = async <T>(
 };
 
 /**
- * Get error message from Axios error
+ * Get error message from DB or runtime error
  */
 export const getApiErrorMessage = (error: unknown): string => {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<{
-      detail?: string;
-      message?: string;
-    }>;
-
-    if (axiosError.response?.data) {
-      const data = axiosError.response.data;
-      if (typeof data.detail === "string") return data.detail;
-      if (typeof data.message === "string") return data.message;
-    }
-
-    if (axiosError.response?.status === 401) {
-      return "Session expired. Please log in again.";
-    }
-
-    if (axiosError.response?.status === 403) {
-      return "You do not have permission to perform this action.";
-    }
-
-    if (axiosError.response?.status === 404) {
-      return "The requested resource was not found.";
-    }
-
-    if (axiosError.response?.status === 422) {
-      return "Validation error. Please check your input.";
-    }
-
-    if (axiosError.response?.status === 500) {
-      return "Server error. Please try again later.";
-    }
+  if (error instanceof Error) {
+    return error.message;
   }
 
   return "An unexpected error occurred. Please try again.";
 };
-
-export default apiClient;

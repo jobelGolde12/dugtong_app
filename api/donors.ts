@@ -1,5 +1,5 @@
 import { Donor, DonorFilter } from "../types/donor.types";
-import { apiClient, getApiErrorMessage } from "./client";
+import donorService from "../src/services/donorService";
 
 interface GetDonorsResponse {
   items: Donor[];
@@ -9,111 +9,29 @@ interface GetDonorsResponse {
 }
 
 export const donorApi = {
-  /**
-   * Get donors with filters and pagination
-   */
   getDonors: async (
-    filter: DonorFilter & { page?: number; page_size?: number }
+    filter: DonorFilter & { page?: number; page_size?: number },
   ): Promise<GetDonorsResponse> => {
-    try {
-      const params = new URLSearchParams();
-
-      if (filter.bloodType) params.append("blood_type", filter.bloodType);
-      if (filter.municipality) params.append("municipality", filter.municipality);
-      if (filter.availability !== null && filter.availability !== undefined) {
-        params.append("availability", filter.availability);
-      }
-      if (filter.searchQuery) params.append("search", filter.searchQuery);
-      if (filter.page) params.append("skip", filter.page.toString());
-      if (filter.page_size) params.append("limit", filter.page_size.toString());
-
-      const response = await apiClient.get<any[]>(`/donors?${params.toString()}`);
-      
-      // Transform backend response to frontend format
-      const transformedDonors: Donor[] = response.data.map((backendDonor: any) => ({
-        id: backendDonor.id.toString(),
-        name: backendDonor.full_name,
-        age: backendDonor.age,
-        sex: '', // Backend doesn't provide sex field
-        bloodType: backendDonor.blood_type,
-        contactNumber: backendDonor.contact_number,
-        municipality: backendDonor.municipality,
-        availabilityStatus: backendDonor.availability === 'available' ? 'Available' : 'Temporarily Unavailable',
-        lastDonationDate: undefined, // Backend doesn't provide this field
-        dateRegistered: backendDonor.created_at,
-        notes: '', // Backend doesn't provide this field
-      }));
-
-      return {
-        items: transformedDonors,
-        total: transformedDonors.length,
-        page: filter.page || 0,
-        page_size: filter.page_size || 50,
-      };
-    } catch (error) {
-      throw new Error(getApiErrorMessage(error));
-    }
+    return donorService.getDonors(filter);
   },
 
-  /**
-   * Get a single donor by ID
-   */
   getDonor: async (id: string): Promise<Donor> => {
-    try {
-      const response = await apiClient.get<Donor>(`/donors/${id}`);
-      return response.data;
-    } catch (error) {
-      throw new Error(getApiErrorMessage(error));
-    }
+    return donorService.getDonor(id);
   },
 
-  /**
-   * Create a new donor (admin only)
-   */
   createDonor: async (data: Partial<Donor>): Promise<Donor> => {
-    try {
-      const response = await apiClient.post<Donor>("/donors", data);
-      return response.data;
-    } catch (error) {
-      throw new Error(getApiErrorMessage(error));
-    }
+    return donorService.createDonor(data);
   },
 
-  /**
-   * Update a donor profile
-   */
   updateDonor: async (id: string, data: Partial<Donor>): Promise<Donor> => {
-    try {
-      const response = await apiClient.patch<Donor>(`/donors/${id}`, data);
-      return response.data;
-    } catch (error) {
-      throw new Error(getApiErrorMessage(error));
-    }
+    return donorService.updateDonor(id, data);
   },
 
-  /**
-   * Update donor availability specifically
-   */
   updateAvailability: async (id: string, availabilityStatus: string): Promise<Donor> => {
-    try {
-      // Backend expects { availability_status: ... }
-      const response = await apiClient.patch<Donor>(`/donors/${id}/availability`, {
-        availability_status: availabilityStatus,
-      });
-      return response.data;
-    } catch (error) {
-      throw new Error(getApiErrorMessage(error));
-    }
+    return donorService.updateAvailability(id, availabilityStatus);
   },
 
-  /**
-   * Soft delete a donor
-   */
   deleteDonor: async (id: string): Promise<void> => {
-    try {
-      await apiClient.delete(`/donors/${id}`);
-    } catch (error) {
-      throw new Error(getApiErrorMessage(error));
-    }
+    return donorService.deleteDonor(id);
   },
 };
