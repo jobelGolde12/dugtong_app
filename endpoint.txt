@@ -1,0 +1,24 @@
+Donor Endpoints:
+- GET /donors (filters: bloodType, municipality, availability, searchQuery) - getDonors
+- GET /donors/{id} - getDonor
+- POST /donors - createDonor
+- PUT/PATCH /donors/{id} - updateDonor
+- PUT/PATCH /donors/{id}/availability - updateAvailability
+- DELETE /donors/{id} (logical delete) - deleteDonor
+
+Donor Registration Endpoints:
+- POST /donor-registrations - createDonorRegistration
+- GET /donor-registrations/{id} - getDonorRegistration
+- GET /donor-registrations (filters: status, municipality, blood_type) - getDonorRegistrations
+- PUT/PATCH /donor-registrations/{id}/status - updateDonorRegistrationStatus
+- DELETE /donor-registrations/{id} - deleteDonorRegistration
+
+Notification Endpoints:
+- GET /notifications (filters: type, is_read, search_query) - getNotifications
+- GET /notifications/{id} - getNotificationById
+- PUT/PATCH /notifications/{id}/read - markAsRead
+- PUT/PATCH /notifications/read-all - markAllAsRead
+- DELETE /notifications/{id} - deleteNotification
+- DELETE /notifications - deleteAllNotifications
+- GET /notifications/unread-count - getUnreadCount
+- GET /notifications/grouped - getGroupedNotifications

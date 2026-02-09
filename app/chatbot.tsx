@@ -26,6 +26,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import chatbotRules from '../chatbot-rules.json';
 import { useTheme } from '../contexts/ThemeContext';
 import DashboardLayout from './components/DashboardLayout';
+import { donorApi } from '../api/donors';
+import { getDonorRegistrations } from '../api/donor-registrations';
+import { getNotifications, getUnreadCount, getGroupedNotifications } from '../api/notifications';
 
 type MessageType = {
   id: string;
@@ -35,10 +38,9 @@ type MessageType = {
 
 // OpenRouter free models in fallback order
 const FREE_MODELS = [
-  'mistralai/mistral-7b-instruct:free',
-  'huggingfaceh4/zephyr-7b-beta:free',
-  'openchat/openchat-7b:free',
-  'gryphe/mythomist-7b:free'
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'qwen/qwen-2-7b-instruct:free',
+  'microsoft/phi-3-mini-128k-instruct:free'
 ] as const;
 
 type OpenRouterError = {
@@ -254,28 +256,63 @@ export default function ChatbotScreen() {
     }
   };
 
-  // Generate sample analytics and donor data summaries
-  const generateAnalyticsSummary = (): string => {
-    return `Here's a summary of the analytics data:
-    
-- Total Donors: 1,245
-- Total Contributions: $42,560
-- Average Donation: $34.20
-- Top Donor: Maria Santos ($2,400)
-- Monthly Growth: 12% increase
-- Engagement Rate: 78%
-- Active Donors: 892`;
+  // Fetch live data from API endpoints
+  const fetchLiveData = async () => {
+    try {
+      const [donorsData, registrationsData, notificationsData, unreadData, groupedData] = await Promise.all([
+        donorApi.getDonors({ bloodType: undefined, municipality: undefined, availability: undefined, searchQuery: undefined, page: 0, page_size: 100 }).catch(() => ({ items: [], total: 0, page: 0, page_size: 0 })),
+        getDonorRegistrations({ limit: 100 }).catch(() => []),
+        getNotifications({ page_size: 50 }).catch(() => ({ items: [], total: 0, page: 0, page_size: 0, unread_count: 0 })),
+        getUnreadCount().catch(() => ({ unread_count: 0 })),
+        getGroupedNotifications().catch(() => ({ today: [], yesterday: [], earlier: [], unread_count: 0 }))
+      ]);
+
+      return {
+        donors: donorsData,
+        registrations: registrationsData,
+        notifications: notificationsData,
+        unreadCount: unreadData,
+        groupedNotifications: groupedData
+      };
+    } catch (error) {
+      console.error('Error fetching live data:', error);
+      return null;
+    }
   };
 
-  const generateDonorDataSummary = (): string => {
-    return `Here's a summary of donor information:
-    
-- Individual Donors: 980
-- Corporate Donors: 265
-- Recurring Donors: 456
-- New Donors (this month): 42
-- Donor Retention Rate: 85%
-- Top Donor Categories: Education (35%), Health (28%), Environment (22%)`;
+  const generateDataSummary = async (): Promise<string> => {
+    const data = await fetchLiveData();
+    if (!data) return 'Unable to fetch live data at the moment.';
+
+    const { donors, registrations, notifications, unreadCount, groupedNotifications } = data;
+
+    const bloodTypeCounts = donors.items.reduce((acc: Record<string, number>, donor: any) => {
+      const bloodType = donor.blood_type || 'Unknown';
+      acc[bloodType] = (acc[bloodType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const availableDonors = donors.items.filter((d: any) => d.availability_status === 'Available').length;
+    const pendingRegistrations = registrations.filter((r: any) => r.status === 'pending').length;
+    const approvedRegistrations = registrations.filter((r: any) => r.status === 'approved').length;
+
+    return `
+Donors Summary:
+- Total Donors: ${donors.total}
+- Available Donors: ${availableDonors}
+- Blood Type Distribution: ${Object.entries(bloodTypeCounts).map(([type, count]) => `${type}: ${count}`).join(', ')}
+
+Registrations Summary:
+- Total Registrations: ${registrations.length}
+- Pending: ${pendingRegistrations}
+- Approved: ${approvedRegistrations}
+
+Notifications Summary:
+- Total Notifications: ${notifications.total}
+- Unread: ${unreadCount.unread_count}
+- Today: ${groupedNotifications.today.length}
+- Yesterday: ${groupedNotifications.yesterday.length}
+`.trim();
   };
 
   // Function to check if input matches keywords for a specific rule
@@ -310,151 +347,164 @@ export default function ChatbotScreen() {
     const maxRetries = 2;
     const baseDelay = 1000;
     
-    // Validate API key first
-    if (!process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY) {
-      console.error('❌ OpenRouter API key is not set');
-      const response = getHumanLikeResponse(input);
-      // NEW: Reset state after fallback response
+    // API keys in fallback order
+    const apiKeys = [
+      process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY1,
+      process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY2,
+      process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY3
+    ].filter(Boolean);
+    
+    // Validate API keys
+    if (apiKeys.length === 0) {
+      console.error('❌ No OpenRouter API keys are set');
+      const response = await getHumanLikeResponse(input);
       setCannotReceiveMessages(false);
       return response;
     }
     
-    const systemPrompt = `You are Dugtong Bot, a helpful assistant for a blood donation app. Use this context about available features:
+    // Build system prompt from chatbot-rules.json
+    const rulesDescription = chatbotRules.rules.map(rule => 
+      `${rule.title}: ${rule.description}`
+    ).join('\n');
+    
+    const dataSummary = await generateDataSummary();
+    
+    const systemPrompt = `You are Dugtong Bot, a helpful assistant for a blood donation app.
 
-Analytics Data: ${generateAnalyticsSummary()}
-Donor Data: ${generateDonorDataSummary()}
+MANDATORY RULES (from chatbot-rules.json):
+${rulesDescription}
 
-Rules to follow:
-- Be helpful and friendly
-- Provide relevant information about blood donation, analytics, or donor data when asked
-- Keep responses concise and conversational
-- If asked about analytics or donor data, use the provided summaries above`;
+LIVE SYSTEM DATA:
+${dataSummary}
+
+BEHAVIOR GUIDELINES:
+- Always base your answers on the live data provided above
+- Be helpful, friendly, and concise
+- Provide accurate information about donors, registrations, and notifications
+- If asked about data, summarize and contextualize the information
+- Never perform actions, only explain and guide
+- If data is unavailable, inform the user gracefully`;
 
     let lastError: Error | null = null;
 
-    // Try each model in order
-    for (let modelIndex = 0; modelIndex < FREE_MODELS.length; modelIndex++) {
-      const currentModel = FREE_MODELS[modelIndex];
-      console.log(`🔄 Trying model ${modelIndex + 1}/${FREE_MODELS.length}: ${currentModel}`);
+    // Try each API key
+    for (let keyIndex = 0; keyIndex < apiKeys.length; keyIndex++) {
+      const currentKey = apiKeys[keyIndex];
+      console.log(`🔑 Trying API key ${keyIndex + 1}/${apiKeys.length}`);
 
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          console.log(`🔍 OpenRouter API call (model: ${currentModel}, attempt ${attempt + 1})`);
-          
-          const requestBody = {
-            model: currentModel,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: input }
-            ],
-            max_tokens: 150,
-            temperature: 0.7,
-          };
+      // Try each model with current key
+      for (let modelIndex = 0; modelIndex < FREE_MODELS.length; modelIndex++) {
+        const currentModel = FREE_MODELS[modelIndex];
+        console.log(`🔄 Trying model ${modelIndex + 1}/${FREE_MODELS.length}: ${currentModel}`);
 
-          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-          });
-
-          const responseText = await response.text();
-          let data;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
-            data = JSON.parse(responseText);
-          } catch (parseError) {
-            console.error('❌ JSON parse error:', parseError);
+            console.log(`🔍 OpenRouter API call (key ${keyIndex + 1}, model: ${currentModel}, attempt ${attempt + 1})`);
+            
+            const requestBody = {
+              model: currentModel,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: input }
+              ],
+              max_tokens: 150,
+              temperature: 0.7,
+            };
+
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${currentKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestBody),
+            });
+
+            const responseText = await response.text();
+            let data;
+            try {
+              data = JSON.parse(responseText);
+            } catch (parseError) {
+              console.error('❌ JSON parse error:', parseError);
+              if (attempt < maxRetries) {
+                const delay = baseDelay * Math.pow(2, attempt);
+                console.log(`⏳ Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+              break;
+            }
+
+            if (!response.ok) {
+              const errorCode = response.status;
+              console.error(`❌ API Error ${errorCode}:`, data.error?.message || 'Unknown error');
+              
+              if (errorCode === 429 || errorCode === 502 || errorCode === 503) {
+                if (attempt < maxRetries) {
+                  const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+                  console.log(`⏳ Retryable error ${errorCode}, waiting ${delay}ms...`);
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                  continue;
+                }
+              } else if (errorCode === 401 || errorCode === 403) {
+                console.error(`🔑 Authentication error ${errorCode}, trying next model`);
+                break;
+              } else {
+                if (attempt < maxRetries) {
+                  const delay = baseDelay * Math.pow(2, attempt);
+                  console.log(`⏳ Provider error ${errorCode}, retrying in ${delay}ms...`);
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                  continue;
+                }
+              }
+              
+              break;
+            }
+
+            const content = data.choices?.[0]?.message?.content;
+            console.log(`✅ Success with key ${keyIndex + 1}, model: ${currentModel}`);
+            setCannotReceiveMessages(false);
+            return content || 'Sorry, I had trouble processing that.';
+
+          } catch (error) {
+            lastError = error as Error;
+            console.error(`❌ Network/request error on attempt ${attempt + 1}:`, error);
+            
             if (attempt < maxRetries) {
-              const delay = baseDelay * Math.pow(2, attempt);
-              console.log(`⏳ Retrying in ${delay}ms...`);
+              const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+              console.log(`⏳ Network error, waiting ${delay}ms before retry...`);
               await new Promise(resolve => setTimeout(resolve, delay));
               continue;
             }
-            break; // Try next model
-          }
-
-          if (!response.ok) {
-            const errorCode = response.status;
-            console.error(`❌ API Error ${errorCode}:`, data.error?.message || 'Unknown error');
-            
-            // Handle retryable errors
-            if (errorCode === 429 || errorCode === 502 || errorCode === 503) {
-              if (attempt < maxRetries) {
-                const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
-                console.log(`⏳ Retryable error ${errorCode}, waiting ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-              }
-            } 
-            // Non-retryable errors (401, 403, etc.) - move to next model
-            else if (errorCode === 401 || errorCode === 403) {
-              console.error(`🔑 Authentication error ${errorCode}, trying next model`);
-              break; // Move to next model
-            }
-            // Provider error or other 4xx/5xx
-            else {
-              if (attempt < maxRetries) {
-                const delay = baseDelay * Math.pow(2, attempt);
-                console.log(`⏳ Provider error ${errorCode}, retrying in ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-              }
-            }
-            
-            // If we've exhausted retries for this model, break to try next one
+            console.log(`🌐 Network error with ${currentModel}, trying next model`);
             break;
           }
-
-          // Success! Return the content
-          const content = data.choices?.[0]?.message?.content;
-          console.log(`✅ Success with model: ${currentModel}`);
-          // NEW: Reset state on successful response
-          setCannotReceiveMessages(false);
-          return content || 'Sorry, I had trouble processing that.';
-
-        } catch (error) {
-          lastError = error as Error;
-          console.error(`❌ Network/request error on attempt ${attempt + 1}:`, error);
-          
-          if (attempt < maxRetries) {
-            const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
-            console.log(`⏳ Network error, waiting ${delay}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
-          // If network error persists after retries, try next model
-          console.log(`🌐 Network error with ${currentModel}, trying next model`);
-          break;
         }
+        
+        console.log(`❌ Model ${currentModel} failed with key ${keyIndex + 1}, trying next...`);
       }
       
-      // If we've tried all retries for this model, continue to next model
-      console.log(`❌ Model ${currentModel} failed, trying next...`);
+      console.log(`❌ All models failed with key ${keyIndex + 1}, trying next key...`);
     }
     
-    // All models failed
-    console.error('❌ All OpenRouter models failed, falling back to rule-based responses');
+    console.error('❌ All OpenRouter API keys and models failed, falling back to rule-based responses');
     console.error('Last error:', lastError?.message);
-    // NEW: Reset state after all models fail and fallback is used
     setCannotReceiveMessages(false);
-    return getHumanLikeResponse(input);
+    return await getHumanLikeResponse(input);
   };
 
   // Fallback response generation using rules from JSON
-  const getHumanLikeResponse = (input: string = ''): string => {
+  const getHumanLikeResponse = async (input: string = ''): Promise<string> => {
     const lowerInput = input.toLowerCase();
 
     // Check for analytics/donor data summary requests (Rule 1)
     if (matchesKeywords(input, chatbotRules.rules[0].keywords)) {
-      const analyticsSummary = generateAnalyticsSummary();
-      const donorSummary = generateDonorDataSummary();
+      const dataSummary = await generateDataSummary();
       
       const template = getRandomResponseTemplate(chatbotRules.rules[0]);
       return processTemplate(template, {
-        data_summary: analyticsSummary,
-        donor_summary: donorSummary
+        data_summary: dataSummary,
+        donor_summary: dataSummary
       });
     }
 
@@ -570,7 +620,6 @@ Rules to follow:
       speakMessage(botResponseText);
     } catch (error) {
       console.error('Error getting bot response:', error);
-      // NEW: Ensure state is reset even on error
       setCannotReceiveMessages(false);
     }
   };

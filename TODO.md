@@ -1,114 +1,101 @@
-📋 Phone Call Functionality Fix - Todo List
-File: app/components/DonorCard.tsx
+In app/chatbot.tsx, implement the AI “mind/brain” logic using the OpenRouter Chat Completions API, while strictly preserving all existing logic, structure, state, and UI already implemented in this file.
 
-Phase 1: Initial Debugging & Analysis
-Add console logs to diagnose the issue:
+OpenRouter Integration Requirements
 
-javascript
-console.log('Phone number:', donor.contactNumber);
-console.log('Formatted URL:', url);
-console.log('URL supported?', supported);
-console.log('Platform:', Platform.OS);
-Phase 2: Platform-Specific Implementation
-Import Platform from React Native (if not already imported):
+Connect to the OpenRouter Chat Completions API using the existing retry, fallback, and error-handling logic already present in the file.
 
-javascript
-import { Platform, ... } from 'react-native';
-Update phone number formatting to clean invalid characters:
+The project uses three API keys:
 
-javascript
-const cleanNumber = donor.contactNumber.replace(/[^0-9+]/g, '');
-const url = `tel:${cleanNumber}`;
-Implement platform-specific URLs:
+EXPO_PUBLIC_OPEN_ROUTER_API_KEY1
 
-Use telprompt: for iOS (shows confirmation dialog)
+EXPO_PUBLIC_OPEN_ROUTER_API_KEY2
 
-Use tel: for Android
+EXPO_PUBLIC_OPEN_ROUTER_API_KEY3
 
-Phase 3: Simulator/Emulator Detection (Optional but recommended)
-Install DeviceInfo package (if not already installed):
+These keys are used sequentially through the existing retry loop and must not replace or remove the current retry/backoff/model-fallback logic.
 
-text
-npm install react-native-device-info
-or
+Use the existing fetch('https://openrouter.ai/api/v1/chat/completions') call pattern and headers.
 
-text
-yarn add react-native-device-info
-Import DeviceInfo:
+Chatbot Rules (Mandatory)
 
-javascript
-import DeviceInfo from 'react-native-device-info';
-Add simulator detection function:
+There is a file named chatbot-rules.json.
 
-javascript
-const checkIfSimulator = async () => {
-if (Platform.OS === 'ios') {
-return await DeviceInfo.isEmulator();
-} else if (Platform.OS === 'android') {
-return await DeviceInfo.isEmulator();
-}
-return false;
-};
-Add simulator warning before attempting to call
+Load and apply the contents of this file as the system-level rules and behavior constraints of the chatbot.
 
-Phase 4: Android-Specific Fixes
-For Android Manifest (if Android app):
+These rules must be injected into the system prompt and treated as non-negotiable behavior guidelines for the AI.
 
-Open android/app/src/main/AndroidManifest.xml
+The chatbot must always obey these rules when generating responses.
 
-Add permission: <uses-permission android:name="android.permission.CALL_PHONE" />
+API Data as Chatbot “Mind”
 
-Note: This might require runtime permissions on newer Android versions
+The chatbot must use live data from ALL available GET endpoints as part of its reasoning and response generation.
 
-Phase 5: Enhanced Error Handling
-Improve error messages with more specific information:
+Donor Endpoints
 
-Differentiate between "simulator/emulator" vs "physical device" errors
+GET /donors (filters: bloodType, municipality, availability, searchQuery)
 
-Add platform-specific troubleshooting tips
+GET /donors/{id}
 
-Phase 6: Testing
-Test on iOS simulator (should show warning/error)
+Donor Registration Endpoints
 
-Test on iOS physical device (should work with telprompt:)
+GET /donor-registrations
 
-Test on Android emulator (may work with dialer)
+GET /donor-registrations/{id}
 
-Test on Android physical device (should work with proper permissions)
+Notification Endpoints
 
-Phase 7: Fallback Implementation
-Add fallback mechanism if primary URL fails:
+GET /notifications
 
-javascript
-// Try alternative URL schemes
-const alternativeUrl = Platform.OS === 'android'
-? `tel:${cleanNumber}`
-: `telprompt:${cleanNumber}`;
-Final Implementation Structure:
-javascript
-const handleCall = async () => {
-// 1. Check if number exists
-// 2. Clean/format number
-// 3. Check if simulator (optional warning)
-// 4. Platform-specific URL selection
-// 5. Check if URL can be opened
-// 6. Attempt to open with fallback
-// 7. Comprehensive error handling
-};
-Priority Order:
-High Priority: Phase 1 + 2 (Debugging + Platform fixes)
+GET /notifications/{id}
 
-Medium Priority: Phase 4 + 5 (Android permissions + Better errors)
+GET /notifications/unread-count
 
-Low Priority: Phase 3 + 7 (Simulator detection + Fallbacks)
+GET /notifications/grouped
 
-Expected Outcome:
-After completing these todos, the phone call functionality should:
+Data Usage Rules
 
-✅ Work on physical devices (iOS & Android)
+Fetch relevant data from these GET endpoints before or during AI response generation.
 
-✅ Show appropriate warnings on simulators
+Summarize, analyze, and contextualize the fetched data.
 
-✅ Handle edge cases (malformed numbers, missing permissions)
+The chatbot’s answers must be grounded in real API data, not assumptions.
 
-✅ Provide clear error messages to users
+If multiple endpoints are relevant, combine and summarize them intelligently.
+
+If no data is available, respond gracefully and inform the user.
+
+Chatbot Behavior
+
+The chatbot must:
+
+Answer questions about donors, donor registrations, and notifications
+
+Provide summaries, counts, availability insights, and status explanations
+
+Base all answers on fetched API data + chatbot-rules.json
+
+The chatbot must not perform POST, PUT, PATCH, or DELETE actions directly—only explain, summarize, or guide based on data.
+
+Strict Constraints
+
+❌ Do NOT refactor, remove, or rename existing logic, state, hooks, or UI.
+
+❌ Do NOT modify unrelated business logic.
+
+❌ Do NOT hardcode responses.
+
+✅ Follow real-world chatbot implementation standards.
+
+✅ Keep the implementation mobile-safe and production-ready.
+
+Expected Result
+
+A fully functional chatbot “mind” that:
+
+Uses OpenRouter reliably with fallback support
+
+Obeys chatbot-rules.json
+
+Thinks using real API data
+
+Summarizes and answers accurately based on the system’s current state
