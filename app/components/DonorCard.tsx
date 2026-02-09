@@ -2,7 +2,11 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Donor } from '@/types/donor.types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { Alert, Animated, Linking, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, Animated, Linking, Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions, Clipboard } from 'react-native';
+import { checkPhonePermission, requestPhonePermission, openAppSettings, PermissionStatus } from '../../lib/utils/permissions';
+import { getPermissionRequestCount, incrementPermissionRequestCount } from '../../lib/utils/storage';
+import PermissionRequestModal from './permissions/PermissionRequestModal';
+import SettingsRedirectModal from './permissions/SettingsRedirectModal';
 
 // ========== Modern Animated Action Button ==========
 interface ActionButtonProps {
@@ -108,6 +112,8 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   const { colors, isDark } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const { width } = useWindowDimensions();
+  const [permissionModalVisible, setPermissionModalVisible] = useState(false);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
   // Determine device size thresholds
   const isSmallDevice = width < 375;
@@ -131,25 +137,76 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   const statusColor = donor.availabilityStatus === 'Available' ? '#10B981' : '#EF4444';
   const isAvailable = donor.availabilityStatus === 'Available';
 
-  // Handle call action
+  const makeCall = () => {
+    const cleanNumber = donor.contactNumber.replace(/[^0-9+]/g, '');
+    let url = `tel:${cleanNumber}`;
+    if (Platform.OS === 'ios') {
+      url = `telprompt:${cleanNumber}`;
+    }
+
+    Linking.canOpenURL(url)
+      .then(supported => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          Alert.alert('Error', 'This device does not support making phone calls.');
+        }
+      })
+      .catch(err => console.error('An error occurred', err));
+  };
+  
   const handleCall = async () => {
     if (!donor.contactNumber) {
       Alert.alert('Error', 'No phone number available for this donor.');
       return;
     }
-    const url = `tel:${donor.contactNumber}`;
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Error', 'Phone call is not available on this device.');
-      }
-    } catch (error) {
-      console.error('Failed to open phone app:', error);
-      Alert.alert('Error', 'Failed to open phone app.');
+
+    const permissionStatus = await checkPhonePermission();
+
+    switch (permissionStatus) {
+      case 'granted':
+        makeCall();
+        break;
+      case 'undetermined':
+        setPermissionModalVisible(true);
+        break;
+      case 'denied':
+        const requestCount = await getPermissionRequestCount();
+        if (requestCount < 2) { // Show rationale once after first denial
+          setPermissionModalVisible(true);
+        } else {
+          setSettingsModalVisible(true);
+        }
+        break;
+      case 'blocked':
+        setSettingsModalVisible(true);
+        break;
+      case 'unavailable':
+        Alert.alert('Error', 'Phone call functionality is not available on this device.');
+        break;
     }
   };
+
+  const handleRequestPermission = async () => {
+    setPermissionModalVisible(false);
+    await incrementPermissionRequestCount();
+    const newStatus = await requestPhonePermission();
+    if (newStatus === 'granted') {
+      makeCall();
+    } else if (newStatus === 'blocked' || newStatus === 'denied') {
+      setSettingsModalVisible(true);
+    }
+  };
+
+  const handleOpenSettings = () => {
+    setSettingsModalVisible(false);
+    openAppSettings();
+  };
+
+  const handleCopyToClipboard = () => {
+    Clipboard.setString(donor.contactNumber);
+    Alert.alert('Copied', 'Phone number copied to clipboard.');
+  }
 
   // Handle message action
   const handleMessage = async () => {
@@ -172,209 +229,231 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   };
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.donorCard,
-        {
-          backgroundColor: colors.card,
-          borderColor: isDark ? colors.border : 'transparent',
-          borderWidth: isDark ? 1 : 0,
-          padding: isSmallDevice ? 16 : 20,
-          transform: [{ scale: expanded ? 1.01 : 1 }]
-        }
-      ]}
-      onPress={() => setExpanded(!expanded)}
-      onLongPress={() => onPress(donor)}
-      activeOpacity={0.9}
-      delayLongPress={500}
-    >
-      {/* Main content container */}
-      <View style={styles.contentContainer}>
+    <>
+      <PermissionRequestModal
+        visible={permissionModalVisible}
+        onClose={() => setPermissionModalVisible(false)}
+        onAllow={handleRequestPermission}
+        title="Allow Phone Calls"
+        message="To call donors directly from the app, please allow access to your phone."
+        iconName="call-outline"
+      />
+      <SettingsRedirectModal
+        visible={settingsModalVisible}
+        onClose={() => setSettingsModalVisible(false)}
+        onOpenSettings={handleOpenSettings}
+        title="Permission Denied"
+        message="To make calls, you need to enable phone permissions in your device settings. Alternatively, you can copy the number to your clipboard."
+      >
+        <TouchableOpacity style={styles.copyButton} onPress={handleCopyToClipboard}>
+          <Ionicons name="copy-outline" size={20} color={colors.primary} />
+          <Text style={[styles.copyButtonText, { color: colors.primary }]}>Copy Number</Text>
+        </TouchableOpacity>
+      </SettingsRedirectModal>
+      <TouchableOpacity
+        style={[
+          styles.donorCard,
+          {
+            backgroundColor: colors.card,
+            borderColor: isDark ? colors.border : 'transparent',
+            borderWidth: isDark ? 1 : 0,
+            padding: isSmallDevice ? 16 : 20,
+            transform: [{ scale: expanded ? 1.01 : 1 }]
+          }
+        ]}
+        onPress={() => setExpanded(!expanded)}
+        onLongPress={() => onPress(donor)}
+        activeOpacity={0.9}
+        delayLongPress={500}
+      >
+        {/* Main content container */}
+        <View style={styles.contentContainer}>
 
-        {/* Top row: Avatar + Info + Blood Type */}
-        <View style={styles.topRow}>
-          <View style={styles.avatarContainer}>
-            <View style={[
-              styles.avatar,
-              {
-                backgroundColor: colors.primary + '15',
-                width: isSmallDevice ? 44 : 50,
-                height: isSmallDevice ? 44 : 50,
-                borderRadius: isSmallDevice ? 22 : 25,
-              }
-            ]}>
-              <Text style={[
-                styles.avatarText,
+          {/* Top row: Avatar + Info + Blood Type */}
+          <View style={styles.topRow}>
+            <View style={styles.avatarContainer}>
+              <View style={[
+                styles.avatar,
                 {
-                  fontSize: isSmallDevice ? 18 : 20,
-                  color: colors.primary
+                  backgroundColor: colors.primary + '15',
+                  width: isSmallDevice ? 44 : 50,
+                  height: isSmallDevice ? 44 : 50,
+                  borderRadius: isSmallDevice ? 22 : 25,
                 }
               ]}>
-                {donor.name.charAt(0)}
-              </Text>
+                <Text style={[
+                  styles.avatarText,
+                  {
+                    fontSize: isSmallDevice ? 18 : 20,
+                    color: colors.primary
+                  }
+                ]}>
+                  {donor.name.charAt(0)}
+                </Text>
+              </View>
+
+              {/* Status indicator dot on avatar */}
+              <View style={[
+                styles.statusIndicator,
+                {
+                  backgroundColor: statusColor,
+                  borderColor: colors.card,
+                  borderWidth: 2,
+                }
+              ]} />
             </View>
 
-            {/* Status indicator dot on avatar */}
-            <View style={[
-              styles.statusIndicator,
-              {
-                backgroundColor: statusColor,
-                borderColor: colors.card,
-                borderWidth: 2,
-              }
-            ]} />
-          </View>
-
-          <View style={styles.infoContainer}>
-            <View style={styles.nameRow}>
-              <Text style={[
-                styles.donorName,
-                {
-                  color: colors.text,
-                  fontSize: isSmallDevice ? 16 : 18
-                }
-              ]} numberOfLines={1}>
-                {donor.name}
-              </Text>
-
-              {/* Combined age and gender badge */}
-              <View style={[styles.combinedBadge, { backgroundColor: colors.surface }]}>
+            <View style={styles.infoContainer}>
+              <View style={styles.nameRow}>
                 <Text style={[
-                  styles.combinedBadgeText,
-                  { color: colors.textSecondary, fontSize: isSmallDevice ? 11 : 12 }
-                ]}>
-                  {donor.age}y • {donor.sex.charAt(0)}
+                  styles.donorName,
+                  {
+                    color: colors.text,
+                    fontSize: isSmallDevice ? 16 : 18
+                  }
+                ]} numberOfLines={1}>
+                  {donor.name}
+                </Text>
+
+                {/* Combined age and gender badge */}
+                <View style={[styles.combinedBadge, { backgroundColor: colors.surface }]}>
+                  <Text style={[
+                    styles.combinedBadgeText,
+                    { color: colors.textSecondary, fontSize: isSmallDevice ? 11 : 12 }
+                  ]}>
+                    {donor.age}y • {donor.sex.charAt(0)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Location with minimal icon */}
+              <View style={styles.locationRow}>
+                <Ionicons
+                  name="location-outline"
+                  size={isSmallDevice ? 13 : 14}
+                  color={colors.textSecondary}
+                />
+                <Text style={[
+                  styles.locationText,
+                  {
+                    color: colors.text,
+                    fontSize: isSmallDevice ? 13 : 14
+                  }
+                ]} numberOfLines={1}>
+                  {donor.municipality}
                 </Text>
               </View>
             </View>
 
-            {/* Location with minimal icon */}
-            <View style={styles.locationRow}>
-              <Ionicons
-                name="location-outline"
-                size={isSmallDevice ? 13 : 14}
-                color={colors.textSecondary}
-              />
-              <Text style={[
-                styles.locationText,
-                {
-                  color: colors.text,
-                  fontSize: isSmallDevice ? 13 : 14
-                }
-              ]} numberOfLines={1}>
-                {donor.municipality}
-              </Text>
+            {/* Blood type badge */}
+            <View style={styles.bloodTypeWrapper}>
+              <View style={[
+                styles.bloodTypeBadge,
+                { backgroundColor: bloodTypeColor + '10' }
+              ]}>
+                <Text style={[
+                  styles.bloodTypeText,
+                  {
+                    color: bloodTypeColor,
+                    fontSize: isSmallDevice ? 16 : 18
+                  }
+                ]}>
+                  {donor.bloodType}
+                </Text>
+              </View>
             </View>
           </View>
 
-          {/* Blood type badge */}
-          <View style={styles.bloodTypeWrapper}>
+          {/* Bottom row: Contact and last donation */}
+          <View style={styles.bottomRow}>
+            <View style={styles.contactInfo}>
+              <View style={styles.contactItem}>
+                <Ionicons
+                  name="call-outline"
+                  size={isSmallDevice ? 14 : 15}
+                  color={colors.textSecondary}
+                />
+                <Text style={[
+                  styles.contactText,
+                  {
+                    color: colors.text,
+                    fontSize: isSmallDevice ? 13 : 14
+                  }
+                ]} numberOfLines={1}>
+                  {donor.contactNumber}
+                </Text>
+              </View>
+
+              <View style={styles.contactItem}>
+                <Ionicons
+                  name="time-outline"
+                  size={isSmallDevice ? 14 : 15}
+                  color={colors.textSecondary}
+                />
+                <Text style={[
+                  styles.lastDonationText,
+                  {
+                    color: colors.textSecondary,
+                    fontSize: isSmallDevice ? 12 : 13
+                  }
+                ]}>
+                  {donor.lastDonationDate
+                    ? `Last: ${new Date(donor.lastDonationDate).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric'
+                    })}`
+                    : 'Never donated'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Availability status - simplified */}
             <View style={[
-              styles.bloodTypeBadge,
-              { backgroundColor: bloodTypeColor + '10' }
+              styles.availabilityBadge,
+              { backgroundColor: statusColor + '10' }
             ]}>
               <Text style={[
-                styles.bloodTypeText,
+                styles.availabilityText,
                 {
-                  color: bloodTypeColor,
-                  fontSize: isSmallDevice ? 16 : 18
+                  color: statusColor,
+                  fontSize: isSmallDevice ? 10 : 11
                 }
               ]}>
-                {donor.bloodType}
+                {isAvailable ? 'Available' : 'Unavailable'}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Bottom row: Contact and last donation */}
-        <View style={styles.bottomRow}>
-          <View style={styles.contactInfo}>
-            <View style={styles.contactItem}>
-              <Ionicons
-                name="call-outline"
-                size={isSmallDevice ? 14 : 15}
-                color={colors.textSecondary}
-              />
-              <Text style={[
-                styles.contactText,
-                {
-                  color: colors.text,
-                  fontSize: isSmallDevice ? 13 : 14
-                }
-              ]} numberOfLines={1}>
-                {donor.contactNumber}
-              </Text>
-            </View>
-
-            <View style={styles.contactItem}>
-              <Ionicons
-                name="time-outline"
-                size={isSmallDevice ? 14 : 15}
-                color={colors.textSecondary}
-              />
-              <Text style={[
-                styles.lastDonationText,
-                {
-                  color: colors.textSecondary,
-                  fontSize: isSmallDevice ? 12 : 13
-                }
-              ]}>
-                {donor.lastDonationDate
-                  ? `Last: ${new Date(donor.lastDonationDate).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                  })}`
-                  : 'Never donated'}
-              </Text>
-            </View>
+        {/* Expandable action buttons - Call & Message */}
+        <Animated.View
+          style={[
+            styles.expandableSection,
+            {
+              height: expanded ? (isSmallDevice ? 56 : 60) : 0,
+              opacity: expanded ? 1 : 0,
+            }
+          ]}
+        >
+          <View style={styles.actionButtonsContainer}>
+            <ActionButton
+              icon="call"
+              label="Call"
+              variant="call"
+              onPress={handleCall}
+              disabled={!isAvailable || !donor.contactNumber}
+            />
+            <ActionButton
+              icon="chatbubble"
+              label="Message"
+              variant="message"
+              onPress={handleMessage}
+              disabled={!isAvailable || !donor.contactNumber}
+            />
           </View>
-
-          {/* Availability status - simplified */}
-          <View style={[
-            styles.availabilityBadge,
-            { backgroundColor: statusColor + '10' }
-          ]}>
-            <Text style={[
-              styles.availabilityText,
-              {
-                color: statusColor,
-                fontSize: isSmallDevice ? 10 : 11
-              }
-            ]}>
-              {isAvailable ? 'Available' : 'Unavailable'}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Expandable action buttons - Call & Message */}
-      <Animated.View
-        style={[
-          styles.expandableSection,
-          {
-            height: expanded ? (isSmallDevice ? 56 : 60) : 0,
-            opacity: expanded ? 1 : 0,
-          }
-        ]}
-      >
-        <View style={styles.actionButtonsContainer}>
-          <ActionButton
-            icon="call"
-            label="Call"
-            variant="call"
-            onPress={handleCall}
-            disabled={!isAvailable || !donor.contactNumber}
-          />
-          <ActionButton
-            icon="chatbubble"
-            label="Message"
-            variant="message"
-            onPress={handleMessage}
-            disabled={!isAvailable || !donor.contactNumber}
-          />
-        </View>
-      </Animated.View>
-    </TouchableOpacity>
+        </Animated.View>
+      </TouchableOpacity>
+    </>
   );
 };
 
@@ -508,6 +587,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     paddingTop: 4,
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    padding: 8,
+  },
+  copyButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
