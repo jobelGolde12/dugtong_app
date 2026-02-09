@@ -67,6 +67,9 @@ export default function ChatbotScreen() {
 
   // NEW: State to track when chatbot cannot receive messages
   const [cannotReceiveMessages, setCannotReceiveMessages] = useState(false);
+  
+  // NEW: State for typing indicator
+  const [isTyping, setIsTyping] = useState(false);
 
   // Animation values for microphone
   const micScale = useSharedValue(1);
@@ -256,15 +259,47 @@ export default function ChatbotScreen() {
     }
   };
 
-  // Fetch live data from API endpoints
+  // Fetch live data from API endpoints with enhanced error handling
   const fetchLiveData = async () => {
     try {
+      // Fetch all data in parallel with individual error handling
       const [donorsData, registrationsData, notificationsData, unreadData, groupedData] = await Promise.all([
-        donorApi.getDonors({ bloodType: undefined, municipality: undefined, availability: undefined, searchQuery: undefined, page: 0, page_size: 100 }).catch(() => ({ items: [], total: 0, page: 0, page_size: 0 })),
-        getDonorRegistrations({ limit: 100 }).catch(() => []),
-        getNotifications({ page_size: 50 }).catch(() => ({ items: [], total: 0, page: 0, page_size: 0, unread_count: 0 })),
-        getUnreadCount().catch(() => ({ unread_count: 0 })),
-        getGroupedNotifications().catch(() => ({ today: [], yesterday: [], earlier: [], unread_count: 0 }))
+        // Donors endpoint with error handling
+        donorApi.getDonors({ 
+          bloodType: undefined, 
+          municipality: undefined, 
+          availability: undefined, 
+          searchQuery: undefined, 
+          page: 0, 
+          page_size: 100 
+        }).catch(error => {
+          console.error('Error fetching donors:', error);
+          return { items: [], total: 0, page: 0, page_size: 0 };
+        }),
+        
+        // Donor registrations endpoint with error handling
+        getDonorRegistrations({ limit: 100 }).catch(error => {
+          console.error('Error fetching donor registrations:', error);
+          return [];
+        }),
+        
+        // Notifications endpoint with error handling
+        getNotifications({ page_size: 50 }).catch(error => {
+          console.error('Error fetching notifications:', error);
+          return { items: [], total: 0, page: 0, page_size: 0, unread_count: 0 };
+        }),
+        
+        // Unread count endpoint with error handling
+        getUnreadCount().catch(error => {
+          console.error('Error fetching unread count:', error);
+          return { unread_count: 0 };
+        }),
+        
+        // Grouped notifications endpoint with error handling
+        getGroupedNotifications().catch(error => {
+          console.error('Error fetching grouped notifications:', error);
+          return { today: [], yesterday: [], earlier: [], unread_count: 0 };
+        })
       ]);
 
       return {
@@ -275,44 +310,65 @@ export default function ChatbotScreen() {
         groupedNotifications: groupedData
       };
     } catch (error) {
-      console.error('Error fetching live data:', error);
-      return null;
+      console.error('Critical error fetching live data:', error);
+      // Return default empty data structure to prevent crashes
+      return {
+        donors: { items: [], total: 0, page: 0, page_size: 0 },
+        registrations: [],
+        notifications: { items: [], total: 0, page: 0, page_size: 0, unread_count: 0 },
+        unreadCount: { unread_count: 0 },
+        groupedNotifications: { today: [], yesterday: [], earlier: [], unread_count: 0 }
+      };
     }
   };
 
   const generateDataSummary = async (): Promise<string> => {
     const data = await fetchLiveData();
-    if (!data) return 'Unable to fetch live data at the moment.';
+    if (!data) {
+      return 'Unable to fetch live data at the moment.';
+    }
 
     const { donors, registrations, notifications, unreadCount, groupedNotifications } = data;
 
-    const bloodTypeCounts = donors.items.reduce((acc: Record<string, number>, donor: any) => {
-      const bloodType = donor.blood_type || 'Unknown';
-      acc[bloodType] = (acc[bloodType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    // Safely handle cases where data might be undefined or null
+    if (!donors || !registrations || !notifications || !unreadCount || !groupedNotifications) {
+      return 'Some data sources are temporarily unavailable.';
+    }
 
-    const availableDonors = donors.items.filter((d: any) => d.availability_status === 'Available').length;
-    const pendingRegistrations = registrations.filter((r: any) => r.status === 'pending').length;
-    const approvedRegistrations = registrations.filter((r: any) => r.status === 'approved').length;
+    try {
+      const bloodTypeCounts: Record<string, number> = {};
+      if (donors.items && Array.isArray(donors.items)) {
+        donors.items.forEach((donor: any) => {
+          const bloodType = donor?.blood_type || 'Unknown';
+          bloodTypeCounts[bloodType] = (bloodTypeCounts[bloodType] || 0) + 1;
+        });
+      }
 
-    return `
+      const availableDonors = donors.items?.filter((d: any) => d?.availability_status === 'Available').length || 0;
+      const pendingRegistrations = registrations.filter((r: any) => r?.status === 'pending').length || 0;
+      const approvedRegistrations = registrations.filter((r: any) => r?.status === 'approved').length || 0;
+
+      return `
 Donors Summary:
-- Total Donors: ${donors.total}
+- Total Donors: ${donors.total || 0}
 - Available Donors: ${availableDonors}
 - Blood Type Distribution: ${Object.entries(bloodTypeCounts).map(([type, count]) => `${type}: ${count}`).join(', ')}
 
 Registrations Summary:
-- Total Registrations: ${registrations.length}
+- Total Registrations: ${registrations.length || 0}
 - Pending: ${pendingRegistrations}
 - Approved: ${approvedRegistrations}
 
 Notifications Summary:
-- Total Notifications: ${notifications.total}
-- Unread: ${unreadCount.unread_count}
-- Today: ${groupedNotifications.today.length}
-- Yesterday: ${groupedNotifications.yesterday.length}
+- Total Notifications: ${notifications.total || 0}
+- Unread: ${unreadCount.unread_count || 0}
+- Today: ${groupedNotifications.today?.length || 0}
+- Yesterday: ${groupedNotifications.yesterday?.length || 0}
 `.trim();
+    } catch (error) {
+      console.error('Error generating data summary:', error);
+      return 'There was an issue processing the live data. Please try again later.';
+    }
   };
 
   // Function to check if input matches keywords for a specific rule
@@ -340,35 +396,38 @@ Notifications Summary:
 
   // OpenRouter API integration with model fallback mechanism
   const getOpenRouterResponse = async (input: string): Promise<string> => {
+    // NEW: Show typing indicator when starting API call
+    setIsTyping(true);
     // NEW: Set cannot receive messages state when starting API call
     setCannotReceiveMessages(true);
-    
+
     // Retry configuration
     const maxRetries = 2;
     const baseDelay = 1000;
-    
+
     // API keys in fallback order
     const apiKeys = [
       process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY1,
       process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY2,
       process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY3
     ].filter(Boolean);
-    
+
     // Validate API keys
     if (apiKeys.length === 0) {
       console.error('❌ No OpenRouter API keys are set');
-      const response = await getHumanLikeResponse(input);
+      setIsTyping(false);
       setCannotReceiveMessages(false);
+      const response = await getHumanLikeResponse(input);
       return response;
     }
-    
+
     // Build system prompt from chatbot-rules.json
-    const rulesDescription = chatbotRules.rules.map(rule => 
+    const rulesDescription = chatbotRules.rules.map(rule =>
       `${rule.title}: ${rule.description}`
     ).join('\n');
-    
+
     const dataSummary = await generateDataSummary();
-    
+
     const systemPrompt = `You are Dugtong Bot, a helpful assistant for a blood donation app.
 
 MANDATORY RULES (from chatbot-rules.json):
@@ -400,7 +459,7 @@ BEHAVIOR GUIDELINES:
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
             console.log(`🔍 OpenRouter API call (key ${keyIndex + 1}, model: ${currentModel}, attempt ${attempt + 1})`);
-            
+
             const requestBody = {
               model: currentModel,
               messages: [
@@ -438,7 +497,7 @@ BEHAVIOR GUIDELINES:
             if (!response.ok) {
               const errorCode = response.status;
               console.error(`❌ API Error ${errorCode}:`, data.error?.message || 'Unknown error');
-              
+
               if (errorCode === 429 || errorCode === 502 || errorCode === 503) {
                 if (attempt < maxRetries) {
                   const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
@@ -457,19 +516,20 @@ BEHAVIOR GUIDELINES:
                   continue;
                 }
               }
-              
+
               break;
             }
 
             const content = data.choices?.[0]?.message?.content;
             console.log(`✅ Success with key ${keyIndex + 1}, model: ${currentModel}`);
+            setIsTyping(false);
             setCannotReceiveMessages(false);
             return content || 'Sorry, I had trouble processing that.';
 
           } catch (error) {
             lastError = error as Error;
             console.error(`❌ Network/request error on attempt ${attempt + 1}:`, error);
-            
+
             if (attempt < maxRetries) {
               const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
               console.log(`⏳ Network error, waiting ${delay}ms before retry...`);
@@ -480,70 +540,98 @@ BEHAVIOR GUIDELINES:
             break;
           }
         }
-        
+
         console.log(`❌ Model ${currentModel} failed with key ${keyIndex + 1}, trying next...`);
       }
-      
+
       console.log(`❌ All models failed with key ${keyIndex + 1}, trying next key...`);
     }
-    
+
     console.error('❌ All OpenRouter API keys and models failed, falling back to rule-based responses');
     console.error('Last error:', lastError?.message);
+    setIsTyping(false);
     setCannotReceiveMessages(false);
     return await getHumanLikeResponse(input);
   };
 
   // Fallback response generation using rules from JSON
   const getHumanLikeResponse = async (input: string = ''): Promise<string> => {
+    // NEW: Show typing indicator when generating response
+    setIsTyping(true);
+    
     const lowerInput = input.toLowerCase();
 
     // Check for analytics/donor data summary requests (Rule 1)
     if (matchesKeywords(input, chatbotRules.rules[0].keywords)) {
       const dataSummary = await generateDataSummary();
-      
+
       const template = getRandomResponseTemplate(chatbotRules.rules[0]);
-      return processTemplate(template, {
+      const response = processTemplate(template, {
         data_summary: dataSummary,
         donor_summary: dataSummary
       });
+      
+      // NEW: Hide typing indicator after generating response
+      setIsTyping(false);
+      return response;
     }
 
     // Check for greeting keywords (Rule 2)
     if (matchesKeywords(input, chatbotRules.rules[1].keywords)) {
-      return getRandomResponseTemplate(chatbotRules.rules[1]);
+      const response = getRandomResponseTemplate(chatbotRules.rules[1]);
+      // NEW: Hide typing indicator after generating response
+      setIsTyping(false);
+      return response;
     }
 
     // Check for thank you keywords
     if (matchesKeywords(input, chatbotRules.rules[4].keywords)) {
-      return getRandomResponseTemplate(chatbotRules.rules[4]);
+      const response = getRandomResponseTemplate(chatbotRules.rules[4]);
+      // NEW: Hide typing indicator after generating response
+      setIsTyping(false);
+      return response;
     }
 
     // Check for question/help keywords (Rule 4)
     if (lowerInput.includes('?') || matchesKeywords(input, chatbotRules.rules[3].keywords)) {
-      return getRandomResponseTemplate(chatbotRules.rules[3]);
+      const response = getRandomResponseTemplate(chatbotRules.rules[3]);
+      // NEW: Hide typing indicator after generating response
+      setIsTyping(false);
+      return response;
     }
 
     // Default to acknowledgment (Rule 3) or fallback (Rule 6) responses
+    let response;
     if (Math.random() > 0.5) {
-      return getRandomResponseTemplate(chatbotRules.rules[2]);
+      response = getRandomResponseTemplate(chatbotRules.rules[2]);
     } else {
-      return getRandomResponseTemplate(chatbotRules.rules[5]);
+      response = getRandomResponseTemplate(chatbotRules.rules[5]);
     }
+    
+    // NEW: Hide typing indicator after generating response
+    setIsTyping(false);
+    return response;
   };
 
   const handleMicPress = async () => {
     // NEW: Prevent mic press when chatbot cannot receive messages
     if (cannotReceiveMessages) return;
-    
+
     handleTapPress();
-    
+
     // Start animation
     setIsListening(true);
     startMicActiveAnimation();
 
+    // NEW: Show typing indicator when processing voice input
+    setIsTyping(true);
+
     // Simulate processing time
     setTimeout(async () => {
       const botResponseText = await getOpenRouterResponse('Hello, how can you help me today?');
+
+      // NEW: Hide typing indicator after response is received
+      setIsTyping(false);
 
       // Speak the message
       await speakMessage(botResponseText);
@@ -583,7 +671,7 @@ BEHAVIOR GUIDELINES:
     if (cannotReceiveMessages || !message.trim()) return;
 
     const userInput = message.trim();
-    
+
     // Add user message
     const userMessage: MessageType = {
       id: Date.now().toString(),
@@ -606,6 +694,9 @@ BEHAVIOR GUIDELINES:
       });
     }
 
+    // NEW: Show typing indicator when processing message
+    setIsTyping(true);
+
     // Get bot response
     try {
       const botResponseText = await getOpenRouterResponse(userInput);
@@ -616,10 +707,15 @@ BEHAVIOR GUIDELINES:
       };
       setMessages(prev => [...prev, botResponse]);
 
+      // NEW: Hide typing indicator after response is received
+      setIsTyping(false);
+
       // Speak the response
       speakMessage(botResponseText);
     } catch (error) {
       console.error('Error getting bot response:', error);
+      // NEW: Hide typing indicator even if there's an error
+      setIsTyping(false);
       setCannotReceiveMessages(false);
     }
   };
@@ -633,16 +729,18 @@ BEHAVIOR GUIDELINES:
     }
   }, [messages]);
 
-  // NEW: Add status message when chatbot cannot receive messages
-  const renderStatusMessage = () => {
-    if (!cannotReceiveMessages) return null;
-    
+  // NEW: Add typing indicator when bot is thinking/processing
+  const renderTypingIndicator = () => {
+    if (!isTyping) return null;
+
     return (
-      <View style={styles.statusContainer}>
-        <View style={styles.statusBubble}>
-          <Text style={styles.statusText}>
-            The chatbot is temporarily unavailable while connecting to a model.
-          </Text>
+      <View style={styles.typingContainer}>
+        <View style={styles.typingBubble}>
+          <View style={styles.typingDots}>
+            <View style={[styles.dot, { backgroundColor: colors.text }]} />
+            <View style={[styles.dot, { backgroundColor: colors.text }]} />
+            <View style={[styles.dot, { backgroundColor: colors.text }]} />
+          </View>
         </View>
       </View>
     );
@@ -777,9 +875,9 @@ BEHAVIOR GUIDELINES:
 
               {/* Chat Messages */}
               {messages.map(renderMessageBubble)}
-              
-              {/* NEW: Status message when chatbot cannot receive messages */}
-              {renderStatusMessage()}
+
+              {/* NEW: Typing indicator when bot is thinking/processing */}
+              {renderTypingIndicator()}
             </ScrollView>
 
             {/* Input Footer - CRITICAL FIX: Removed negative marginTop */}
@@ -1036,5 +1134,31 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // NEW: Styles for typing indicator
+  typingContainer: {
+    marginVertical: 10,
+    alignSelf: 'flex-start',
+    maxWidth: '80%',
+  },
+  typingBubble: {
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderBottomLeftRadius: 4,
+    alignSelf: 'flex-start',
+    marginLeft: 0, // Align to the very left
+  },
+  typingDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.text,
   },
 });
