@@ -18,8 +18,8 @@ import {
   useWindowDimensions,
   View
 } from 'react-native';
-import { createDonorRegistration, DonorRegistrationRequest } from '../api/donor-registrations';
 import { getApiErrorMessage } from '../api/client';
+import { createDonorRegistration, DonorRegistrationRequest } from '../api/donor-registrations';
 import SafeScrollView from '../lib/SafeScrollView';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -41,7 +41,9 @@ const MUNICIPALITIES = [
 ];
 
 interface FormData {
-  fullName: string;
+  firstName: string;
+  middleInitial: string;
+  lastName: string;
   age: string;
   sex: string;
   bloodType: string;
@@ -51,7 +53,9 @@ interface FormData {
 }
 
 interface Errors {
-  fullName?: string;
+  firstName?: string;
+  middleInitial?: string;
+  lastName?: string;
   age?: string;
   sex?: string;
   bloodType?: string;
@@ -76,7 +80,9 @@ export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
-    fullName: '',
+    firstName: '',
+    middleInitial: '',
+    lastName: '',
     age: '',
     sex: '',
     bloodType: '',
@@ -139,9 +145,18 @@ export default function RegisterScreen() {
     let error = '';
     
     switch (field) {
-      case 'fullName':
-        if (!value.trim()) error = 'Full Name is required';
-        else if (value.trim().length < 2) error = 'Name must be at least 2 characters';
+      case 'firstName':
+        if (!value.trim()) error = 'First Name is required';
+        else if (value.trim().length < 2) error = 'First Name must be at least 2 characters';
+        break;
+        
+      case 'middleInitial':
+        if (value.trim().length > 1) error = 'Middle Initial must be only one character';
+        break;
+        
+      case 'lastName':
+        if (!value.trim()) error = 'Last Name is required';
+        else if (value.trim().length < 2) error = 'Last Name must be at least 2 characters';
         break;
         
       case 'age':
@@ -181,7 +196,7 @@ export default function RegisterScreen() {
     const newErrors: Errors = {};
     let isValid = true;
 
-    const fieldsToValidate: Array<keyof FormData> = ['fullName', 'age', 'sex', 'bloodType', 'contactNumber', 'municipality', 'availabilityStatus'];
+    const fieldsToValidate: Array<keyof FormData> = ['firstName', 'middleInitial', 'lastName', 'age', 'sex', 'bloodType', 'contactNumber', 'municipality', 'availabilityStatus'];
     
     fieldsToValidate.forEach(field => {
       const error = validateField(field, formData[field]);
@@ -229,8 +244,12 @@ export default function RegisterScreen() {
           ? 'available'
           : 'temporarily_unavailable';
 
+      // Combine firstName, middleInitial, and lastName into fullName
+      const middleInitialPart = formData.middleInitial.trim() ? ` ${formData.middleInitial.trim()}.` : '';
+      const fullName = `${formData.firstName.trim()}${middleInitialPart} ${formData.lastName.trim()}`;
+
       const registrationData: DonorRegistrationRequest = {
-        full_name: formData.fullName,
+        full_name: fullName,
         contact_number: normalizedContactNumber,
         age: parseInt(formData.age, 10),
         blood_type: formData.bloodType,
@@ -244,7 +263,7 @@ export default function RegisterScreen() {
       
       Alert.alert(
         'Registration Submitted 🎉',
-        `Thank you for registering as a voluntary donor! Your registration has been submitted with status: ${response.status}. You will be notified once it's approved.`,
+        `Thank you for registering as a voluntary donor! Your registration has been submitted with status: ${response.status}.`,
         [
           { 
             text: 'OK', 
@@ -322,23 +341,62 @@ export default function RegisterScreen() {
                 <Text style={styles.title}>Donor Registration</Text>
                 <Text style={styles.subtitle}>Join our lifesaving community</Text>
                 
-                {/* Full Name */}
+                {/* First Name */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Full Name *</Text>
+                  <Text style={styles.label}>First Name *</Text>
                   <TextInput
                     style={[
                       styles.input,
-                      focusedField === 'fullName' && styles.inputFocused,
-                      errors.fullName && styles.inputError
+                      focusedField === 'firstName' && styles.inputFocused,
+                      errors.firstName && styles.inputError
                     ]}
-                    value={formData.fullName}
-                    onChangeText={(value) => handleInputChange('fullName', value)}
-                    onFocus={() => setFocusedField('fullName')}
-                    onBlur={() => handleBlur('fullName')}
-                    placeholder="Enter your full name"
+                    value={formData.firstName}
+                    onChangeText={(value) => handleInputChange('firstName', value)}
+                    onFocus={() => setFocusedField('firstName')}
+                    onBlur={() => handleBlur('firstName')}
+                    placeholder="Enter your first name"
                     placeholderTextColor="rgba(255, 255, 255, 0.7)"
                   />
-                  {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
+                  {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
+                </View>
+
+                {/* Middle Initial */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Middle Initial</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      focusedField === 'middleInitial' && styles.inputFocused,
+                      errors.middleInitial && styles.inputError
+                    ]}
+                    value={formData.middleInitial}
+                    onChangeText={(value) => handleInputChange('middleInitial', value)}
+                    onFocus={() => setFocusedField('middleInitial')}
+                    onBlur={() => handleBlur('middleInitial')}
+                    placeholder="e.g. A"
+                    placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                    maxLength={1}
+                  />
+                  {errors.middleInitial ? <Text style={styles.errorText}>{errors.middleInitial}</Text> : null}
+                </View>
+
+                {/* Last Name */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Last Name *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      focusedField === 'lastName' && styles.inputFocused,
+                      errors.lastName && styles.inputError
+                    ]}
+                    value={formData.lastName}
+                    onChangeText={(value) => handleInputChange('lastName', value)}
+                    onFocus={() => setFocusedField('lastName')}
+                    onBlur={() => handleBlur('lastName')}
+                    placeholder="Enter your last name"
+                    placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                  />
+                  {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
                 </View>
 
                 {/* Age */}
