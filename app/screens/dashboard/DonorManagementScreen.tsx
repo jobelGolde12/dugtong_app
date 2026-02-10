@@ -9,7 +9,8 @@ import {
   Trash2,
   Users,
   X,
-  XCircle
+  XCircle,
+  Clock
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -44,12 +45,14 @@ import ErrorToast from '../../components/ErrorToast';
 
 // ============ TYPES & INTERFACES ============
 // Using types from types/donor.types.ts
+import { PendingDonorRegistration } from '../../../api/donors';
 
 interface DonorFilter {
   bloodType: string | null;
   municipality: string | null;
   availability: string | null;
   searchQuery: string;
+  showPending: boolean; // Add filter for showing pending registrations
 }
 
 // ============ DESIGN SYSTEM CONSTANTS ============
@@ -753,6 +756,48 @@ const FilterModal: React.FC<{
                 }}
               />
             </View>
+
+            {/* Show Pending Registrations Toggle */}
+            <View>
+              <Text variant="h3" style={{ marginBottom: SPACING.md }}>
+                Options
+              </Text>
+              <TouchableOpacity
+                onPress={() => onFilterChange('showPending', !filters.showPending)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: SPACING.md,
+                  backgroundColor: COLORS.neutral[50],
+                  borderRadius: RADIUS.md,
+                  borderWidth: 1,
+                  borderColor: filters.showPending ? COLORS.primary[500] : COLORS.neutral[200],
+                }}
+              >
+                <View style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  borderColor: filters.showPending ? COLORS.primary[500] : COLORS.neutral[400],
+                  marginRight: SPACING.md,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {filters.showPending && (
+                    <View style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: COLORS.primary[500],
+                    }} />
+                  )}
+                </View>
+                <Text style={{ flex: 1, color: COLORS.neutral[700] }}>
+                  Show Pending Registrations
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
 
@@ -786,18 +831,22 @@ const FilterModal: React.FC<{
   );
 };
 
-const StatsBar: React.FC<{ donors: Donor[] }> = ({ donors }) => {
-  const availableDonors = donors.filter(d => d.availabilityStatus === 'Available').length;
-  const totalDonors = donors.length;
-  const recentlyDonated = donors.filter(d => d.availabilityStatus === 'Recently Donated').length;
+const StatsBar: React.FC<{ donors: (Donor | PendingDonorRegistration)[] }> = ({ donors }) => {
+  const regularDonors = donors.filter(d => !('type' in d)) as Donor[];
+  const pendingRegistrations = donors.filter(d => 'type' in d && d.type === 'registration') as PendingDonorRegistration[];
+  
+  const availableDonors = regularDonors.filter(d => d.availabilityStatus === 'Available').length;
+  const totalRegularDonors = regularDonors.length;
+  const recentlyDonated = regularDonors.filter(d => d.availabilityStatus === 'Recently Donated').length;
 
   const stats = [
-    { label: 'Total Donors', value: totalDonors, color: COLORS.neutral[700] },
+    { label: 'Total Donors', value: totalRegularDonors, color: COLORS.neutral[700] },
     { label: 'Available Now', value: availableDonors, color: COLORS.success[500] },
     { label: 'Recently Donated', value: recentlyDonated, color: COLORS.warning[500] },
+    { label: 'Pending Reviews', value: pendingRegistrations.length, color: COLORS.warning[500] },
     {
       label: 'Availability',
-      value: totalDonors > 0 ? `${((availableDonors / totalDonors) * 100).toFixed(0)}%` : '0%',
+      value: totalRegularDonors > 0 ? `${((availableDonors / totalRegularDonors) * 100).toFixed(0)}%` : '0%',
       color: COLORS.primary[500]
     },
   ];
@@ -839,20 +888,44 @@ const StatsBar: React.FC<{ donors: Donor[] }> = ({ donors }) => {
 };
 
 const DonorCard: React.FC<{
-  donor: Donor;
-  onViewDetails: (donor: Donor) => void;
+  donor: Donor | PendingDonorRegistration;
+  onViewDetails: (donor: Donor | PendingDonorRegistration) => void;
   onToggleAvailability: (donor: Donor) => void;
   onDelete: (donor: Donor) => void;
   onEdit: (donor: Donor) => void;
   index: number;
 }> = ({ donor, onViewDetails, onToggleAvailability, onDelete, onEdit, index }) => {
+  // Check if this is a pending registration
+  const isPendingRegistration = 'type' in donor && donor.type === 'registration';
+  
+  // Define status config for both regular donors and pending registrations
   const statusConfig = {
     'Available': { color: COLORS.success[500], bgColor: COLORS.success[50], icon: CheckCircle },
     'Temporarily Unavailable': { color: COLORS.warning[500], bgColor: COLORS.warning[50], icon: XCircle },
     'Recently Donated': { color: COLORS.neutral[500], bgColor: COLORS.neutral[100], icon: CheckCircle },
+    'pending': { color: COLORS.warning[500], bgColor: COLORS.warning[50], icon: Clock },
   };
 
-  const status = statusConfig[donor.availabilityStatus] || statusConfig['Available'];
+  // Determine status based on donor type
+  let status;
+  if (isPendingRegistration) {
+    status = statusConfig['pending'];
+  } else {
+    status = statusConfig[donor.availabilityStatus] || statusConfig['Available'];
+  }
+
+  // Extract data based on donor type
+  const name = isPendingRegistration ? donor.full_name : donor.name;
+  const bloodType = isPendingRegistration ? donor.blood_type : donor.bloodType;
+  const municipality = isPendingRegistration ? donor.municipality : donor.municipality;
+  const contactNumber = isPendingRegistration ? donor.contact_number : donor.contactNumber;
+  const availabilityStatus = isPendingRegistration ? 'Pending Review' : donor.availabilityStatus;
+  const lastDonationDate = isPendingRegistration ? undefined : donor.lastDonationDate;
+
+  // Determine if we can perform certain actions based on donor type
+  const canToggleAvailability = !isPendingRegistration;
+  const canEdit = !isPendingRegistration;
+  const canDelete = !isPendingRegistration;
 
   return (
     <Animated.View
@@ -875,30 +948,39 @@ const DonorCard: React.FC<{
             <View style={{ flex: 1, gap: SPACING.xs }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
                 <Text variant="h3" style={{ color: COLORS.neutral[900], flex: 1 }}>
-                  {donor.name}
+                  {name}
                 </Text>
-                <Badge variant="primary" size="sm">
-                  {donor.bloodType}
+                <Badge variant={isPendingRegistration ? "warning" : "primary"} size="sm">
+                  {bloodType}
                 </Badge>
               </View>
               <Text variant="body2" style={{ color: COLORS.neutral[500] }}>
-                {donor.municipality} • {donor.contactNumber || 'No contact'}
+                {municipality} • {contactNumber || 'No contact'}
               </Text>
             </View>
 
             <View style={{ flexDirection: 'row', gap: SPACING.xs }}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={() => onEdit(donor)}
-                leftIcon={<Edit2 size={16} color={COLORS.neutral[500]} />}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={() => onDelete(donor)}
-                leftIcon={<Trash2 size={16} color={COLORS.error[500]} />}
-              />
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => onEdit(donor as Donor)}
+                  leftIcon={<Edit2 size={16} color={COLORS.neutral[500]} />}
+                />
+              )}
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => onDelete(donor as Donor)}
+                  leftIcon={<Trash2 size={16} color={COLORS.error[500]} />}
+                />
+              )}
+              {isPendingRegistration && (
+                <Badge variant="warning" size="sm">
+                  PENDING
+                </Badge>
+              )}
             </View>
           </View>
 
@@ -910,7 +992,10 @@ const DonorCard: React.FC<{
             gap: SPACING.md,
           }}>
             <View style={{ flexDirection: 'row', gap: SPACING.md, flexWrap: 'wrap' }}>
-              <TouchableOpacity onPress={() => onToggleAvailability(donor)}>
+              <TouchableOpacity 
+                onPress={canToggleAvailability ? () => onToggleAvailability(donor as Donor) : undefined}
+                disabled={!canToggleAvailability}
+              >
                 <View style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -931,12 +1016,12 @@ const DonorCard: React.FC<{
                     fontSize: 12,
                     fontWeight: '600',
                   }}>
-                    {donor.availabilityStatus}
+                    {availabilityStatus}
                   </Text>
                 </View>
               </TouchableOpacity>
 
-              {donor.lastDonationDate && (
+              {lastDonationDate && (
                 <View style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -946,7 +1031,7 @@ const DonorCard: React.FC<{
                     Last:
                   </Text>
                   <Text variant="caption" style={{ color: COLORS.neutral[600], fontWeight: '500' }}>
-                    {donor.lastDonationDate}
+                    {lastDonationDate}
                   </Text>
                 </View>
               )}
@@ -1064,7 +1149,7 @@ const LoadingIndicator: React.FC = () => (
 
 // ============ MAIN SCREEN COMPONENT ============
 const DonorManagementScreen: React.FC = () => {
-  const [donors, setDonors] = useState<Donor[]>([]);
+  const [donors, setDonors] = useState<(Donor | PendingDonorRegistration)[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1073,9 +1158,10 @@ const DonorManagementScreen: React.FC = () => {
     municipality: null,
     availability: null,
     searchQuery: '',
+    showPending: true, // Show pending registrations by default
   });
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
+  const [selectedDonor, setSelectedDonor] = useState<Donor | PendingDonorRegistration | null>(null);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -1083,32 +1169,31 @@ const DonorManagementScreen: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // NOTE: availability filter logic needs string "true"/"false" or specific status
-      // The simple API expects boolean for simpler search or specific status string?
-      // Our api/donors.ts handles boolean true/false for "available".
-      // But here we have 3 states: Available, Temporarily Unavailable, Recently Donated.
-      // If the API supports string based status filtering, we should update api/donors.ts or pass it as q param if not supported?
-      // Assuming api/donors.ts updated to support passing more complex params or we fetch all and filter client side if backend is limited?
-      // Wait, api/donors.ts logic: if (filter.availability !== null) params.append("availability", filter.availability ? "true" : "false");
-      // This only supports boolean. If we need specific status, we might need to change api/donors.ts or assume 'Available' is true, others false?
-      // For now, let's just pass what we can. If the user selects "Available", we pass true. If they select "Temporarily Unavailable", we might pass false?
-      // Actually, let's check `backend_info.md`. GET /donors?availability=Available.
-      // So the backend likely supports string.
-      // My `api/donors.ts` implementation was a bit reductive with boolean.
-      // I should probably fix `api/donors.ts` to support string availability if I want strict filtering server side.
-      // However, for this step, I will use what I have.
-      // If filter.availability is 'Available', I pass true. If not, maybe false?
-      // Or better, let's just use the 'q' parameter for status if the boolean param is insufficient, OR rely on what I wrote in `api/donors.ts`.
-      // Actually `api/donors.ts` takes `availability: boolean | null`.
-      // I will proceed with fetching and setting state.
+      // Fetch both regular donors and pending registrations
+      const [donorResult, pendingRegistrations] = await Promise.all([
+        donorApi.getDonors({
+          bloodType: filters.bloodType || null,
+          municipality: filters.municipality || null,
+          availability: filters.availability,
+          searchQuery: filters.searchQuery,
+        }),
+        filters.showPending 
+          ? donorApi.getPendingRegistrations({
+              status: 'pending',
+              blood_type: filters.bloodType || undefined,
+              municipality: filters.municipality || undefined,
+            })
+          : Promise.resolve([])
+      ]);
 
-      const result = await donorApi.getDonors({
-        bloodType: filters.bloodType || null,
-        municipality: filters.municipality || null,
-        availability: filters.availability,
-        searchQuery: filters.searchQuery,
-      });
-      setDonors(result.items);
+      // Combine both results
+      let combinedResults: (Donor | PendingDonorRegistration)[] = [...donorResult.items];
+      
+      if (filters.showPending) {
+        combinedResults = [...combinedResults, ...pendingRegistrations];
+      }
+
+      setDonors(combinedResults);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch donors');
     } finally {
@@ -1143,12 +1228,75 @@ const DonorManagementScreen: React.FC = () => {
     });
   }, []);
 
-  const handleViewDetails = useCallback((donor: Donor) => {
-    Alert.alert(
-      'Donor Details',
-      `Name: ${donor.name}\nBlood Type: ${donor.bloodType}\nLocation: ${donor.municipality}\nStatus: ${donor.availabilityStatus}\nContact: ${donor.contactNumber || 'N/A'}\nEmail: undefined\nLast Donation: ${donor.lastDonationDate || 'N/A'}\nNotes: ${donor.notes || 'None'}`,
-      [{ text: 'OK', style: 'default' }]
-    );
+  const handleViewDetails = useCallback((donor: Donor | PendingDonorRegistration) => {
+    // Check if this is a pending registration
+    const isPendingRegistration = 'type' in donor && donor.type === 'registration';
+    
+    if (isPendingRegistration) {
+      // Format details for pending registration
+      const reg = donor as PendingDonorRegistration;
+      Alert.alert(
+        'Pending Registration Details',
+        `Name: ${reg.full_name}\nBlood Type: ${reg.blood_type}\nLocation: ${reg.municipality}\nStatus: ${reg.status}\nContact: ${reg.contact_number || 'N/A'}\nAge: ${reg.age}\nSex: ${reg.sex || 'Not specified'}\nCreated: ${reg.created_at}\nID: ${reg.id}`,
+        [
+          { text: 'OK', style: 'default' },
+          {
+            text: 'Approve',
+            style: 'default',
+            onPress: () => {
+              Alert.alert('Approve Registration', `Would you like to approve ${reg.full_name}'s registration?`, [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Approve',
+                  style: 'default',
+                  onPress: async () => {
+                    try {
+                      await donorApi.approveRegistration(String(reg.id));
+                      Alert.alert('Success', `${reg.full_name}'s registration has been approved.`);
+                      // Refresh the list to remove the pending registration
+                      fetchDonors();
+                    } catch (error: any) {
+                      Alert.alert('Error', error.message || 'Failed to approve registration.');
+                    }
+                  }
+                }
+              ]);
+            }
+          },
+          {
+            text: 'Reject',
+            style: 'destructive',
+            onPress: () => {
+              Alert.alert('Reject Registration', `Would you like to reject ${reg.full_name}'s registration?`, [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Reject',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await donorApi.rejectRegistration(String(reg.id));
+                      Alert.alert('Rejected', `${reg.full_name}'s registration has been rejected.`);
+                      // Refresh the list to remove the pending registration
+                      fetchDonors();
+                    } catch (error: any) {
+                      Alert.alert('Error', error.message || 'Failed to reject registration.');
+                    }
+                  }
+                }
+              ]);
+            }
+          }
+        ]
+      );
+    } else {
+      // Format details for regular donor
+      const regDonor = donor as Donor;
+      Alert.alert(
+        'Donor Details',
+        `Name: ${regDonor.name}\nBlood Type: ${regDonor.bloodType}\nLocation: ${regDonor.municipality}\nStatus: ${regDonor.availabilityStatus}\nContact: ${regDonor.contactNumber || 'N/A'}\nEmail: undefined\nLast Donation: ${regDonor.lastDonationDate || 'N/A'}\nNotes: ${regDonor.notes || 'None'}`,
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
   }, []);
 
   const handleToggleAvailability = useCallback(async (donor: Donor) => {
@@ -1160,17 +1308,23 @@ const DonorManagementScreen: React.FC = () => {
       const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
 
       // Optimistic update
-      setDonors(prev => prev.map(d =>
-        d.id === donor.id ? { ...d, availabilityStatus: nextStatus as any } : d
-      ));
+      setDonors(prev => prev.map(d => {
+        if ('id' in d && d.id === donor.id) {
+          return { ...d, availabilityStatus: nextStatus as any };
+        }
+        return d;
+      }));
 
       await donorApi.updateAvailability(donor.id, nextStatus);
 
     } catch (error: any) {
       // Revert optimistic update
-      setDonors(prev => prev.map(d =>
-        d.id === donor.id ? donor : d
-      ));
+      setDonors(prev => prev.map(d => {
+        if ('id' in d && d.id === donor.id) {
+          return donor;
+        }
+        return d;
+      }));
       Alert.alert('Error', error.message || 'Failed to update status');
     }
   }, []);
@@ -1187,7 +1341,12 @@ const DonorManagementScreen: React.FC = () => {
           onPress: async () => {
             try {
               // Optimistic delete
-              setDonors(prev => prev.filter(d => d.id !== donor.id));
+              setDonors(prev => prev.filter(d => {
+                if ('id' in d) {
+                  return d.id !== donor.id;
+                }
+                return true;
+              }));
               await donorApi.deleteDonor(donor.id);
             } catch (error: any) {
               fetchDonors(); // Re-fetch to restore if failed
@@ -1219,7 +1378,8 @@ const DonorManagementScreen: React.FC = () => {
     filters.bloodType,
     filters.availability,
     filters.municipality,
-  ].filter(Boolean).length;
+    !filters.showPending ? 'hidePending' : null, // Count as active if not showing pending registrations
+  ].filter(value => Boolean(value)).length;
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -1286,20 +1446,24 @@ const DonorManagementScreen: React.FC = () => {
             {loading ? (
               <LoadingIndicator />
             ) : donors.length > 0 ? (
-              donors.map((donor, index) => (
-                <DonorCard
-                  key={donor.id}
-                  donor={donor}
-                  onViewDetails={handleViewDetails}
-                  onToggleAvailability={handleToggleAvailability}
-                  onDelete={handleDeleteDonor}
-                  onEdit={handleEdit}
-                  index={index}
-                />
-              ))
+              donors.map((donor, index) => {
+                // Generate a unique key by combining the type and ID
+                const key = 'type' in donor ? `${donor.type}-${donor.id}` : `donor-${donor.id}`;
+                return (
+                  <DonorCard
+                    key={key}
+                    donor={donor}
+                    onViewDetails={handleViewDetails}
+                    onToggleAvailability={handleToggleAvailability}
+                    onDelete={handleDeleteDonor}
+                    onEdit={handleEdit}
+                    index={index}
+                  />
+                );
+              })
             ) : (
               <EmptyState
-                message="No donors match your current filters. Try adjusting your search criteria or add new donors."
+                message="No donors or pending registrations match your current filters. Try adjusting your search criteria or add new donors."
                 onAddDonor={handleAddDonor}
               />
             )}

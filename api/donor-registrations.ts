@@ -208,10 +208,31 @@ export const updateDonorRegistrationStatus = async (
 ): Promise<DonorRegistrationResponse> => {
   const now = new Date().toISOString();
 
+  // Get the registration before updating status to use its data for creating donor
+  const registration = await getDonorRegistration(id);
+
   await db.execute({
     sql: "UPDATE donor_registrations SET status = ?, updated_at = ? WHERE id = ?",
     args: [status, now, id],
   });
+
+  // If the registration is approved, create a new donor record
+  if (status === "approved") {
+    // Import donor service dynamically to avoid circular dependencies
+    const donorServiceModule = await import("../src/services/donorService");
+    const donorService = donorServiceModule.default;
+    
+    // Create a new donor from the registration data
+    await donorService.createDonor({
+      name: registration.full_name,
+      age: registration.age,
+      sex: registration.sex,
+      bloodType: registration.blood_type,
+      contactNumber: registration.contact_number,
+      municipality: registration.municipality,
+      availabilityStatus: registration.availability || "Available",
+    });
+  }
 
   return getDonorRegistration(id);
 };

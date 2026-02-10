@@ -21,15 +21,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
 
 interface DonorProfile {
-  fullName: string;
-  age: string;
+  full_name: string;
+  age: number;
   sex: string;
-  bloodType: string;
-  contactNumber: string;
+  blood_type: string;
+  contact_number: string;
   municipality: string;
-  availabilityStatus: string;
-  synced: boolean;
-  created_at: string;
+  availability: string;
 }
 
 export default function DonorDashboard() {
@@ -40,33 +38,6 @@ export default function DonorDashboard() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-
-  useEffect(() => {
-    loadDonorData();
-  }, []);
-
-  // Check if user has permission to access donor dashboard
-  // Show loading while authentication is being initialized
-  if (authLoading) {
-    return (
-      <RoleBasedDashboardLayout>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: colors.text }}>Loading...</Text>
-        </View>
-      </RoleBasedDashboardLayout>
-    );
-  }
-
-  if (!isDonor()) {
-    return (
-      <RoleGuard 
-        allowedRoles={[USER_ROLES.DONOR]} 
-        userRole={userRole}
-      >
-        <View />
-      </RoleGuard>
-    );
-  }
 
   const loadDonorData = async () => {
     try {
@@ -84,6 +55,10 @@ export default function DonorDashboard() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadDonorData();
+  }, []);
 
   const handleClearData = async () => {
     Alert.alert(
@@ -179,26 +154,26 @@ export default function DonorDashboard() {
               <Text style={styles.sectionTitle}>Donor Information</Text>
               <View style={[
                 styles.statusBadge,
-                donorData.availabilityStatus === 'Available' 
-                  ? styles.statusAvailable 
+                donorData.availability === 'available' || donorData.availability === 'Available'
+                  ? styles.statusAvailable
                   : styles.statusUnavailable
               ]}>
                 <Text style={styles.statusBadgeText}>
-                  {donorData.availabilityStatus}
+                  {donorData.availability === 'available' ? 'Available' : 'Temporarily Unavailable'}
                 </Text>
               </View>
             </View>
 
             <View style={styles.infoGrid}>
-              <InfoItem label="Full Name" value={donorData.fullName} />
+              <InfoItem label="Full Name" value={donorData.full_name} />
               <InfoItem label="Age" value={donorData.age} />
               <InfoItem label="Sex" value={donorData.sex} />
-              <InfoItem 
-                label="Blood Type" 
-                value={donorData.bloodType} 
-                isHighlighted 
+              <InfoItem
+                label="Blood Type"
+                value={donorData.blood_type}
+                isHighlighted
               />
-              <InfoItem label="Contact Number" value={donorData.contactNumber} />
+              <InfoItem label="Contact Number" value={donorData.contact_number} />
               <InfoItem label="Municipality" value={donorData.municipality} />
             </View>
           </View>
@@ -241,22 +216,15 @@ export default function DonorDashboard() {
 
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={styles.backButton} 
+            <TouchableOpacity
+              style={styles.backButton}
               onPress={() => router.push('/register')}
             >
               <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.sendAlertsButton}
-              onPress={() => router.push('/send-alerts')}
-            >
-              <Text style={styles.sendAlertsButtonText}>Send Alerts</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.clearButton} 
+            <TouchableOpacity
+              style={styles.clearButton}
               onPress={handleClearData}
             >
               <Text style={styles.clearButtonText}>Clear Donor Data</Text>
@@ -274,9 +242,9 @@ export default function DonorDashboard() {
 }
 
 // Helper Component for Info Items
-const InfoItem = ({ label, value, isHighlighted = false }: { 
-  label: string; 
-  value: string;
+const InfoItem = ({ label, value, isHighlighted = false }: {
+  label: string;
+  value: string | number;
   isHighlighted?: boolean;
 }) => (
   <View style={styles.infoItem}>
@@ -285,7 +253,7 @@ const InfoItem = ({ label, value, isHighlighted = false }: {
       styles.infoValue,
       isHighlighted && styles.highlightedValue
     ]}>
-      {value}
+      {String(value)}
     </Text>
   </View>
 );
@@ -481,20 +449,6 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     color: '#EF4444',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  sendAlertsButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#0d6efd',
-  },
-  sendAlertsButtonText: {
-    color: '#0d6efd',
     fontSize: 16,
     fontWeight: '600',
   },

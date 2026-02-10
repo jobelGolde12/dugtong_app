@@ -12,25 +12,21 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import Animated, {
+import {
   Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withRepeat,
   withSequence,
-  withTiming,
+  withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import chatbotRules from '../chatbot-rules.json';
-import { useTheme } from '../contexts/ThemeContext';
-import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
-import { useRoleAccess } from '../hooks/useRoleAccess';
-import { RoleGuard } from './components/RoleGuard';
-import { USER_ROLES } from '../constants/roles.constants';
-import { donorApi } from '../api/donors';
 import { getDonorRegistrations } from '../api/donor-registrations';
-import { getNotifications, getUnreadCount, getGroupedNotifications } from '../api/notifications';
+import { donorApi } from '../api/donors';
+import { getGroupedNotifications, getNotifications, getUnreadCount } from '../api/notifications';
+import chatbotRules from '../chatbot-rules.json';
+import { USER_ROLES } from '../constants/roles.constants';
+import { useTheme } from '../contexts/ThemeContext';
+import { useRoleAccess } from '../hooks/useRoleAccess';
+import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
+import { RoleGuard } from './components/RoleGuard';
 
 type MessageType = {
   id: string;
@@ -832,7 +828,7 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
   footer: {
     flexDirection: 'row',
     padding: 15,
-    paddingBottom: 25,
+    paddingBottom:40,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,

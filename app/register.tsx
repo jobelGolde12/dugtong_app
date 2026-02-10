@@ -21,6 +21,7 @@ import {
 import { getApiErrorMessage } from '../api/client';
 import { createDonorRegistration, DonorRegistrationRequest } from '../api/donor-registrations';
 import SafeScrollView from '../lib/SafeScrollView';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const MUNICIPALITIES = [
@@ -255,11 +256,15 @@ export default function RegisterScreen() {
         blood_type: formData.bloodType,
         municipality: formData.municipality,
         availability,
+        sex: formData.sex, // Add sex field
       };
 
       console.log('Submitting donor registration:', registrationData);
       
       const response = await createDonorRegistration(registrationData);
+
+      // Save donor profile to AsyncStorage
+      await AsyncStorage.setItem('donorProfile', JSON.stringify(registrationData));
       
       Alert.alert(
         'Registration Submitted 🎉',
@@ -268,7 +273,7 @@ export default function RegisterScreen() {
           { 
             text: 'OK', 
             onPress: () => {
-              router.push('/login');
+              router.push('/DonorDashboard');
             }
           }
         ]

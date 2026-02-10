@@ -1,11 +1,16 @@
 import { Donor, DonorFilter } from "../types/donor.types";
 import donorService from "../src/services/donorService";
+import { getDonorRegistrations, DonorRegistrationResponse } from "./donor-registrations";
 
 interface GetDonorsResponse {
   items: Donor[];
   total: number;
   page: number;
   page_size: number;
+}
+
+export interface PendingDonorRegistration extends DonorRegistrationResponse {
+  type: 'registration'; // To distinguish from regular donors
 }
 
 export const donorApi = {
@@ -33,5 +38,28 @@ export const donorApi = {
 
   deleteDonor: async (id: string): Promise<void> => {
     return donorService.deleteDonor(id);
+  },
+
+  getPendingRegistrations: async (
+    params?: {
+      status?: "pending" | "approved" | "rejected";
+      municipality?: string;
+      blood_type?: string;
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<PendingDonorRegistration[]> => {
+    const registrations = await getDonorRegistrations(params);
+    return registrations.map(reg => ({ ...reg, type: 'registration' }));
+  },
+
+  approveRegistration: async (id: string): Promise<DonorRegistrationResponse> => {
+    const { updateDonorRegistrationStatus } = await import('./donor-registrations');
+    return updateDonorRegistrationStatus(id, 'approved');
+  },
+
+  rejectRegistration: async (id: string): Promise<DonorRegistrationResponse> => {
+    const { updateDonorRegistrationStatus } = await import('./donor-registrations');
+    return updateDonorRegistrationStatus(id, 'rejected');
   },
 };
