@@ -228,7 +228,7 @@ export default function LoginScreen() {
         />
         
         <ImageBackground
-          source={require('@/assets/images/welcome-bg.png')}
+          source={require('@/assets/images/dugtong-bg-portrait.png')}
           style={styles.background}
           resizeMode="cover"
         >

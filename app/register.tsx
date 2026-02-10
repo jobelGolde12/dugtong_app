@@ -323,7 +323,7 @@ export default function RegisterScreen() {
         translucent
       />
       <ImageBackground
-        source={require('@/assets/images/welcome-bg.png')}
+        source={require('@/assets/images/dugtong-bg-portrait.png')}
         style={styles.background}
         imageStyle={{ width: width, height: height }}
         resizeMode="cover"
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   formContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Dark but not too dark to allow background image to show through slightly
+    backgroundColor: 'transparent',
     borderRadius: 20,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 10 },
