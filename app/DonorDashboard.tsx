@@ -14,6 +14,11 @@ import {
   View
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useRoleAccess } from '../hooks/useRoleAccess';
+import { RoleGuard } from './components/RoleGuard';
+import { USER_ROLES } from '../constants/roles.constants';
+import { useTheme } from '../contexts/ThemeContext';
+import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
 
 interface DonorProfile {
   fullName: string;
@@ -29,6 +34,8 @@ interface DonorProfile {
 
 export default function DonorDashboard() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const { userRole, isDonor, isLoading: authLoading } = useRoleAccess();
   const [donorData, setDonorData] = useState<DonorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -37,6 +44,29 @@ export default function DonorDashboard() {
   useEffect(() => {
     loadDonorData();
   }, []);
+
+  // Check if user has permission to access donor dashboard
+  // Show loading while authentication is being initialized
+  if (authLoading) {
+    return (
+      <RoleBasedDashboardLayout>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: colors.text }}>Loading...</Text>
+        </View>
+      </RoleBasedDashboardLayout>
+    );
+  }
+
+  if (!isDonor()) {
+    return (
+      <RoleGuard 
+        allowedRoles={[USER_ROLES.DONOR]} 
+        userRole={userRole}
+      >
+        <View />
+      </RoleGuard>
+    );
+  }
 
   const loadDonorData = async () => {
     try {

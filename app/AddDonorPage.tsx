@@ -177,7 +177,7 @@ export default function AddDonorPage() {
     const newErrors: Errors = {};
     let isValid = true;
 
-    const fieldsToValidate: Array<keyof FormData> = ['fullName', 'age', 'sex', 'bloodType', 'contactNumber', 'municipality', 'availabilityStatus'];
+    const fieldsToValidate: (keyof FormData)[] = ['fullName', 'age', 'sex', 'bloodType', 'contactNumber', 'municipality', 'availabilityStatus'];
     
     fieldsToValidate.forEach(field => {
       const error = validateField(field, formData[field]);

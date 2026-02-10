@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
-import DashboardLayout from './components/DashboardLayout';
+import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
 import SettingsSection from './components/SettingsSection';
 import ProfileCard from './components/ProfileCard';
 import ThemeOption from './components/ThemeOption';
@@ -32,7 +32,7 @@ function SettingsScreen() {
   
 
   return (
-    <DashboardLayout>
+    <RoleBasedDashboardLayout>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar
           barStyle={isDark ? 'light-content' : 'dark-content'}
@@ -95,7 +95,7 @@ function SettingsScreen() {
           <View style={styles.spacer} />
         </ScrollView>
       </SafeAreaView>
-    </DashboardLayout>
+    </RoleBasedDashboardLayout>
   );
 }
 

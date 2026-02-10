@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getCurrentUser, login as loginApi, LoginRequest, logout as logoutApi, User } from '../api/auth';
 import { clearTokens, getAccessToken } from '../api/client';
+import { USER_ROLES, UserRole, DEFAULT_ROLE } from '../constants/roles.constants';
 
 // ==================== Types ====================
 
@@ -10,7 +11,7 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   user: User | null;
-  userRole: 'admin' | 'donor' | null;
+  userRole: UserRole | null;
   accessToken: string | null;
 }
 
@@ -18,7 +19,7 @@ interface AuthContextValue extends AuthState {
   login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  hasRole: (role: 'admin' | 'donor') => boolean;
+  hasRole: (role: UserRole) => boolean;
 }
 
 // ==================== Constants ====================
@@ -81,11 +82,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Extract user role from user object or token
-  const extractUserRole = (user: User): 'admin' | 'donor' | null => {
-    if (user.role === 'admin' || user.role === 'donor') {
-      return user.role;
+  const extractUserRole = (user: User): UserRole | null => {
+    if (Object.values(USER_ROLES).includes(user.role as UserRole)) {
+      return user.role as UserRole;
     }
-    return null;
+    return DEFAULT_ROLE;
   };
 
   // Clear all auth state
@@ -120,10 +121,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       // Navigate based on role
-      if (role === 'admin') {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/DonorDashboard');
+      switch (role) {
+        case USER_ROLES.ADMIN:
+          router.replace('/dashboard');
+          break;
+        case USER_ROLES.DONOR:
+          router.replace('/DonorDashboard');
+          break;
+        case USER_ROLES.HOSPITAL_STAFF:
+          router.replace('/dashboard'); // Hospital staff uses same dashboard but with restricted access
+          break;
+        case USER_ROLES.HEALTH_OFFICER:
+          router.replace('/dashboard'); // Health officer uses same dashboard but with restricted access
+          break;
+        default:
+          router.replace('/DonorDashboard');
       }
 
       return { success: true };
@@ -200,7 +212,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Check if user has specific role
-  const hasRole = useCallback((role: 'admin' | 'donor'): boolean => {
+  const hasRole = useCallback((role: UserRole): boolean => {
     return state.userRole === role;
   }, [state.userRole]);
 

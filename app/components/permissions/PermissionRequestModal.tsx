@@ -42,7 +42,7 @@ const PermissionRequestModal: React.FC<PermissionRequestModalProps> = ({
               onPress={onClose}
             >
               <Text style={[styles.buttonText, styles.secondaryButtonText, { color: colors.textSecondary }]}>
-                Don't Allow
+                Don&apos;t Allow
               </Text>
             </TouchableOpacity>
             <TouchableOpacity

@@ -25,7 +25,10 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import chatbotRules from '../chatbot-rules.json';
 import { useTheme } from '../contexts/ThemeContext';
-import DashboardLayout from './components/DashboardLayout';
+import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
+import { useRoleAccess } from '../hooks/useRoleAccess';
+import { RoleGuard } from './components/RoleGuard';
+import { USER_ROLES } from '../constants/roles.constants';
 import { donorApi } from '../api/donors';
 import { getDonorRegistrations } from '../api/donor-registrations';
 import { getNotifications, getUnreadCount, getGroupedNotifications } from '../api/notifications';
@@ -52,13 +55,9 @@ type OpenRouterError = {
 
 export default function ChatbotScreen() {
   const { colors, isDark } = useTheme();
+  const { userRole, isAdmin, isLoading: authLoading } = useRoleAccess();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<MessageType[]>([
-    {
-      id: '1',
-      text: 'Hi! how can I help you today?',
-      sender: 'bot',
-    },
   ]);
   const [showIntro, setShowIntro] = useState(true);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -266,10 +265,10 @@ export default function ChatbotScreen() {
       const [donorsData, registrationsData, notificationsData, unreadData, groupedData] = await Promise.all([
         // Donors endpoint with error handling
         donorApi.getDonors({ 
-          bloodType: undefined, 
-          municipality: undefined, 
-          availability: undefined, 
-          searchQuery: undefined, 
+          bloodType: '', 
+          municipality: '', 
+          availability: '', 
+          searchQuery: '', 
           page: 0, 
           page_size: 100 
         }).catch(error => {
@@ -774,8 +773,31 @@ BEHAVIOR GUIDELINES:
     );
   };
 
+  // Show loading while authentication is being initialized
+  if (authLoading) {
+    return (
+      <RoleBasedDashboardLayout>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: colors.text }}>Loading...</Text>
+        </View>
+      </RoleBasedDashboardLayout>
+    );
+  }
+
+  // Check if user has permission to access chatbot (admin only)
+  if (!isAdmin()) {
+    return (
+      <RoleGuard 
+        allowedRoles={[USER_ROLES.ADMIN]} 
+        userRole={userRole}
+      >
+        <View />
+      </RoleGuard>
+    );
+  }
+
   return (
-    <DashboardLayout>
+    <RoleBasedDashboardLayout>
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* CRITICAL FIX: Proper KeyboardAvoidingView configuration */}
         <KeyboardAvoidingView
@@ -912,7 +934,7 @@ BEHAVIOR GUIDELINES:
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </DashboardLayout>
+    </RoleBasedDashboardLayout>
   );
 }
 

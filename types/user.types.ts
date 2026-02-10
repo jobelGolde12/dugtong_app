@@ -7,9 +7,11 @@ export interface UserPreferences {
   updated_at?: string;
 }
 
+import { UserRole } from '../constants/roles.constants';
+
 export interface UserProfile {
   id: string;
-  role: 'admin' | 'donor';
+  role: UserRole;
   name: string;
   contact_number: string;
   email?: string;

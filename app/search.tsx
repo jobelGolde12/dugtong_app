@@ -21,7 +21,10 @@ import {
 import { donorApi } from '../api/donors';
 import { useTheme } from '../contexts/ThemeContext';
 import { Donor } from '../types/donor.types';
-import DashboardLayout from './components/DashboardLayout';
+import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
+import { useRoleAccess } from '../hooks/useRoleAccess';
+import { RoleGuard } from './components/RoleGuard';
+import { USER_ROLES } from '../constants/roles.constants';
 import DonorCard from './components/DonorCard';
 import EmptyState from './components/EmptyState';
 import ErrorToast from './components/ErrorToast';
@@ -167,6 +170,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
 
 export default function FindDonorScreen() {
   const { colors, isDark } = useTheme();
+  const { userRole, canAccessHospitalStaffFeatures, canAccessHealthOfficerFeatures, isAdmin, isLoading: authLoading } = useRoleAccess();
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     bloodType: '',
@@ -185,7 +189,7 @@ export default function FindDonorScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const headerScale = useRef(new Animated.Value(0.95)).current;
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<any>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -284,8 +288,31 @@ export default function FindDonorScreen() {
     <DonorCard donor={item} onPress={handleDonorPress} />
   ), [handleDonorPress]);
 
+  // Show loading while authentication is being initialized
+  if (authLoading) {
+    return (
+      <RoleBasedDashboardLayout>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: colors.text }}>Loading...</Text>
+        </View>
+      </RoleBasedDashboardLayout>
+    );
+  }
+
+  // Check if user has permission to access search
+  if (!isAdmin() && !canAccessHospitalStaffFeatures() && !canAccessHealthOfficerFeatures()) {
+    return (
+      <RoleGuard 
+        allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.HOSPITAL_STAFF, USER_ROLES.HEALTH_OFFICER]} 
+        userRole={userRole}
+      >
+        <View />
+      </RoleGuard>
+    );
+  }
+
   return (
-    <DashboardLayout>
+    <RoleBasedDashboardLayout>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -564,7 +591,7 @@ export default function FindDonorScreen() {
           />
         </Animated.View>
       </KeyboardAvoidingView>
-    </DashboardLayout>
+    </RoleBasedDashboardLayout>
   );
 }
 

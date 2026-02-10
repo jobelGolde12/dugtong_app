@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Animated,
   Dimensions,
@@ -34,6 +35,7 @@ type InputField = 'fullName' | 'contactNumber';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [formValues, setFormValues] = useState<FormValues>({
     fullName: '',
     contactNumber: ''
@@ -190,11 +192,26 @@ export default function LoginScreen() {
       }),
     ]).start();
 
-    // Simulate API call
-    setTimeout(() => {
+    // Call actual authentication
+    try {
+      const result = await login({
+        full_name: formValues.fullName,
+        contact_number: formValues.contactNumber
+      });
+      
+      if (!result.success) {
+        // Handle login error - you might want to show an error message
+        console.error('Login failed:', result.error);
+        // For now, we'll just stop loading and let user try again
+        setIsLoading(false);
+        return;
+      }
+      
+      // Navigation will be handled by the AuthContext based on user role
+    } catch (error) {
+      console.error('Login error:', error);
       setIsLoading(false);
-      router.push('/dashboard');
-    }, 1500);
+    }
   };
 
   const handleTestCredentials = () => {

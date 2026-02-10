@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { db, querySingle } from "../src/lib/turso";
 import { clearTokens, getAccessToken, storeTokens } from "./client";
+import { USER_ROLES, UserRole, DEFAULT_ROLE } from "../constants/roles.constants";
 
 // ==================== Types ====================
 
@@ -18,7 +19,7 @@ export interface LoginResponse {
 
 export interface User {
   id: string;
-  role: "admin" | "donor";
+  role: UserRole;
   name: string;
   contact_number: string;
   email?: string;
@@ -101,7 +102,7 @@ export const login = async (data: LoginRequest): Promise<LoginResponse> => {
 
   const user: User = {
     id: String(userRow.id),
-    role: userRow.role === "admin" ? "admin" : "donor",
+    role: userRow.role as UserRole, // Use role directly from database, bypassing CHECK constraint for app layer
     name: userRow.full_name,
     contact_number: userRow.contact_number,
     email: userRow.email || undefined,
@@ -147,7 +148,7 @@ export const refreshToken = async (
 
   const user: User = {
     id: String(userRow.id),
-    role: userRow.role === "admin" ? "admin" : "donor",
+    role: userRow.role as UserRole, // Use role directly from database, bypassing CHECK constraint for app layer
     name: userRow.full_name,
     contact_number: userRow.contact_number,
     email: userRow.email || undefined,
@@ -191,7 +192,7 @@ export const getCurrentUser = async (): Promise<User> => {
 
   return {
     id: String(userRow.id),
-    role: userRow.role === "admin" ? "admin" : "donor",
+    role: userRow.role as UserRole, // Use role directly from database, bypassing CHECK constraint for app layer
     name: userRow.full_name,
     contact_number: userRow.contact_number,
     email: userRow.email || undefined,
@@ -238,14 +239,14 @@ export const decodeToken = (token: string): Record<string, unknown> | null => {
 /**
  * Get user role from storage
  */
-export const getUserRoleFromStorage = async (): Promise<"admin" | "donor" | null> => {
+export const getUserRoleFromStorage = async (): Promise<UserRole | null> => {
   const token = await getAccessToken();
   if (!token) return null;
 
   const decoded = decodeToken(token);
   if (!decoded) return null;
 
-  return (decoded as { role?: "admin" | "donor" }).role ?? null;
+  return (decoded as { role?: UserRole }).role ?? null;
 };
 
 export const getCurrentUserId = async (): Promise<number | null> => {

@@ -5,6 +5,7 @@ export interface ThemeColors {
   background: string;
   surface: string;
   surfaceVariant: string;
+  card: string;
   primary: string;
   primaryVariant: string;
   secondary: string;

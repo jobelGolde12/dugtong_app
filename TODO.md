@@ -1,101 +1,186 @@
-In app/chatbot.tsx, implement the AI “mind/brain” logic using the OpenRouter Chat Completions API, while strictly preserving all existing logic, structure, state, and UI already implemented in this file.
+You are a Senior React Native + TypeScript + Expo Developer.
 
-OpenRouter Integration Requirements
+Your task is to enhance the existing project by implementing Role-Based Access Control (RBAC) and role-specific navigation flows, based on the specifications below.
 
-Connect to the OpenRouter Chat Completions API using the existing retry, fallback, and error-handling logic already present in the file.
+🎯 CORE OBJECTIVE
 
-The project uses three API keys:
+The project currently supports ADMIN only.
 
-EXPO_PUBLIC_OPEN_ROUTER_API_KEY1
+You must add support for additional user roles while preserving all existing code, UI, and behavior that is not directly related to this task.
 
-EXPO_PUBLIC_OPEN_ROUTER_API_KEY2
+⚠️ STRICT RULES
 
-EXPO_PUBLIC_OPEN_ROUTER_API_KEY3
+❌ DO NOT remove existing code
 
-These keys are used sequentially through the existing retry loop and must not replace or remove the current retry/backoff/model-fallback logic.
+❌ DO NOT modify UI/design not related to role access
 
-Use the existing fetch('https://openrouter.ai/api/v1/chat/completions') call pattern and headers.
+❌ DO NOT refactor unrelated logic
 
-Chatbot Rules (Mandatory)
+✅ ONLY add what is necessary to support roles and flows
 
-There is a file named chatbot-rules.json.
+✅ Use existing pages wherever possible
 
-Load and apply the contents of this file as the system-level rules and behavior constraints of the chatbot.
+✅ Create new pages ONLY if explicitly required
 
-These rules must be injected into the system prompt and treated as non-negotiable behavior guidelines for the AI.
+👥 USER ROLES TO SUPPORT
+Existing
 
-The chatbot must always obey these rules when generating responses.
+admin ✅ (already implemented)
 
-API Data as Chatbot “Mind”
+Add These Roles
 
-The chatbot must use live data from ALL available GET endpoints as part of its reasoning and response generation.
+donor
 
-Donor Endpoints
+hospital_staff
 
-GET /donors (filters: bloodType, municipality, availability, searchQuery)
+health_officer
 
-GET /donors/{id}
+🗄 DATABASE CONTEXT (DO NOT CHANGE EXISTING TABLE STRUCTURE)
 
-Donor Registration Endpoints
+Current table:
 
-GET /donor-registrations
+CREATE TABLE users (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+full_name TEXT NOT NULL,
+contact_number TEXT NOT NULL UNIQUE,
+role TEXT DEFAULT 'donor' CHECK(role IN ('admin', 'donor')),
+email TEXT,
+avatar_url TEXT,
+created_at TEXT,
+updated_at TEXT
+);
 
-GET /donor-registrations/{id}
+Required Enhancement
 
-Notification Endpoints
+Extend role handling in the application layer to support:
 
-GET /notifications
+donor
 
-GET /notifications/{id}
+hospital_staff
 
-GET /notifications/unread-count
+health_officer
 
-GET /notifications/grouped
+❗ Do NOT break existing admin or donor logic
 
-Data Usage Rules
+❗ Do NOT remove default role behavior (donor)
 
-Fetch relevant data from these GET endpoints before or during AI response generation.
+🔄 ROLE FLOWS & ACCESS RULES
+🩸 FLOW 1 — DONOR
 
-Summarize, analyze, and contextualize the fetched data.
+Registration → Donor Dashboard (NEW PAGE)
 
-The chatbot’s answers must be grounded in real API data, not assumptions.
+Donor Dashboard must include:
 
-If multiple endpoints are relevant, combine and summarize them intelligently.
+View Donor Information
 
-If no data is available, respond gracefully and inform the user.
+Leave Message to Admin
 
-Chatbot Behavior
+Delete Donor Data
 
-The chatbot must:
+📌 Notes:
 
-Answer questions about donors, donor registrations, and notifications
+Donor Dashboard does NOT exist yet → create this screen
 
-Provide summaries, counts, availability insights, and status explanations
+All other donor-related pages already exist → reuse them
 
-Base all answers on fetched API data + chatbot-rules.json
+Donor is the default role
 
-The chatbot must not perform POST, PUT, PATCH, or DELETE actions directly—only explain, summarize, or guide based on data.
+🛠 FLOW 2 — ADMIN (ALREADY EXISTS)
 
-Strict Constraints
+Admin Dashboard includes:
 
-❌ Do NOT refactor, remove, or rename existing logic, state, hooks, or UI.
+View Reports
 
-❌ Do NOT modify unrelated business logic.
+Find Donors
 
-❌ Do NOT hardcode responses.
+Manage Donors
 
-✅ Follow real-world chatbot implementation standards.
+Access Donors Bot (AI)
 
-✅ Keep the implementation mobile-safe and production-ready.
+Send Notifications
 
-Expected Result
+Settings
 
-A fully functional chatbot “mind” that:
+📌 Notes:
 
-Uses OpenRouter reliably with fallback support
+Do NOT change admin UI or logic
 
-Obeys chatbot-rules.json
+Only ensure access is properly restricted to admin
 
-Thinks using real API data
+🏥 FLOW 3 — HOSPITAL STAFF
 
-Summarizes and answers accurately based on the system’s current state
+Hospital Staff Login → Hospital Dashboard
+
+Hospital Dashboard features:
+
+Search Donors
+
+View Donor Profiles
+
+Send Blood Request Notifications
+
+Update Request Status
+
+📌 Notes:
+
+Pages already exist → map access via role
+
+Hospital Staff must NOT access admin or donor dashboards
+
+🏢 FLOW 4 — HEALTH OFFICER
+
+Health Officer Login → Health Officer Dashboard
+
+Health Officer Dashboard features:
+
+View Donor List by Municipality
+
+Monitor Donor Availability
+
+Send Notifications to Donors
+
+Generate Simple Reports
+
+📌 Notes:
+
+Pages already exist → role-gate access
+
+No admin privileges
+
+🧭 NAVIGATION & ACCESS CONTROL REQUIREMENTS
+
+Implement role-based routing/navigation
+
+After login, redirect users based on their role
+
+Block unauthorized screen access
+
+Handle fallback/unauthorized states safely
+
+Keep navigation logic clean and minimal
+
+🧩 TECHNICAL EXPECTATIONS
+
+React Native + TypeScript + Expo compatible
+
+Centralized role handling (context / hook / guard)
+
+Clear role constants or enums
+
+No breaking changes
+
+No unnecessary refactors
+
+✅ FINAL DELIVERABLES
+
+Role-based navigation logic
+
+Donor Dashboard screen (new)
+
+Access control per role
+
+Clean, minimal, scoped changes only
+
+💡 If a feature or page already exists, reuse it.
+If it doesn’t exist (Donor Dashboard), create it.
+Nothing else should change.

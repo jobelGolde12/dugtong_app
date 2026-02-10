@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
-type TursoClient = ReturnType<import('@libsql/client').createClient>;
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+type TursoClient = ReturnType<import('@libsql/client').createClient>;
 
 // Types
 export interface ChatbotMessage {
