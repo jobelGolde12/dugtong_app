@@ -609,7 +609,7 @@ const SearchBar: React.FC<{
           )}
         </View>
         <Button
-          variant="outline"
+          variant="ghost"
           size="md"
           onPress={onFilterPress}
           leftIcon={<SlidersHorizontal size={18} color={COLORS.neutral[500]} />}
@@ -768,21 +768,19 @@ const FilterModal: React.FC<{
           borderTopColor: COLORS.neutral[200],
         }}>
           <Button
-            variant="outline"
-            size="lg"
+            variant="ghost"
+            size="sm"
             onPress={onReset}
-            fullWidth
           >
             Reset All
           </Button>
           <Button
             variant="primary"
-            size="lg"
+            size="sm"
             onPress={() => {
               onApply();
               onClose();
             }}
-            fullWidth
           >
             Apply Filters
           </Button>
