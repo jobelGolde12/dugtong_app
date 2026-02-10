@@ -11,10 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, {
+import {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -86,63 +84,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [isOpen, openSidebar, closeSidebar]);
 
-  /**
-   * Swipe gesture handler for closing sidebar on left swipe
-   * and opening on right swipe (from sidebar edge)
-   */
-  const swipeGesture = Gesture.Pan()
-    .onChange((event) => {
-      // Handle closing swipe (leftward from open state)
-      if (event.translationX < 0 && isOpen) {
-        sidebarTranslateX.value = Math.max(event.translationX, -sidebarWidth);
-        backdropOpacity.value = withTiming(
-          Math.max(0, 0.3 + (event.translationX / sidebarWidth) * 0.3),
-          { duration: 0 }
-        );
-      }
-      // Handle opening swipe (rightward from closed state)
-      else if (event.translationX > 0 && !isOpen) {
-        sidebarTranslateX.value = Math.min(0, -sidebarWidth + event.translationX);
-        backdropOpacity.value = withTiming(
-          Math.min(0.3, (event.translationX / sidebarWidth) * 0.3),
-          { duration: 0 }
-        );
-      }
-    })
-    .onEnd((event) => {
-      if (isOpen) {
-        // Closing logic - threshold at 60px for smooth feel
-        if (event.translationX < -60) {
-          runOnJS(closeSidebar)();
-        } else {
-          runOnJS(openSidebar)();
-        }
-      } else {
-        // Opening logic
-        if (event.translationX > 60) {
-          runOnJS(openSidebar)();
-        } else {
-          // Snap back to closed state
-          runOnJS(closeSidebar)();
-        }
-      }
-    });
 
-  /**
-   * Swipe gesture for main content area - swipe right from edge to open sidebar
-   * FIXED: Only activate from the very left edge (15px) and require minimum horizontal movement
-   */
-  const mainContentSwipe = Gesture.Pan()
-    .activeOffsetX([-20, 20]) // Require more horizontal movement to activate (increased from 10 to 20)
-    .failOffsetY([-15, 15])   // Cancel gesture if vertical movement detected (increased from 10 to 15)
-    .activeOffsetY([-1000, 1000]) // Allow vertical movement without cancelling the gesture
-    .hitSlop({ left: -15 }) // Only activate from the left 15px edge
-    .onEnd((event) => {
-      // Only open if swiping rightward from left edge area with sufficient distance
-      if (event.translationX > 60 && !isOpen && event.velocityX > 0.5) {
-        runOnJS(openSidebar)();
-      }
-    });
+
+
 
   // Animated styles for sidebar
   const sidebarAnimatedStyle = useAnimatedStyle(() => ({
@@ -276,7 +220,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   );
 
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <View style={styles.container}>
       {/* Toggle Button - Dynamic positioning based on sidebar state */}
       {/* When open: Top-right of main header area */}
       {/* When closed: Top-right of collapsed sidebar area */}
@@ -315,8 +259,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       />
 
       {/* Sidebar with swipe gesture detection */}
-      <GestureDetector gesture={swipeGesture}>
-        <Animated.View style={[styles.sidebar, sidebarAnimatedStyle]}>
+      <Animated.View style={[styles.sidebar, sidebarAnimatedStyle]}>
           <View style={styles.sidebarHeader}>
             <Text style={styles.sidebarTitle}>Dugtong</Text>
             <View style={styles.headerDivider} />
@@ -339,32 +282,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
           </View>
-        </Animated.View>
-      </GestureDetector>
+      </Animated.View>
 
-      {/* Main Content with swipe detection - ONLY WRAPPED IN GestureDetector IF sidebar is closed */}
-      {!isOpen ? (
-        <GestureDetector gesture={mainContentSwipe}>
-          <View style={styles.mainContent}>
-            {/* Dashboard Header Area */}
-            <View style={styles.dashboardHeader}>
-              <Text style={styles.mainHeaderTitle}>Dugtong</Text>
-              <View style={styles.headerLeftSpacer} />
-            </View>
-            {children}
-          </View>
-        </GestureDetector>
-      ) : (
-        <View style={styles.mainContent}>
-          {/* Dashboard Header Area */}
-          <View style={styles.dashboardHeader}>
-            <Text style={styles.mainHeaderTitle}>Dugtong</Text>
-            <View style={styles.headerLeftSpacer} />
-          </View>
-          {children}
+      <View style={styles.mainContent}>
+        {/* Dashboard Header Area */}
+        <View style={styles.dashboardHeader}>
+          <Text style={styles.mainHeaderTitle}>Dugtong</Text>
+          <View style={styles.headerLeftSpacer} />
         </View>
-      )}
-    </GestureHandlerRootView>
+        {children}
+      </View>
+    </View>
   );
 }
 

@@ -245,7 +245,7 @@ const Card: React.FC<{
 };
 
 const Button: React.FC<{
-  children: React.ReactNode;
+  children?: React.ReactNode;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'destructive';
   size?: 'sm' | 'md' | 'lg';
@@ -561,60 +561,56 @@ const SearchBar: React.FC<{
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: SPACING.sm,
+        backgroundColor: COLORS.surface.light,
+        borderRadius: RADIUS.lg,
+        borderWidth: 1,
+        borderColor: isFocused ? COLORS.primary[300] : COLORS.neutral[200],
+        paddingVertical: SPACING.sm,
+        ...SHADOWS.sm,
       }}>
-        <View style={{
-          flex: 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: COLORS.surface.light,
-          borderRadius: RADIUS.lg,
-          borderWidth: 1,
-          borderColor: isFocused ? COLORS.primary[300] : COLORS.neutral[200],
-          paddingHorizontal: SPACING.md,
-          paddingVertical: SPACING.sm,
-          ...SHADOWS.sm,
-        }}>
-          <Search size={20} color={COLORS.neutral[400]} />
-          <TextInput
-            ref={inputRef}
-            placeholder="Search donors by name, blood type, or location..."
-            placeholderTextColor={COLORS.neutral[400]}
-            value={value}
-            onChangeText={onChangeText}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            style={{
-              flex: 1,
-              fontSize: 16,
-              color: COLORS.neutral[900],
-              marginLeft: SPACING.sm,
-              paddingVertical: Platform.OS === 'ios' ? SPACING.xs : 0,
-            }}
-            clearButtonMode="while-editing"
-          />
-          {value.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                onChangeText('');
-                inputRef.current?.blur();
-              }}
-              style={{
-                padding: SPACING.xs,
-                borderRadius: RADIUS.sm,
-              }}
-            >
-              <X size={18} color={COLORS.neutral[400]} />
-            </TouchableOpacity>
-          )}
-        </View>
-        <Button
-          variant="ghost"
-          size="md"
-          onPress={onFilterPress}
-          leftIcon={<SlidersHorizontal size={18} color={COLORS.neutral[500]} />}
-          style={{ height: 44 }}
+        <Search size={20} color={COLORS.neutral[400]} style={{ marginLeft: SPACING.md }} />
+        <TextInput
+          ref={inputRef}
+          placeholder="Search donors by name, blood type, or location..."
+          placeholderTextColor={COLORS.neutral[400]}
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          style={{
+            flex: 1,
+            fontSize: 16,
+            color: COLORS.neutral[900],
+            marginLeft: SPACING.sm,
+            paddingVertical: Platform.OS === 'ios' ? SPACING.xs : 0,
+            paddingRight: value.length > 0 ? SPACING.xs : SPACING.md + 24, // Adjust space for icon or clear button
+          }}
+          clearButtonMode="never" // We are implementing custom clear/filter buttons
         />
+        {value.length > 0 ? (
+          <TouchableOpacity
+            onPress={() => {
+              onChangeText('');
+              inputRef.current?.blur();
+            }}
+            style={{
+              padding: SPACING.xs,
+              marginRight: SPACING.xs,
+            }}
+          >
+            <X size={18} color={COLORS.neutral[400]} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={onFilterPress}
+            style={{
+              padding: SPACING.xs,
+              marginRight: SPACING.xs,
+            }}
+          >
+            <SlidersHorizontal size={18} color={COLORS.neutral[500]} />
+          </TouchableOpacity>
+        )}
       </View>
     </Animated.View>
   );
@@ -1079,6 +1075,7 @@ const DonorManagementScreen: React.FC = () => {
     searchQuery: '',
   });
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 

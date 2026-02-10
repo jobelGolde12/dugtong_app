@@ -214,21 +214,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handleTestCredentials = () => {
-    // Pre-fill form with test credentials
-    setFormValues({
-      fullName: 'Test User',
-      contactNumber: '0912-345-6789'
-    });
-    
-    // Clear any existing errors
-    setFormErrors({});
-    
-    // Focus the contact number field
-    if (formValues.contactNumber) {
-      animateLabel('contactNumber', 1);
-    }
-  };
+
 
   const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
@@ -467,21 +453,7 @@ export default function LoginScreen() {
                       </TouchableOpacity>
                     </Animated.View>
 
-                    {/* Test Credentials Button */}
-                    <TouchableOpacity
-                      style={styles.testCredentialsButton}
-                      onPress={handleTestCredentials}
-                      disabled={isLoading}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.testCredentialsContent}>
-                        <Feather name="user-check" size={18} color="rgba(255, 255, 255, 0.9)" />
-                        <Text style={styles.testCredentialsText}>
-                          Use Test Credentials
-                        </Text>
-                      </View>
-                      <Feather name="chevron-right" size={16} color="rgba(255, 255, 255, 0.6)" />
-                    </TouchableOpacity>
+
 
                     {/* Register Link */}
                     <TouchableOpacity
@@ -697,28 +669,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginLeft: 12,
   },
-  testCredentialsButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  testCredentialsContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  testCredentialsText: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 12,
-  },
+
   registerButton: {
     paddingVertical: 16,
   },
