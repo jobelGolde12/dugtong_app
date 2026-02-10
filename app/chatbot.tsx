@@ -1,5 +1,4 @@
-import * as Speech from 'expo-speech';
-import { Bot, Mic, Send } from 'lucide-react-native';
+import { Bot, Send } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   BackHandler,
@@ -70,153 +69,13 @@ export default function ChatbotScreen() {
   // NEW: State for typing indicator
   const [isTyping, setIsTyping] = useState(false);
 
-  // Animation values for microphone
-  const micScale = useSharedValue(1);
-  const borderScale = useSharedValue(1);
-  const borderOpacity = useSharedValue(0.3);
-  const ring1Scale = useSharedValue(1);
-  const ring1Opacity = useSharedValue(0);
-  const ring2Scale = useSharedValue(1);
-  const ring2Opacity = useSharedValue(0);
-  const [isListening, setIsListening] = useState(false);
 
-  const animatedMicStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: micScale.value }],
-    };
-  });
 
-  const animatedBorderStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: borderScale.value }],
-      opacity: borderOpacity.value,
-    };
-  });
 
-  const animatedRing1Style = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: ring1Scale.value }],
-      opacity: ring1Opacity.value,
-    };
-  });
 
-  const animatedRing2Style = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: ring2Scale.value }],
-      opacity: ring2Opacity.value,
-    };
-  });
 
-  const startMicIdleAnimation = () => {
-    // Gentle idle pulse
-    borderScale.value = withRepeat(
-      withSequence(
-        withDelay(300, withTiming(1.03, { 
-          duration: 1800, 
-          easing: Easing.bezier(0.4, 0, 0.2, 1) 
-        })),
-        withTiming(1, { 
-          duration: 1800, 
-          easing: Easing.bezier(0.4, 0, 0.2, 1) 
-        })
-      ),
-      -1,
-      true
-    );
-    
-    borderOpacity.value = withRepeat(
-      withSequence(
-        withDelay(300, withTiming(0.5, { duration: 900 })),
-        withTiming(0.3, { duration: 900 })
-      ),
-      -1,
-      true
-    );
-  };
 
-  const startMicActiveAnimation = () => {
-    // Stronger active pulse with faster timing
-    borderScale.value = withRepeat(
-      withSequence(
-        withTiming(1.1, { 
-          duration: 500, 
-          easing: Easing.bezier(0.4, 0, 0.2, 1) 
-        }),
-        withTiming(1, { 
-          duration: 500, 
-          easing: Easing.bezier(0.4, 0, 0.2, 1) 
-        })
-      ),
-      -1,
-      true
-    );
-    
-    borderOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.9, { duration: 500 }),
-        withTiming(0.7, { duration: 500 })
-      ),
-      -1,
-      true
-    );
-    
-    // Dual ring effect
-    ring1Scale.value = withRepeat(
-      withSequence(
-        withTiming(1.4, { 
-          duration: 1200, 
-          easing: Easing.bezier(0.4, 0, 0.2, 1) 
-        }),
-        withTiming(1, { duration: 100 })
-      ),
-      -1,
-      false
-    );
-    
-    ring1Opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.4, { duration: 800 }),
-        withTiming(0, { duration: 400 })
-      ),
-      -1,
-      false
-    );
-    
-    ring2Scale.value = withDelay(300, withRepeat(
-      withSequence(
-        withTiming(1.4, { 
-          duration: 1200, 
-          easing: Easing.bezier(0.4, 0, 0.2, 1) 
-        }),
-        withTiming(1, { duration: 100 })
-      ),
-      -1,
-      false
-    ));
-    
-    ring2Opacity.value = withDelay(300, withRepeat(
-      withSequence(
-        withTiming(0.3, { duration: 800 }),
-        withTiming(0, { duration: 400 })
-      ),
-      -1,
-      false
-    ));
-  };
 
-  const stopMicAnimation = () => {
-    borderScale.value = withTiming(1, { duration: 300 });
-    borderOpacity.value = withTiming(0.3, { duration: 300 });
-    ring1Scale.value = withTiming(1, { duration: 200 });
-    ring1Opacity.value = withTiming(0, { duration: 200 });
-    ring2Scale.value = withTiming(1, { duration: 200 });
-    ring2Opacity.value = withTiming(0, { duration: 200 });
-  };
-
-  // Start gentle idle animation on mount
-  useEffect(() => {
-    startMicIdleAnimation();
-  }, []);
 
   // Handle back button to collapse footer
   useEffect(() => {
@@ -246,17 +105,7 @@ export default function ChatbotScreen() {
 
   const styles = createStyles(colors, cannotReceiveMessages); // Updated to include cannotReceiveMessages
 
-  const speakMessage = async (text: string) => {
-    try {
-      await Speech.speak(text, {
-        language: 'en-US',
-        pitch: 1.0,
-        rate: 0.9,
-      });
-    } catch (error) {
-      console.error('Speech error:', error);
-    }
-  };
+
 
   // Fetch live data from API endpoints with enhanced error handling
   const fetchLiveData = async () => {
@@ -612,58 +461,7 @@ BEHAVIOR GUIDELINES:
     return response;
   };
 
-  const handleMicPress = async () => {
-    // NEW: Prevent mic press when chatbot cannot receive messages
-    if (cannotReceiveMessages) return;
 
-    handleTapPress();
-
-    // Start animation
-    setIsListening(true);
-    startMicActiveAnimation();
-
-    // NEW: Show typing indicator when processing voice input
-    setIsTyping(true);
-
-    // Simulate processing time
-    setTimeout(async () => {
-      const botResponseText = await getOpenRouterResponse('Hello, how can you help me today?');
-
-      // NEW: Hide typing indicator after response is received
-      setIsTyping(false);
-
-      // Speak the message
-      await speakMessage(botResponseText);
-
-      // Add bot response as text
-      const botResponse: MessageType = {
-        id: Date.now().toString(),
-        text: botResponseText,
-        sender: 'bot',
-      };
-      setMessages(prev => [...prev, botResponse]);
-
-      // Hide intro on first user interaction
-      if (showIntro) {
-        RNAnimated.timing(introAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
-          setShowIntro(false);
-        });
-      }
-
-      // Stop animation after a delay
-      setTimeout(() => {
-        setIsListening(false);
-        stopMicAnimation();
-        setTimeout(() => {
-          startMicIdleAnimation();
-        }, 300);
-      }, 1000);
-    }, 1000); // Simulate processing time
-  };
 
   const handleSendMessage = async () => {
     // NEW: Prevent sending when chatbot cannot receive messages
@@ -709,8 +507,7 @@ BEHAVIOR GUIDELINES:
       // NEW: Hide typing indicator after response is received
       setIsTyping(false);
 
-      // Speak the response
-      speakMessage(botResponseText);
+
     } catch (error) {
       console.error('Error getting bot response:', error);
       // NEW: Hide typing indicator even if there's an error
@@ -835,65 +632,7 @@ BEHAVIOR GUIDELINES:
                 </RNAnimated.View>
               )}
 
-              {/* Big Modern Talk Icon - Conditional */}
-              {showIntro && (
-                <RNAnimated.View 
-                  style={[
-                    styles.talkSection,
-                    {
-                      opacity: introAnim,
-                      transform: [{
-                        translateY: introAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [-30, -10]
-                        })
-                      }]
-                    }
-                  ]}
-                >
-                  <TouchableOpacity
-                    style={[styles.bigTalkButton, cannotReceiveMessages && styles.disabledButton]}
-                    onPressIn={handleTapPress}
-                    onPressOut={handleTapRelease}
-                    onPress={handleMicPress}
-                    activeOpacity={cannotReceiveMessages ? 1 : 0.8} // NEW: Adjust opacity when disabled
-                    disabled={cannotReceiveMessages} // NEW: Disable when cannot receive messages
-                  >
-                    {/* Dual ring effect for active state */}
-                    <Animated.View style={[
-                      styles.ringContainer, 
-                      animatedRing1Style,
-                      { borderColor: colors.primary }
-                    ]} />
-                    <Animated.View style={[
-                      styles.ringContainer, 
-                      animatedRing2Style,
-                      { borderColor: colors.primary }
-                    ]} />
-                    
-                    {/* Main border animation */}
-                    <Animated.View style={[
-                      styles.borderAnimationContainer, 
-                      animatedBorderStyle,
-                      { 
-                        borderColor: colors.primary,
-                        shadowColor: colors.primary,
-                      }
-                    ]} />
-                    
-                    {/* Microphone container with bounce animation */}
-                    <Animated.View style={[styles.micContainer, animatedMicStyle]}>
-                      <Mic color="#FFF" size={48} strokeWidth={1.5} />
-                    </Animated.View>
-                  </TouchableOpacity>
-                  <Text style={[
-                    styles.talkSubtext,
-                    isDark && styles.darkTalkSubtext
-                  ]}>
-                    Tap to speak
-                  </Text>
-                </RNAnimated.View>
-              )}
+
 
               {/* Chat Messages */}
               {messages.map(renderMessageBubble)}
