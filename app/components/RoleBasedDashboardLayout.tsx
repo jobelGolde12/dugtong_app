@@ -20,10 +20,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { getNavigationItemsForRole } from '../utils/roleNavigation';
-import { AdminOnly, HospitalStaffOnly, HealthOfficerOnly } from './RoleGuard';
 
 interface RoleBasedDashboardLayoutProps {
   children: React.ReactNode;
@@ -375,7 +374,7 @@ const createStyles = (colors: any, insets: any, headerTopPadding: number, isOpen
     sidebarHeader: {
       paddingHorizontal: 24,
       paddingVertical: 24,
-      paddingTop: Math.max(insets.top + 20, 60),
+      paddingTop: Math.max(insets.top + 20, 30),
     },
     sidebarTitle: {
       fontSize: 24,
@@ -464,6 +463,7 @@ const createStyles = (colors: any, insets: any, headerTopPadding: number, isOpen
       fontWeight: '700',
       color: colors.text,
       marginLeft: 16,
+      marginTop: 40,
     },
     mainContent: {
       flex: 1,

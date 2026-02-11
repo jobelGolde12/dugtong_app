@@ -1,11 +1,9 @@
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Animated,
-  ImageBackground,
   KeyboardAvoidingView,
-  LayoutChangeEvent,
   Modal,
   Platform,
   ScrollView,
@@ -15,12 +13,11 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  useWindowDimensions,
   View
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import SafeScrollView from '../lib/SafeScrollView';
-import { createDonorRegistration } from '../api/donor-registrations';
+import { donorApi } from '../api/donors';
+import { useTheme } from '../contexts/ThemeContext';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const MUNICIPALITIES = [
@@ -60,11 +57,6 @@ interface Errors {
   availabilityStatus?: string;
 }
 
-interface ImageDimensions {
-  width: number;
-  height: number;
-}
-
 interface DropdownModalProps {
   visible: boolean;
   items: string[];
@@ -73,8 +65,8 @@ interface DropdownModalProps {
 }
 
 export default function AddDonorPage() {
-  const { width, height } = useWindowDimensions();
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     age: '',
@@ -90,31 +82,7 @@ export default function AddDonorPage() {
   const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const fadeAnim = useState(new Animated.Value(0))[0];
-
-  const [imageDimensions, setImageDimensions] = useState<ImageDimensions>({ width: 0, height: 0 });
-  const [containerHeight, setContainerHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(false); // Moved here
-
-  useEffect(() => {
-    try {
-      const imageSource = require('@/assets/images/welcome-bg.png');
-      setImageDimensions({
-        width: 1024,
-        height: 768
-      });
-    } catch (error) {
-      console.warn('Could not load background image, using defaults');
-      setImageDimensions({
-        width: 1024,
-        height: 768
-      });
-    }
-  }, []);
-
-  const onLayout = useCallback((event: LayoutChangeEvent) => {
-    const { height: newHeight } = event.nativeEvent.layout;
-    setContainerHeight(newHeight);
-  }, []);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -220,23 +188,19 @@ export default function AddDonorPage() {
 
     try {
       const normalizedContactNumber = formData.contactNumber.replace(/\D/g, '');
-      const availability =
-        formData.availabilityStatus === 'Available'
-          ? 'available'
-          : 'temporarily_unavailable';
-
-      await createDonorRegistration({
-        full_name: formData.fullName,
+      await donorApi.createDonor({
+        name: formData.fullName,
         age: Number(formData.age),
-        blood_type: formData.bloodType,
-        contact_number: normalizedContactNumber,
+        sex: formData.sex,
+        bloodType: formData.bloodType,
+        contactNumber: normalizedContactNumber,
         municipality: formData.municipality,
-        availability,
+        availabilityStatus: formData.availabilityStatus,
       });
 
       Alert.alert(
-        'Registration Submitted! 🎉',
-        `${formData.fullName}, your registration has been submitted for review.`,
+        'Success',
+        'Successfully addedd...',
         [
           {
             text: 'OK',
@@ -287,31 +251,26 @@ export default function AddDonorPage() {
     </Modal>
   );
 
+  const styles = createStyles(colors);
+
   return (
-    <View style={styles.container} onLayout={onLayout}>
+    <View style={styles.container}>
       <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
       />
-      <ImageBackground
-        source={require('@/assets/images/welcome-bg.png')}
-        style={styles.background}
-        imageStyle={{ width: width, height: height }}
-        resizeMode="cover"
-      >
-        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardAvoid}
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoid}
+        >
+          <SafeScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
           >
-            <SafeScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}
-            >
-              <View style={styles.formContainer}>
-                <Text style={styles.title}>Add Donor</Text>
-                <Text style={styles.subtitle}>Register a new donor to the system</Text>
+            <View style={styles.formContainer}>
+              <Text style={styles.title}>Add Donor</Text>
+              <Text style={styles.subtitle}>Register a new donor to the system</Text>
                 
                 {/* Full Name */}
                 <View style={styles.inputGroup}>
@@ -327,7 +286,7 @@ export default function AddDonorPage() {
                     onFocus={() => setFocusedField('fullName')}
                     onBlur={() => handleBlur('fullName')}
                     placeholder="Enter donor's full name"
-                    placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                    placeholderTextColor={colors.textSecondary}
                   />
                   {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
                 </View>
@@ -346,7 +305,7 @@ export default function AddDonorPage() {
                     onFocus={() => setFocusedField('age')}
                     onBlur={() => handleBlur('age')}
                     placeholder="Enter age"
-                    placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                    placeholderTextColor={colors.textSecondary}
                     keyboardType="numeric"
                     maxLength={3}
                   />
@@ -421,7 +380,7 @@ export default function AddDonorPage() {
                     onFocus={() => setFocusedField('contactNumber')}
                     onBlur={() => handleBlur('contactNumber')}
                     placeholder="09XX-XXX-XXXX"
-                    placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                    placeholderTextColor={colors.textSecondary}
                     keyboardType="phone-pad"
                     maxLength={13}
                   />
@@ -507,7 +466,6 @@ export default function AddDonorPage() {
             </SafeScrollView>
           </KeyboardAvoidingView>
         </Animated.View>
-      </ImageBackground>
 
       {/* Dropdown Modals */}
       <DropdownModal
@@ -533,22 +491,14 @@ export default function AddDonorPage() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-  },
-  background: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    backgroundColor: colors.background,
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    zIndex: 1,
+    backgroundColor: colors.background,
   },
   keyboardAvoid: {
     flex: 1,
@@ -560,34 +510,28 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   formContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: colors.surface,
     borderRadius: 20,
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    borderWidth: 0,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
     letterSpacing: 0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 30,
     fontWeight: '500',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   inputGroup: {
     marginBottom: 20,
@@ -595,36 +539,33 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 10,
     letterSpacing: 0.3,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: '500',
   },
   inputFocused: {
-    borderColor: '#1E90FF',
-    backgroundColor: 'rgba(30, 144, 255, 0.15)',
-    shadowColor: '#1E90FF',
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
     elevation: 4,
   },
   inputError: {
-    borderColor: '#FF6B6B',
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    borderColor: colors.error,
+    backgroundColor: colors.error + '1A',
   },
   radioGroup: {
     flexDirection: 'row',
@@ -632,9 +573,9 @@ const styles = StyleSheet.create({
   },
   radioButton: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.border,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -642,30 +583,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioButtonSelected: {
-    backgroundColor: 'rgba(40, 167, 69, 0.2)',
-    borderColor: '#28a745',
-    shadowColor: '#28a745',
+    backgroundColor: colors.primary + '1F',
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
   },
   radioButtonError: {
-    borderColor: '#FF6B6B',
+    borderColor: colors.error,
   },
   radioText: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: colors.text,
   },
   radioTextSelected: {
-    color: '#FFFFFF',
+    color: colors.primary,
     fontWeight: '700',
   },
   dropdown: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -674,28 +615,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dropdownFocused: {
-    borderColor: '#1E90FF',
-    backgroundColor: 'rgba(30, 144, 255, 0.15)',
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
   },
   dropdownError: {
-    borderColor: '#FF6B6B',
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    borderColor: colors.error,
+    backgroundColor: colors.error + '1A',
   },
   dropdownText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: '500',
   },
   dropdownPlaceholder: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: colors.textSecondary,
   },
   dropdownArrow: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: colors.textSecondary,
     fontSize: 12,
     marginLeft: 8,
   },
   submitButton: {
-    backgroundColor: 'rgba(30, 144, 255, 0.8)',
+    backgroundColor: colors.primary,
     width: '100%',
     paddingVertical: 16,
     borderRadius: 12,
@@ -703,53 +644,47 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
+    borderColor: colors.primaryVariant,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   cancelButton: {
-    backgroundColor: 'rgba(108, 117, 125, 0.8)',
+    backgroundColor: colors.surfaceVariant,
     width: '100%',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.border,
   },
   cancelButtonText: {
-    color: '#FFFFFF',
+    color: colors.textSecondary,
     fontSize: 16,
     fontWeight: '600',
   },
   errorText: {
-    color: '#FF6B6B',
+    color: colors.error,
     fontSize: 13,
     fontWeight: '600',
     marginTop: 6,
     marginLeft: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   helperText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: colors.textSecondary,
     fontSize: 12,
     marginTop: 6,
     marginLeft: 4,
     fontStyle: 'italic',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 1,
   },
   modalOverlay: {
     flex: 1,
@@ -759,17 +694,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   modalContent: {
-    backgroundColor: '#1E1E2E',
+    backgroundColor: colors.card,
     borderRadius: 16,
     width: '90%',
     maxHeight: '60%',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.border,
   },
   modalScrollView: {
     maxHeight: 400,
@@ -778,11 +713,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: colors.border,
   },
   modalItemText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: '500',
   },
 });
