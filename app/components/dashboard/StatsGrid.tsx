@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -137,6 +138,15 @@ interface DonorDetail {
   phoneNumber?: string;
 }
 
+// Extended donor detail with additional info for expanded view
+interface ExpandedDonorDetail extends DonorDetail {
+  email?: string | null;
+  age?: number;
+  sex?: string;
+  dateRegistered?: string;
+  notes?: string;
+}
+
 interface RequestDetail {
   id: string;
   patientName: string;
@@ -193,6 +203,66 @@ const StatDetailModal: React.FC<{
   onClose: () => void;
 }> = ({ visible, statData, onClose }) => {
   const { colors } = useTheme();
+  const [expandedDonorId, setExpandedDonorId] = useState<string | null>(null);
+  const [expandedDonorData, setExpandedDonorData] = useState<ExpandedDonorDetail | null>(null);
+  const [loadingExpanded, setLoadingExpanded] = useState(false);
+
+  // Reset expanded state when modal closes or changes
+  React.useEffect(() => {
+    if (!visible) {
+      setExpandedDonorId(null);
+      setExpandedDonorData(null);
+    }
+  }, [visible]);
+
+  const fetchExpandedDonorData = async (donorId: string) => {
+    try {
+      setLoadingExpanded(true);
+      const rows = await queryRows<Record<string, any>>(
+        `SELECT id, full_name, blood_type, availability_status, municipality, 
+                last_donation_date, contact_number, age, sex, created_at, notes
+         FROM donors 
+         WHERE id = ? AND is_deleted = 0
+         LIMIT 1`,
+        [donorId]
+      );
+
+      if (rows.length > 0) {
+        const row = rows[0];
+        setExpandedDonorData({
+          id: String(row.id),
+          name: row.full_name,
+          bloodType: row.blood_type,
+          availability: row.availability_status,
+          location: row.municipality || 'Unknown',
+          lastDonation: row.last_donation_date,
+          phoneNumber: row.contact_number,
+          email: undefined, // email column doesn't exist in donors table
+          age: row.age,
+          sex: row.sex,
+          dateRegistered: row.created_at, // using created_at instead of date_registered
+          notes: row.notes,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching expanded donor data:', error);
+      Alert.alert('Error', 'Failed to load donor details');
+    } finally {
+      setLoadingExpanded(false);
+    }
+  };
+
+  const handleDonorPress = (donor: DonorDetail) => {
+    if (expandedDonorId === donor.id) {
+      // Collapse if already expanded
+      setExpandedDonorId(null);
+      setExpandedDonorData(null);
+    } else {
+      // Expand this donor
+      setExpandedDonorId(donor.id);
+      fetchExpandedDonorData(donor.id);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -238,44 +308,169 @@ const StatDetailModal: React.FC<{
     switch (statData?.title) {
       case 'Total Donors':
         const donor = item as DonorDetail;
+        const isExpanded = expandedDonorId === donor.id;
+
         return (
-          <View key={index} style={[styles.detailItem, { backgroundColor: colors.surface }]}>
-            <View style={styles.detailHeader}>
-              <Text style={[styles.detailName, { color: colors.text }]}>{donor.name}</Text>
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.detailItem,
+              { backgroundColor: colors.surface },
+              isExpanded && styles.detailItemExpanded
+            ]}
+            onPress={() => handleDonorPress(donor)}
+            activeOpacity={0.7}
+          >
+            {/* List Mode - Always Visible */}
+            <View style={styles.listModeContainer}>
+              <View style={styles.listModeLeft}>
+                <Text style={[styles.listModeName, { color: colors.text }]}>{donor.name}</Text>
+                <Text style={[styles.listModeSubtitle, { color: colors.textSecondary }]}>
+                  Tap to view details
+                </Text>
+              </View>
               <View style={[styles.bloodTypeBadge, { backgroundColor: '#FF6B6B20' }]}>
                 <Text style={[styles.bloodTypeText, { color: '#FF6B6B' }]}>{donor.bloodType}</Text>
               </View>
+              <Ionicons
+                name={isExpanded ? "chevron-up" : "chevron-down"}
+                size={20}
+                color={colors.textSecondary}
+                style={styles.expandIcon}
+              />
             </View>
-            <View style={styles.detailInfo}>
-              <Text style={[styles.detailInfoText, { color: colors.textSecondary }]}>
-                📍 {donor.location}
-              </Text>
-              <Text style={[styles.detailInfoText, { color: colors.textSecondary }]}>
-                🟢 {donor.availability}
-              </Text>
-              {donor.lastDonation && (
-                <Text style={[styles.detailInfoText, { color: colors.textSecondary }]}>
-                  📅 Last donation: {formatDate(donor.lastDonation)}
-                </Text>
-              )}
-            </View>
-            {donor.phoneNumber && (
-              <View style={styles.actionButtonsContainer}>
-                <ActionButton
-                  icon="call"
-                  label="Call"
-                  variant="call"
-                  onPress={() => handleCall(donor.phoneNumber!)}
-                />
-                <ActionButton
-                  icon="chatbubble"
-                  label="Message"
-                  variant="message"
-                  onPress={() => handleMessage(donor.phoneNumber!)}
-                />
+
+            {/* Expanded Card Mode - Only Visible When Expanded */}
+            {isExpanded && (
+              <View style={styles.expandedContent}>
+                {loadingExpanded ? (
+                  <View style={styles.loadingExpandedContainer}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                      Loading details...
+                    </Text>
+                  </View>
+                ) : expandedDonorData ? (
+                  <>
+                    <View style={[styles.expandedDivider, { backgroundColor: colors.border }]} />
+                    
+                    {/* Contact Info */}
+                    <View style={styles.expandedSection}>
+                      <Text style={[styles.expandedSectionTitle, { color: colors.primary }]}>
+                        Contact Information
+                      </Text>
+                      {expandedDonorData.phoneNumber && (
+                        <View style={styles.expandedRow}>
+                          <Ionicons name="call-outline" size={16} color={colors.textSecondary} />
+                          <Text style={[styles.expandedText, { color: colors.text }]}>
+                            {expandedDonorData.phoneNumber}
+                          </Text>
+                        </View>
+                      )}
+                      {expandedDonorData.email && (
+                        <View style={styles.expandedRow}>
+                          <Ionicons name="mail-outline" size={16} color={colors.textSecondary} />
+                          <Text style={[styles.expandedText, { color: colors.text }]}>
+                            {expandedDonorData.email}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Personal Info */}
+                    <View style={styles.expandedSection}>
+                      <Text style={[styles.expandedSectionTitle, { color: colors.primary }]}>
+                        Personal Details
+                      </Text>
+                      <View style={styles.expandedRow}>
+                        <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
+                        <Text style={[styles.expandedText, { color: colors.text }]}>
+                          {expandedDonorData.location}
+                        </Text>
+                      </View>
+                      {expandedDonorData.age && (
+                        <View style={styles.expandedRow}>
+                          <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+                          <Text style={[styles.expandedText, { color: colors.text }]}>
+                            {expandedDonorData.age} years old
+                          </Text>
+                        </View>
+                      )}
+                      {expandedDonorData.sex && (
+                        <View style={styles.expandedRow}>
+                          <Ionicons name="person-outline" size={16} color={colors.textSecondary} />
+                          <Text style={[styles.expandedText, { color: colors.text }]}>
+                            {expandedDonorData.sex}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Donation Info */}
+                    <View style={styles.expandedSection}>
+                      <Text style={[styles.expandedSectionTitle, { color: colors.primary }]}>
+                        Donation Status
+                      </Text>
+                      <View style={styles.expandedRow}>
+                        <View style={[styles.statusDot, { 
+                          backgroundColor: expandedDonorData.availability === 'Available' ? '#00C896' : '#FF6B6B' 
+                        }]} />
+                        <Text style={[styles.expandedText, { color: colors.text }]}>
+                          {expandedDonorData.availability}
+                        </Text>
+                      </View>
+                      {expandedDonorData.lastDonation && (
+                        <View style={styles.expandedRow}>
+                          <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+                          <Text style={[styles.expandedText, { color: colors.text }]}>
+                            Last donation: {formatDate(expandedDonorData.lastDonation)}
+                          </Text>
+                        </View>
+                      )}
+                      {expandedDonorData.dateRegistered && (
+                        <View style={styles.expandedRow}>
+                          <Ionicons name="calendar-clear-outline" size={16} color={colors.textSecondary} />
+                          <Text style={[styles.expandedText, { color: colors.text }]}>
+                            Registered: {formatDate(expandedDonorData.dateRegistered)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Notes */}
+                    {expandedDonorData.notes && (
+                      <View style={styles.expandedSection}>
+                        <Text style={[styles.expandedSectionTitle, { color: colors.primary }]}>
+                          Notes
+                        </Text>
+                        <Text style={[styles.notesText, { color: colors.textSecondary }]}>
+                          {expandedDonorData.notes}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Action Buttons */}
+                    {expandedDonorData.phoneNumber && (
+                      <View style={styles.actionButtonsContainer}>
+                        <ActionButton
+                          icon="call"
+                          label="Call"
+                          variant="call"
+                          onPress={() => handleCall(expandedDonorData.phoneNumber!)}
+                        />
+                        <ActionButton
+                          icon="chatbubble"
+                          label="Message"
+                          variant="message"
+                          onPress={() => handleMessage(expandedDonorData.phoneNumber!)}
+                        />
+                      </View>
+                    )}
+                  </>
+                ) : null}
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         );
 
       case 'Available Donors':
@@ -375,15 +570,21 @@ const StatDetailModal: React.FC<{
 
   if (!statData) return null;
 
+  const isTotalDonors = statData.title === 'Total Donors';
+
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+      <View style={[styles.modalOverlay, isTotalDonors && styles.modalOverlayTall]}>
+        <View style={[
+          styles.modalContent, 
+          { backgroundColor: colors.surface },
+          isTotalDonors && styles.modalContentTall
+        ]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <View>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{statData.title}</Text>
@@ -694,13 +895,23 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
+    padding: 0,
+  },
+  modalOverlayTall: {
+    justifyContent: 'flex-end',
   },
   modalContent: {
     borderRadius: 20,
-    maxHeight: '80%',
+    maxHeight: '85%',
     minHeight: 300,
+    marginHorizontal: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  modalContentTall: {
+    maxHeight: '92%',
+    minHeight: 500,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -733,6 +944,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  detailItemExpanded: {
+    paddingBottom: 20,
   },
   detailHeader: {
     flexDirection: 'row',
@@ -789,6 +1003,72 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.06)',
+  },
+  // List Mode Styles
+  listModeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  listModeLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  listModeName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  listModeSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  expandIcon: {
+    marginLeft: 8,
+  },
+  // Expanded Card Mode Styles
+  expandedContent: {
+    marginTop: 12,
+  },
+  loadingExpandedContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    marginTop: 8,
+  },
+  expandedDivider: {
+    height: 1,
+    marginBottom: 16,
+  },
+  expandedSection: {
+    marginBottom: 16,
+  },
+  expandedSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  expandedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  expandedText: {
+    fontSize: 14,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  notesText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
 });
 
