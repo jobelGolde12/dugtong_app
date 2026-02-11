@@ -55,7 +55,6 @@ export default function RoleBasedDashboardLayout({ children }: RoleBasedDashboar
   const headerTopPadding = Math.max(insets.top + 12, insets.top + 4);
   
   const openSidebar = useCallback(() => {
-    'worklet';
     setIsOpen(true);
     sidebarTranslateX.value = withTiming(0, animationConfig);
     backdropOpacity.value = withTiming(0.3, { duration: 200 });
@@ -66,7 +65,6 @@ export default function RoleBasedDashboardLayout({ children }: RoleBasedDashboar
   }, []);
 
   const closeSidebar = useCallback(() => {
-    'worklet';
     setIsOpen(false);
     sidebarTranslateX.value = withTiming(-sidebarWidth, animationConfig);
     backdropOpacity.value = withTiming(0, { duration: 200 });

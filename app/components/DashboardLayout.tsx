@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {
+import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -52,7 +52,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
    * Opens the sidebar with smooth timing animation
    */
   const openSidebar = useCallback(() => {
-    'worklet';
     setIsOpen(true);
     sidebarTranslateX.value = withTiming(0, animationConfig);
     backdropOpacity.value = withTiming(0.3, { duration: 200 });
@@ -67,7 +66,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
    * Closes the sidebar with smooth timing animation
    */
   const closeSidebar = useCallback(() => {
-    'worklet';
     setIsOpen(false);
     sidebarTranslateX.value = withTiming(-sidebarWidth, animationConfig);
     backdropOpacity.value = withTiming(0, { duration: 200 });
