@@ -1,5 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,12 +16,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useRoleAccess } from '../hooks/useRoleAccess';
-import { RoleGuard } from './components/RoleGuard';
-import { USER_ROLES } from '../constants/roles.constants';
 import { useTheme } from '../contexts/ThemeContext';
-import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
+import { useRoleAccess } from '../hooks/useRoleAccess';
 
 interface DonorProfile {
   full_name: string;
@@ -38,9 +37,11 @@ export default function DonorDashboard() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadDonorData = async () => {
     try {
+      setIsRefreshing(true);
       const savedData = await AsyncStorage.getItem('donorProfile');
       if (savedData) {
         const donorProfile = JSON.parse(savedData);
@@ -53,6 +54,7 @@ export default function DonorDashboard() {
       Alert.alert('Error', 'Failed to load donor data.');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -108,8 +110,11 @@ export default function DonorDashboard() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6C63FF" />
+        <View style={styles.loadingSpinner}>
+          <ActivityIndicator size="large" color="#6C63FF" />
+        </View>
         <Text style={styles.loadingText}>Loading your donor profile...</Text>
+        <Text style={styles.loadingSubtext}>Please wait a moment</Text>
       </View>
     );
   }
@@ -117,138 +122,241 @@ export default function DonorDashboard() {
   if (!donorData) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Donor Dashboard</Text>
-            <Text style={styles.subtitle}>Your information is reviewed by an admin</Text>
+        <LinearGradient
+          colors={['#F8FAFC', '#FFFFFF']}
+          style={styles.gradientBackground}
+        >
+          <View style={styles.container}>
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="person-outline" size={64} color="#CBD5E1" />
+              </View>
+              <Text style={styles.noDataTitle}>No Profile Found</Text>
+              <Text style={styles.noDataText}>
+                Please register as a donor to view your dashboard and help save lives.
+              </Text>
+              <TouchableOpacity
+                style={styles.registerButton}
+                onPress={() => router.push('/register')}
+              >
+                <Text style={styles.registerButtonText}>Register Now</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.emptyState}>
-            <Text style={styles.noDataTitle}>No Profile Found</Text>
-            <Text style={styles.noDataText}>Please register as a donor to view your dashboard.</Text>
-          </View>
-        </View>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <LinearGradient
+        colors={['#F8FAFC', '#FFFFFF']}
+        style={styles.gradientBackground}
       >
-        <ScrollView 
-          style={styles.container} 
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          {/* Header Section */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Donor Dashboard</Text>
-            <Text style={styles.subtitle}>Your information is reviewed by an admin</Text>
-          </View>
-
-          {/* Donor Information Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.sectionTitle}>Donor Information</Text>
-              <View style={[
-                styles.statusBadge,
-                donorData.availability === 'available' || donorData.availability === 'Available'
-                  ? styles.statusAvailable
-                  : styles.statusUnavailable
-              ]}>
-                <Text style={styles.statusBadgeText}>
-                  {donorData.availability === 'available' ? 'Available' : 'Temporarily Unavailable'}
-                </Text>
+          <ScrollView 
+            style={styles.container} 
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={loadDonorData}
+                tintColor="#6C63FF"
+              />
+            }
+          >
+            {/* Header Section */}
+            <View style={styles.header}>
+              <View style={styles.headerTop}>
+                <TouchableOpacity 
+                  style={styles.backButton}
+                  onPress={async () => {
+                    await AsyncStorage.removeItem('donorProfile');
+                    router.replace('/');
+                  }}
+                >
+                  <Ionicons name="chevron-back" size={24} color="#64748B" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.refreshButton}
+                  onPress={loadDonorData}
+                  disabled={isRefreshing}
+                >
+                  <Ionicons 
+                    name="refresh" 
+                    size={20} 
+                    color="#6C63FF" 
+                    style={isRefreshing && styles.refreshingIcon}
+                  />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.headerContent}>
+                <Text style={styles.title}>Donor Dashboard</Text>
+                <Text style={styles.subtitle}>Your information is reviewed by administrators</Text>
               </View>
             </View>
 
-            <View style={styles.infoGrid}>
-              <InfoItem label="Full Name" value={donorData.full_name} />
-              <InfoItem label="Age" value={donorData.age} />
-              <InfoItem label="Sex" value={donorData.sex} />
-              <InfoItem
-                label="Blood Type"
-                value={donorData.blood_type}
-                isHighlighted
-              />
-              <InfoItem label="Contact Number" value={donorData.contact_number} />
-              <InfoItem label="Municipality" value={donorData.municipality} />
-            </View>
-          </View>
-
-          {/* Leave Message Section */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Leave a Message</Text>
-            <Text style={styles.messageDescription}>
-              Have questions or concerns? Send a message to the admin team.
-            </Text>
-            
-            <View style={styles.messageInputContainer}>
-              <TextInput
-                style={styles.messageInput}
-                placeholder="Type your message here..."
-                placeholderTextColor="#A0A0A0"
-                multiline
-                numberOfLines={4}
-                value={message}
-                onChangeText={setMessage}
-                editable={!isSending}
-              />
+            {/* Status Indicator */}
+            <View style={styles.statusContainer}>
+              <LinearGradient
+                colors={donorData.availability === 'available' || donorData.availability === 'Available' 
+                  ? ['#10B981', '#34D399']
+                  : ['#F59E0B', '#FBBF24']}
+                style={styles.statusGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons 
+                  name={donorData.availability === 'available' ? "checkmark-circle" : "time-outline"} 
+                  size={20} 
+                  color="#FFFFFF" 
+                />
+                <Text style={styles.statusText}>
+                  {donorData.availability === 'available' || donorData.availability === 'Available'
+                    ? 'Available to Donate'
+                    : 'Temporarily Unavailable'}
+                </Text>
+              </LinearGradient>
             </View>
 
-            <TouchableOpacity 
-              style={[
-                styles.sendButton,
-                (!message.trim() || isSending) && styles.sendButtonDisabled
-              ]}
-              onPress={handleSendMessage}
-              disabled={!message.trim() || isSending}
-            >
-              {isSending ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.sendButtonText}>Send Message</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+            {/* Donor Information Card */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleContainer}>
+                  <Ionicons name="person-circle-outline" size={24} color="#6C63FF" />
+                  <Text style={styles.sectionTitle}>Donor Information</Text>
+                </View>
+              </View>
 
-          {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.push('/register')}
-            >
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
+              <View style={styles.infoGrid}>
+                <InfoItem 
+                  label="Full Name" 
+                  value={donorData.full_name} 
+                  icon="person-outline"
+                />
+                <InfoItem 
+                  label="Age" 
+                  value={donorData.age} 
+                  icon="calendar-outline"
+                />
+                <InfoItem 
+                  label="Sex" 
+                  value={donorData.sex} 
+                  icon="male-female-outline"
+                />
+                <InfoItem
+                  label="Blood Type"
+                  value={donorData.blood_type}
+                  icon="water-outline"
+                  isHighlighted
+                />
+                <InfoItem 
+                  label="Contact Number" 
+                  value={donorData.contact_number} 
+                  icon="call-outline"
+                />
+                <InfoItem 
+                  label="Municipality" 
+                  value={donorData.municipality} 
+                  icon="location-outline"
+                />
+              </View>
+            </View>
 
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={handleClearData}
-            >
-              <Text style={styles.clearButtonText}>Clear Donor Data</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Leave Message Section */}
+            <View style={styles.card}>
+              <View style={styles.cardTitleContainer}>
+                <Ionicons name="chatbubble-ellipses-outline" size={24} color="#6C63FF" />
+                <Text style={styles.sectionTitle}>Contact Admin</Text>
+              </View>
+              
+              <Text style={styles.messageDescription}>
+                Have questions or concerns? Send a secure message to the admin team.
+              </Text>
+              
+              <View style={styles.messageInputContainer}>
+                <TextInput
+                  style={styles.messageInput}
+                  placeholder="Type your message here..."
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  numberOfLines={4}
+                  value={message}
+                  onChangeText={setMessage}
+                  editable={!isSending}
+                />
+                <View style={styles.messageInputBorder} />
+              </View>
 
-          {/* Footer Note */}
-          <Text style={styles.footerNote}>
-            Your profile is securely stored and only accessible to authorized administrators.
-          </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
+              <TouchableOpacity 
+                style={[
+                  styles.sendButton,
+                  (!message.trim() || isSending) && styles.sendButtonDisabled
+                ]}
+                onPress={handleSendMessage}
+                disabled={!message.trim() || isSending}
+              >
+                {isSending ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="paper-plane-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.sendButtonText}>Send Message</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => router.push('/register')}
+              >
+                <Ionicons name="create-outline" size={20} color="#6C63FF" />
+                <Text style={styles.actionButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.dangerButton]}
+                onPress={handleClearData}
+              >
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                <Text style={[styles.actionButtonText, styles.dangerButtonText]}>Clear Data</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Footer Note */}
+            <View style={styles.footer}>
+              <Ionicons name="shield-checkmark-outline" size={16} color="#94A3B8" />
+              <Text style={styles.footerNote}>
+                Your profile is securely stored and only accessible to authorized administrators.
+              </Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
 
 // Helper Component for Info Items
-const InfoItem = ({ label, value, isHighlighted = false }: {
+const InfoItem = ({ label, value, icon, isHighlighted = false }: {
   label: string;
   value: string | number;
+  icon: string;
   isHighlighted?: boolean;
 }) => (
   <View style={styles.infoItem}>
-    <Text style={styles.infoLabel}>{label}</Text>
+    <View style={styles.infoItemLeft}>
+      <Ionicons name={icon} size={18} color="#64748B" style={styles.infoIcon} />
+      <Text style={styles.infoLabel}>{label}</Text>
+    </View>
     <Text style={[
       styles.infoValue,
       isHighlighted && styles.highlightedValue
@@ -261,125 +369,229 @@ const InfoItem = ({ label, value, isHighlighted = false }: {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
+  },
+  gradientBackground: {
+    flex: 1,
   },
   keyboardAvoid: {
     flex: 1,
   },
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   contentContainer: {
+    paddingHorizontal: 20,
     paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 40,
+  },
+  loadingSpinner: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#64748B',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#1E293B',
     marginBottom: 8,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-    letterSpacing: -0.5,
-    marginTop: 30,
   },
-  subtitle: {
+  loadingSubtext: {
     fontSize: 14,
     color: '#64748B',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-  emptyState: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    marginTop: 40,
+  header: {
+    marginTop: Platform.OS === 'ios' ? 20 : 30,
+    marginBottom: 24,
   },
-  noDataTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  refreshingIcon: {
+    transform: [{ rotate: '360deg' }],
+  },
+  headerContent: {
+    alignItems: 'flex-start',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '800',
     color: '#1E293B',
     marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    letterSpacing: -0.8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#64748B',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    lineHeight: 22,
+  },
+  statusContainer: {
+    marginBottom: 24,
+  },
+  statusGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  noDataTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   noDataText: {
     fontSize: 16,
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: 32,
+  },
+  registerButton: {
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  registerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 24,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 20,
+  },
+  cardTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1E293B',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-  },
-  statusAvailable: {
-    backgroundColor: '#10B981',
-  },
-  statusUnavailable: {
-    backgroundColor: '#F59E0B',
+    marginLeft: 12,
+    letterSpacing: -0.3,
   },
   infoGrid: {
-    gap: 16,
+    gap: 0,
   },
   infoItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#F8FAFC',
+  },
+  infoItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  infoIcon: {
+    marginRight: 12,
   },
   infoLabel: {
     fontSize: 16,
     fontWeight: '500',
     color: '#64748B',
     flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   infoValue: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#1E293B',
-    flex: 2,
     textAlign: 'right',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   highlightedValue: {
     color: '#EF4444',
@@ -387,77 +599,111 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   messageDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#64748B',
-    marginBottom: 16,
-    lineHeight: 20,
+    marginBottom: 20,
+    lineHeight: 22,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   messageInputContainer: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
+    position: 'relative',
+    marginBottom: 20,
   },
   messageInput: {
-    minHeight: 100,
-    padding: 16,
+    minHeight: 120,
+    padding: 20,
     fontSize: 16,
     color: '#1E293B',
     textAlignVertical: 'top',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  messageInputBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderWidth: 2,
+    borderColor: '#6C63FF',
+    borderRadius: 16,
+    opacity: 0,
   },
   sendButton: {
     backgroundColor: '#6C63FF',
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 4,
   },
   sendButtonDisabled: {
-    backgroundColor: '#CBD5E1',
+    backgroundColor: '#E2E8F0',
+    shadowColor: 'transparent',
   },
   sendButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   buttonContainer: {
+    flexDirection: 'row',
     gap: 12,
     marginTop: 8,
   },
-  backButton: {
+  actionButton: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#6C63FF',
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  backButtonText: {
+  actionButtonText: {
     color: '#6C63FF',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-  clearButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 14,
+  dangerButton: {
+    borderColor: '#FEE2E2',
+  },
+  dangerButtonText: {
+    color: '#EF4444',
+  },
+  footer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#EF4444',
-  },
-  clearButtonText: {
-    color: '#EF4444',
-    fontSize: 16,
-    fontWeight: '600',
+    marginTop: 32,
+    paddingHorizontal: 20,
   },
   footerNote: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#94A3B8',
     textAlign: 'center',
-    marginTop: 24,
-    paddingHorizontal: 20,
+    marginLeft: 8,
     lineHeight: 18,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
 });
+
+// Import RefreshControl if not already imported
+import { RefreshControl } from 'react-native';
