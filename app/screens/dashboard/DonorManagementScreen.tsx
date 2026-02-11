@@ -1555,18 +1555,21 @@ const DonorManagementScreen: React.FC = () => {
               ...SHADOWS.xl,
             }}
           >
-            <Button
-              variant="primary"
-              size="lg"
+            <TouchableOpacity
               onPress={handleAddDonor}
-              leftIcon={<Plus size={20} color="#ffffff" />}
+              activeOpacity={0.9}
               style={{
-                borderRadius: RADIUS.xl,
-                paddingHorizontal: SPACING.xl,
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: COLORS.primary[500],
+                alignItems: 'center',
+                justifyContent: 'center',
+                ...SHADOWS.lg,
               }}
             >
-              {SCREEN_WIDTH > 768 ? 'Add Donor' : ''}
-            </Button>
+              <Plus size={24} color="#ffffff" />
+            </TouchableOpacity>
           </Animated.View>
         )}
 
