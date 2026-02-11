@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   Modal,
   Platform,
   ScrollView,
@@ -12,6 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Print from 'expo-print';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { reportsApi } from '../../../api/reports';
 import type {
@@ -35,7 +38,12 @@ interface FilterState {
   searchQuery: string;
 }
 
-
+interface ExportReportData {
+  summary: ReportSummary;
+  bloodTypes: BloodTypeDistribution[];
+  monthlyDonations: MonthlyDonationData[];
+  availabilityTrend: AvailabilityTrend[];
+}
 
 interface AvailabilityOption {
   label: string;
@@ -125,6 +133,7 @@ const ReportsScreen: React.FC = () => {
   const [bloodTypeData, setBloodTypeData] = useState<BloodTypeDistribution[]>([]);
   const [monthlyDonations, setMonthlyDonations] = useState<MonthlyDonationData[]>([]);
   const [availabilityTrend, setAvailabilityTrend] = useState<AvailabilityTrend[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
@@ -160,6 +169,184 @@ const ReportsScreen: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const exportData = useMemo<ExportReportData | null>(() => {
+    if (!reportSummary) {
+      return null;
+    }
+    return {
+      summary: reportSummary,
+      bloodTypes: bloodTypeData,
+      monthlyDonations,
+      availabilityTrend,
+    };
+  }, [availabilityTrend, bloodTypeData, monthlyDonations, reportSummary]);
+
+  const formatDateForFilename = (date: Date): string => {
+    return date.toISOString().slice(0, 10);
+  };
+
+  const buildReportHtml = (data: ExportReportData, generatedAt: Date): string => {
+    const formatNumber = (value: number): string => new Intl.NumberFormat().format(value);
+    const dateLabel = generatedAt.toLocaleString();
+
+    const summaryRows = [
+      { label: 'Total Donors', value: formatNumber(data.summary.totalDonors) },
+      { label: 'Available Donors', value: formatNumber(data.summary.availableDonors) },
+      { label: 'Requests This Month', value: formatNumber(data.summary.requestsThisMonth) },
+      { label: 'Successful Donations', value: formatNumber(data.summary.successfulDonations) },
+    ];
+
+    const bloodTypeRows = data.bloodTypes
+      .map((item) => `<tr><td>${item.bloodType}</td><td>${formatNumber(item.count)}</td></tr>`)
+      .join('');
+
+    const monthlyRows = data.monthlyDonations
+      .map((item) => `<tr><td>${item.month}</td><td>${formatNumber(item.donations)}</td></tr>`)
+      .join('');
+
+    const availabilityRows = data.availabilityTrend
+      .map(
+        (item) =>
+          `<tr><td>${item.date}</td><td>${formatNumber(item.availableCount)}</td><td>${formatNumber(item.unavailableCount)}</td></tr>`
+      )
+      .join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            :root {
+              color-scheme: light;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              color: #1f2937;
+              margin: 24px;
+            }
+            h1 {
+              font-size: 24px;
+              margin: 0 0 8px;
+            }
+            .muted {
+              color: #6b7280;
+              font-size: 12px;
+            }
+            .section {
+              margin-top: 24px;
+            }
+            .section h2 {
+              font-size: 16px;
+              margin: 0 0 12px;
+              color: #111827;
+            }
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 12px;
+            }
+            .summary-card {
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              padding: 12px;
+              background: #f9fafb;
+            }
+            .summary-card .label {
+              font-size: 12px;
+              color: #6b7280;
+            }
+            .summary-card .value {
+              font-size: 18px;
+              font-weight: 600;
+              margin-top: 4px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 12px;
+            }
+            th, td {
+              text-align: left;
+              padding: 8px 6px;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            th {
+              background: #f3f4f6;
+              font-weight: 600;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Donation Reports</h1>
+          <div class="muted">Generated: ${dateLabel}</div>
+
+          <div class="section">
+            <h2>Summary</h2>
+            <div class="summary-grid">
+              ${summaryRows
+                .map(
+                  (row) => `
+                    <div class="summary-card">
+                      <div class="label">${row.label}</div>
+                      <div class="value">${row.value}</div>
+                    </div>
+                  `
+                )
+                .join('')}
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>Blood Type Distribution</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Blood Type</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${bloodTypeRows || '<tr><td colspan="2">No data available</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2>Monthly Donations</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Donations</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${monthlyRows || '<tr><td colspan="2">No data available</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2>Availability Trend</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Available Donors</th>
+                  <th>Unavailable Donors</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${availabilityRows || '<tr><td colspan="3">No data available</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </body>
+      </html>
+    `;
+  };
 
   const loadData = async (): Promise<void> => {
     try {
@@ -199,6 +386,58 @@ const ReportsScreen: React.FC = () => {
       dateRange: null,
       searchQuery: '',
     });
+  };
+
+  const handleExportReport = async (): Promise<void> => {
+    if (!exportData) {
+      Alert.alert('Export not available', 'Report data is still loading.');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      const generatedAt = new Date();
+      const fileName = `reports_${formatDateForFilename(generatedAt)}.pdf`;
+      const html = buildReportHtml(exportData, generatedAt);
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      if (Platform.OS === 'android') {
+        const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Export cancelled', 'Permission to save the file was not granted.');
+          return;
+        }
+
+        const destinationUri = await FileSystem.StorageAccessFramework.createFileAsync(
+          permission.directoryUri,
+          fileName,
+          'application/pdf'
+        );
+
+        await FileSystem.writeAsStringAsync(destinationUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        Alert.alert('Export complete', 'Saved to selected folder.');
+      } else {
+        const targetUri = `${FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(targetUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        Alert.alert('Export complete', `Saved to ${targetUri}`);
+      }
+    } catch (error) {
+      console.error('Export report error:', error);
+      Alert.alert('Export failed', 'We could not generate the PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (loading) {
@@ -311,14 +550,23 @@ const ReportsScreen: React.FC = () => {
           <TouchableOpacity 
             style={[styles.actionButton, { 
               backgroundColor: colors.surface,
-              shadowColor: colors.primary 
+              shadowColor: colors.primary,
+              opacity: isExporting ? 0.6 : 1,
             }]} 
             activeOpacity={0.8}
+            disabled={isExporting}
+            onPress={handleExportReport}
           >
             <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-              <Ionicons name="download" size={22} color={colors.primary} />
+              {isExporting ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="download" size={22} color={colors.primary} />
+              )}
             </View>
-            <Text style={[styles.actionText, { color: colors.text }]}>Export Report</Text>
+            <Text style={[styles.actionText, { color: colors.text }]}>
+              {isExporting ? 'Exporting...' : 'Export Report'}
+            </Text>
             <View style={[styles.actionSubtext, { backgroundColor: colors.primary }]} />
           </TouchableOpacity>
           
