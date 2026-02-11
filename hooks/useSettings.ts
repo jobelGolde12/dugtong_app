@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { ThemeOption, ProfileInfo, ThemeMode } from '../types/theme';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -19,19 +20,19 @@ export const useSettings = () => {
     {
       key: 'light',
       label: 'Light',
-      icon: '☀️',
+      icon: 'sunny-outline',
       description: 'Bright theme with light backgrounds',
     },
     {
       key: 'dark',
       label: 'Dark',
-      icon: '🌙',
+      icon: 'moon-outline',
       description: 'Dark theme for low light conditions',
     },
     {
       key: 'system',
       label: 'System',
-      icon: '⚙️',
+      icon: 'phone-portrait-outline',
       description: 'Follows your device theme settings',
     },
   ];

@@ -6,8 +6,11 @@ import {
   Platform,
   StatusBar,
   Text,
+  Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
 import SettingsSection from './components/SettingsSection';
@@ -29,14 +32,13 @@ function SettingsScreen() {
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  
-
   return (
     <RoleBasedDashboardLayout>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar
           barStyle={isDark ? 'light-content' : 'dark-content'}
           backgroundColor={colors.background}
+          translucent={false}
         />
         <ScrollView
           style={styles.container}
@@ -46,14 +48,23 @@ function SettingsScreen() {
           overScrollMode="always"
           accessibilityLabel="Settings screen"
         >
-          {/* Header */}
+          {/* Enhanced Header */}
           <View style={styles.header}>
+            <View style={styles.headerIconContainer}>
+              <View style={styles.iconBackground}>
+                <Ionicons 
+                  name="settings-outline" 
+                  size={28} 
+                  color={colors.primary} 
+                />
+              </View>
+            </View>
             <View style={styles.headerContent}>
               <Text style={styles.title} accessibilityRole="header">
                 Settings
               </Text>
               <Text style={styles.subtitle} accessibilityRole="text">
-                Manage your preferences and profile
+                Customize your experience and manage preferences
               </Text>
             </View>
           </View>
@@ -61,7 +72,7 @@ function SettingsScreen() {
           {/* Profile Section */}
           <SettingsSection
             title="Profile"
-            description="Update your personal information and avatar"
+            description="Manage your personal information and avatar"
             testID="profile-section"
           >
             <ProfileCard
@@ -77,7 +88,7 @@ function SettingsScreen() {
           {/* Theme Section */}
           <SettingsSection
             title="Appearance"
-            description="Choose how the app looks on your device"
+            description="Personalize how the app looks and feels"
             testID="theme-section"
           >
             {themeOptions.map((option, index) => (
@@ -113,24 +124,53 @@ const createStyles = (colors: any) =>
       padding: 24,
     },
     header: {
-      marginBottom: 32,
+      marginBottom: 40,
+      alignItems: 'center',
+    },
+    headerIconContainer: {
+      marginBottom: 20,
+    },
+    iconBackground: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+      ...Platform.select({
+        ios: {
+          shadowColor: colors.primary,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
     },
     headerContent: {
-      marginBottom: 8,
+      alignItems: 'center',
+      textAlign: 'center',
     },
     title: {
-      fontSize: 34,
+      fontSize: 32,
       fontWeight: '800',
       color: colors.text,
-      letterSpacing: -0.5,
+      letterSpacing: -1,
       marginBottom: 8,
+      textAlign: 'center',
     },
     subtitle: {
       fontSize: 16,
       color: colors.textSecondary,
       opacity: 0.8,
       lineHeight: 22,
+      textAlign: 'center',
+      maxWidth: 280,
     },
+
     spacer: {
       height: 40,
     },

@@ -7,6 +7,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ProfileInfo } from '../../types/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -66,14 +67,25 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       accessibilityHint="Double tap to edit profile"
     >
       <View style={styles.content}>
-        {renderAvatar()}
+        <View style={styles.avatarContainer}>
+          {renderAvatar()}
+          <View style={styles.statusIndicator} />
+        </View>
         <View style={styles.infoContainer}>
           <Text style={styles.name} numberOfLines={1} accessibilityRole="text">
             {name}
           </Text>
-          <Text style={styles.email} numberOfLines={1} accessibilityRole="text">
-            {email}
-          </Text>
+          <View style={styles.emailRow}>
+            <Ionicons 
+              name="mail-outline" 
+              size={14} 
+              color={colors.textSecondary} 
+              style={styles.emailIcon}
+            />
+            <Text style={styles.email} numberOfLines={1} accessibilityRole="text">
+              {email}
+            </Text>
+          </View>
         </View>
         {showEditButton && (
           <TouchableOpacity
@@ -85,7 +97,11 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
             accessibilityHint="Opens profile edit screen"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.editButtonText}>Edit</Text>
+            <Ionicons 
+              name="chevron-forward" 
+              size={18} 
+              color={colors.primary}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -96,64 +112,111 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
+  },
+  avatarContainer: {
+    marginRight: 16,
+    position: 'relative',
   },
   avatarFallback: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    marginRight: 16,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.shadow,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   avatarText: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.textOnPrimary,
+  },
+  statusIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.success,
+    borderWidth: 3,
+    borderColor: colors.surface,
   },
   infoContainer: {
     flex: 1,
     justifyContent: 'center',
   },
   name: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: 4,
-    letterSpacing: -0.3,
+    marginBottom: 6,
+    letterSpacing: -0.4,
+  },
+  emailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  emailIcon: {
+    marginRight: 6,
   },
   email: {
     fontSize: 14,
     color: colors.textSecondary,
-    opacity: 0.9,
+    opacity: 0.85,
+    flex: 1,
   },
   editButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
     ...Platform.select({
       ios: {
         shadowColor: colors.shadow,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 1,
+        elevation: 2,
       },
     }),
   },

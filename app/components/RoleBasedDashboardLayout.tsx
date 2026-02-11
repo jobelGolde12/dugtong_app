@@ -463,7 +463,7 @@ const createStyles = (colors: any, insets: any, headerTopPadding: number, isOpen
       fontWeight: '700',
       color: colors.text,
       marginLeft: 16,
-      marginTop: 40,
+      marginTop: 30,
     },
     mainContent: {
       flex: 1,

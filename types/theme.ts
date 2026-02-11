@@ -23,10 +23,12 @@ export interface ThemeColors {
   ripple: string;
 }
 
+import { ReactNode } from 'react';
+
 export interface ThemeOption {
   key: ThemeKey;
   label: string;
-  icon: string;
+  icon: string | ReactNode;
   description: string;
 }
 

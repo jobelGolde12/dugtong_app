@@ -1,5 +1,5 @@
 import React, { memo, ReactNode } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface SettingsSectionProps {
@@ -46,29 +46,41 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 32,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   title: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.text,
     letterSpacing: -0.5,
-    marginBottom: 4,
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   description: {
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
+    opacity: 0.85,
   },
   content: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.shadow,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
 });
 
