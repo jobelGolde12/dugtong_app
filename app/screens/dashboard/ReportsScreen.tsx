@@ -22,6 +22,9 @@ import type {
 } from '../../../types/report.types';
 import LoadingIndicator from '../../components/dashboard/LoadingIndicator';
 import StatsGrid from '../../components/dashboard/StatsGrid';
+import BloodTypeChart from '../../components/charts/BloodTypeChart';
+import MonthlyDonationsChart from '../../components/charts/MonthlyDonationsChart';
+import AvailabilityChart from '../../components/charts/AvailabilityChart';
 
 // ========== TypeScript Interfaces ==========
 
@@ -38,29 +41,6 @@ interface AvailabilityOption {
   label: string;
   value: string;
 }
-
-
-
-const ChartPlaceholder: React.FC<{ title: string; dataPoints: number }> = ({ title, dataPoints }) => {
-  const { colors } = useTheme();
-  
-  return (
-    <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
-      <Text style={[styles.chartTitle, { color: colors.text }]}>{title}</Text>
-      <View style={styles.chartVisual}>
-        {Array.from({ length: dataPoints }).map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.chartBar,
-              { height: `${20 + Math.random() * 60}%`, backgroundColor: colors.primary }
-            ]}
-          />
-        ))}
-      </View>
-    </View>
-  );
-};
 
 const FilterSelect: React.FC<{
   label: string;
@@ -142,6 +122,9 @@ const ReportsScreen: React.FC = () => {
   const router = useRouter();
   const { colors } = useTheme();
   const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
+  const [bloodTypeData, setBloodTypeData] = useState<BloodTypeDistribution[]>([]);
+  const [monthlyDonations, setMonthlyDonations] = useState<MonthlyDonationData[]>([]);
+  const [availabilityTrend, setAvailabilityTrend] = useState<AvailabilityTrend[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
@@ -183,11 +166,17 @@ const ReportsScreen: React.FC = () => {
       setLoading(true);
 
       // Load all report data
-      const [summary] = await Promise.all([
+      const [summary, bloodTypes, donations, availability] = await Promise.all([
         reportsApi.getSummary(),
+        reportsApi.getBloodTypeDistribution(),
+        reportsApi.getMonthlyDonations(),
+        reportsApi.getAvailabilityTrend(),
       ]);
 
       setReportSummary(summary);
+      setBloodTypeData(bloodTypes);
+      setMonthlyDonations(donations);
+      setAvailabilityTrend(availability);
     } catch (error) {
       Alert.alert('Error', 'Failed to load report data');
       console.error('Load reports error:', error);
@@ -308,20 +297,11 @@ const ReportsScreen: React.FC = () => {
            <View style={styles.chartsSection}>
              <Text style={[styles.sectionTitle, { color: colors.text }]}>Analytics Overview</Text>
             
-            <ChartPlaceholder 
-              title="Donor Distribution by Blood Type" 
-              dataPoints={8}
-            />
+            <BloodTypeChart data={bloodTypeData} />
             
-            <ChartPlaceholder 
-              title="Monthly Donation Trends" 
-              dataPoints={12}
-            />
+            <MonthlyDonationsChart data={monthlyDonations} />
             
-            <ChartPlaceholder 
-              title="Availability Overview" 
-              dataPoints={7}
-            />
+            <AvailabilityChart data={availabilityTrend} />
           </View>
 
            {/* Quick Actions */}
@@ -467,33 +447,6 @@ const styles = StyleSheet.create({
 
   chartsSection: {
     marginBottom: 32,
-  },
-  chartContainer: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 20,
-  },
-  chartVisual: {
-    flexDirection: 'row',
-    height: 180,
-    alignItems: 'flex-end',
-    paddingHorizontal: 4,
-    gap: 8,
-  },
-  chartBar: {
-    flex: 1,
-    borderRadius: 8,
-    opacity: 0.8,
   },
   clearFiltersButton: {
     position: 'absolute',
