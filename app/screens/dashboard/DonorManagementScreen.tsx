@@ -574,7 +574,7 @@ const SearchBar: React.FC<{
         <Search size={20} color={COLORS.neutral[400]} style={{ marginLeft: SPACING.md }} />
         <TextInput
           ref={inputRef}
-          placeholder="Search donors by name, blood type, or location..."
+          placeholder="Search..."
           placeholderTextColor={COLORS.neutral[400]}
           value={value}
           onChangeText={onChangeText}
@@ -840,14 +840,40 @@ const StatsBar: React.FC<{ donors: (Donor | PendingDonorRegistration)[] }> = ({ 
   const recentlyDonated = regularDonors.filter(d => d.availabilityStatus === 'Recently Donated').length;
 
   const stats = [
-    { label: 'Total Donors', value: totalRegularDonors, color: COLORS.neutral[700] },
-    { label: 'Available Now', value: availableDonors, color: COLORS.success[500] },
-    { label: 'Recently Donated', value: recentlyDonated, color: COLORS.warning[500] },
-    { label: 'Pending Reviews', value: pendingRegistrations.length, color: COLORS.warning[500] },
+    { 
+      label: 'Total Donors', 
+      value: totalRegularDonors, 
+      color: COLORS.neutral[700],
+      bgColor: COLORS.neutral[50],
+      icon: Users
+    },
+    { 
+      label: 'Available Now', 
+      value: availableDonors, 
+      color: COLORS.success[600],
+      bgColor: COLORS.success[50],
+      icon: CheckCircle
+    },
+    { 
+      label: 'Recently Donated', 
+      value: recentlyDonated, 
+      color: COLORS.warning[600],
+      bgColor: COLORS.warning[50],
+      icon: Clock
+    },
+    { 
+      label: 'Pending Reviews', 
+      value: pendingRegistrations.length, 
+      color: COLORS.warning[600],
+      bgColor: COLORS.warning[50],
+      icon: Clock
+    },
     {
       label: 'Availability',
       value: totalRegularDonors > 0 ? `${((availableDonors / totalRegularDonors) * 100).toFixed(0)}%` : '0%',
-      color: COLORS.primary[500]
+      color: COLORS.primary[600],
+      bgColor: COLORS.primary[50],
+      icon: CheckCircle
     },
   ];
 
@@ -870,12 +896,58 @@ const StatsBar: React.FC<{ donors: (Donor | PendingDonorRegistration)[] }> = ({ 
             entering={FadeInDown.delay(300 + index * 100).duration(500)}
             layout={Layout.springify()}
           >
-            <Card variant="elevated" style={{ minWidth: SCREEN_WIDTH > 768 ? 180 : 140 }}>
-              <View style={{ gap: SPACING.xs }}>
-                <Text variant="h2" style={{ color: stat.color }}>
-                  {stat.value}
-                </Text>
-                <Text variant="body2" style={{ color: COLORS.neutral[500] }}>
+            <Card variant="elevated" style={{ 
+              minWidth: SCREEN_WIDTH > 768 ? 180 : 140,
+              backgroundColor: stat.bgColor,
+              borderWidth: 1,
+              borderColor: stat.color + '20',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Gradient overlay effect */}
+              <View style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: 60,
+                height: 60,
+                backgroundColor: stat.color + '10',
+                borderRadius: 30,
+                marginTop: -20,
+                marginRight: -20,
+              }} />
+              
+              <View style={{ gap: SPACING.xs, position: 'relative', zIndex: 1 }}>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}>
+                  <Text variant="h2" style={{ 
+                    color: stat.color,
+                    fontWeight: '800',
+                    fontSize: 24
+                  }}>
+                    {stat.value}
+                  </Text>
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: stat.color + '20',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <stat.icon size={16} color={stat.color} />
+                  </View>
+                </View>
+                <Text variant="caption" style={{ 
+                  color: stat.color,
+                  fontWeight: '600',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  marginTop: 4
+                }}>
                   {stat.label}
                 </Text>
               </View>
@@ -1163,7 +1235,7 @@ const DonorManagementScreen: React.FC = () => {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedDonor, setSelectedDonor] = useState<Donor | PendingDonorRegistration | null>(null);
 
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<any>(null);
 
   const fetchDonors = useCallback(async () => {
     setLoading(true);
@@ -1225,6 +1297,7 @@ const DonorManagementScreen: React.FC = () => {
       municipality: null,
       availability: null,
       searchQuery: '',
+      showPending: true,
     });
   }, []);
 
