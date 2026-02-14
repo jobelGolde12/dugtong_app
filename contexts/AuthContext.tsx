@@ -72,6 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           accessToken,
         });
       } catch (error) {
+        console.warn('User authentication failed, clearing auth state:', error);
         await clearAuthState();
         setState((prev) => ({ ...prev, isLoading: false }));
       }

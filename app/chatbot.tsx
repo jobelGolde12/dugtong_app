@@ -28,6 +28,11 @@ import { useRoleAccess } from '../hooks/useRoleAccess';
 import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
 import { RoleGuard } from './components/RoleGuard';
 
+// HARD CODED OPEN ROUTER API KEYS
+const OPEN_ROUTER_API_KEY1 = "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";
+const OPEN_ROUTER_API_KEY2 = "sk-or-v1-8a7b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1";
+const OPEN_ROUTER_API_KEY3 = "sk-or-v1-7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f";
+
 type MessageType = {
   id: string;
   text: string;
@@ -65,14 +70,6 @@ export default function ChatbotScreen() {
   // NEW: State for typing indicator
   const [isTyping, setIsTyping] = useState(false);
 
-
-
-
-
-
-
-
-
   // Handle back button to collapse footer
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -86,18 +83,7 @@ export default function ChatbotScreen() {
     return () => backHandler.remove();
   }, [isInputFocused]);
 
-  const handleTapPress = () => {
-    // Quick compression feedback
-    micScale.value = withSequence(
-      withTiming(0.95, { duration: 100 }),
-      withTiming(1, { duration: 150, easing: Easing.bezier(0.4, 0, 0.2, 1) })
-    );
-  };
 
-  const handleTapRelease = () => {
-    // Restore scale
-    micScale.value = withTiming(1, { duration: 200 });
-  };
 
   const styles = createStyles(colors, cannotReceiveMessages); // Updated to include cannotReceiveMessages
 
@@ -251,9 +237,9 @@ Notifications Summary:
 
     // API keys in fallback order
     const apiKeys = [
-      process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY1,
-      process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY2,
-      process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY3
+      OPEN_ROUTER_API_KEY1,
+      OPEN_ROUTER_API_KEY2,
+      OPEN_ROUTER_API_KEY3
     ].filter(Boolean);
 
     // Validate API keys

@@ -12,7 +12,11 @@
       "supportsTablet": true,
       "jsEngine": "hermes",
       "bundleIdentifier": "com.anonymous.appproject",
-      "displayName": "Dugtong"
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,11 +25,13 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "INTERNET"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "jsEngine": "hermes",
-      "package": "com.anonymous.appproject",
-      "displayName": "Dugtong"
+      "package": "com.anonymous.appproject"
     },
     "web": {
       "output": "static",
@@ -54,8 +60,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9b943923-cfcb-4b31-88f1-a82ac41e6a11"
+        "projectId": "29c5a34a-9211-4f57-96af-e1bbd0c8a430"
       }
-    }
+    },
+    "owner": "leboj"
   }
 }

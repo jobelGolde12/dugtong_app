@@ -47,8 +47,7 @@ export const getUserPreferences = async (): Promise<UserPreferences> => {
 
   if (!row) {
     const now = new Date().toISOString();
-    await db.execute({
-      sql: `INSERT INTO user_preferences (
+    await db.execute(`INSERT INTO user_preferences (
         user_id,
         theme_mode,
         notifications_enabled,
@@ -56,10 +55,9 @@ export const getUserPreferences = async (): Promise<UserPreferences> => {
         sms_notifications,
         language,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ,
-      args: [userId, "system", 1, 1, 0, "en", now],
-    });
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [userId, "system", 1, 1, 0, "en", now],
+    );
 
     return {
       theme_mode: "system",
@@ -104,10 +102,9 @@ export const updateUserProfile = async (
   fields.push("updated_at = ?");
   args.push(now);
 
-  await db.execute({
-    sql: `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
-    args: [...args, userId],
-  });
+  await db.execute(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
+    [...(args as any[]), userId],
+  );
 
   return getUserProfile();
 };
@@ -155,10 +152,9 @@ export const updateUserPreferences = async (
   fields.push("updated_at = ?");
   args.push(now);
 
-  await db.execute({
-    sql: `UPDATE user_preferences SET ${fields.join(", ")} WHERE user_id = ?`,
-    args: [...args, userId],
-  });
+  await db.execute(`UPDATE user_preferences SET ${fields.join(", ")} WHERE user_id = ?`,
+    [...(args as any[]), userId],
+  );
 
   return getUserPreferences();
 };

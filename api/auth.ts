@@ -70,54 +70,87 @@ const getUserIdFromToken = (token: string | null): number | null => {
  * Login with name and contact number
  */
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-  const fullName = data.full_name.trim();
-  const contactNumber = normalizeContactNumber(data.contact_number);
+  try {
+    const fullName = data.full_name.trim();
+    const contactNumber = normalizeContactNumber(data.contact_number);
 
-  if (!fullName || !contactNumber) {
-    throw new Error("Full name and contact number are required.");
-  }
+    console.log("LOGIN ATTEMPT:", fullName, contactNumber);
 
-  let userRow = await querySingle<Record<string, any>>(
-    "SELECT * FROM users WHERE full_name = ? AND contact_number = ?",
-    [fullName, contactNumber],
-  );
+    if (!fullName || !contactNumber) {
+      throw new Error("Full name and contact number are required.");
+    }
 
-  if (!userRow) {
-    const now = new Date().toISOString();
+    // Query remote Turso database
     const result = await db.execute({
-      sql: "INSERT INTO users (full_name, contact_number, role, created_at) VALUES (?, ?, ?, ?)",
-      args: [fullName, contactNumber, "donor", now],
+      sql: "SELECT * FROM users WHERE full_name = ? AND contact_number = ?",
+      args: [fullName, contactNumber],
     });
 
-    const insertedId = Number(result?.lastInsertRowid ?? 0);
-    userRow = await querySingle<Record<string, any>>(
-      "SELECT * FROM users WHERE id = ?",
-      [insertedId],
-    );
+    console.log("LOGIN QUERY RESULT:", result.rows);
+
+    let userRow = null;
+    if (result.rows.length > 0) {
+      // Assuming the result comes back as an array of arrays when using the web client
+      const columns = result.columns;
+      const firstRow = result.rows[0] as any[];
+      
+      userRow = {};
+      columns.forEach((col, index) => {
+        userRow[col] = firstRow[index];
+      });
+    }
+
+    if (!userRow) {
+      const now = new Date().toISOString();
+      const insertResult = await db.execute({
+        sql: "INSERT INTO users (full_name, contact_number, role, created_at) VALUES (?, ?, ?, ?)",
+        args: [fullName, contactNumber, "donor", now],
+      });
+
+      // Get the inserted user
+      const selectResult = await db.execute({
+        sql: "SELECT * FROM users WHERE id = ?",
+        args: [insertResult.lastInsertRowid],
+      });
+
+      if (selectResult.rows.length > 0) {
+        const columns = selectResult.columns;
+        const firstRow = selectResult.rows[0] as any[];
+        
+        userRow = {};
+        columns.forEach((col, index) => {
+          userRow[col] = firstRow[index];
+        });
+      }
+    }
+
+    if (!userRow) {
+      throw new Error("Unable to login. Please try again.");
+    }
+
+    const user: User = {
+      id: String(userRow.id),
+      role: userRow.role as UserRole,
+      name: userRow.full_name,
+      contact_number: userRow.contact_number,
+      email: userRow.email || undefined,
+      avatar_url: userRow.avatar_url || undefined,
+    };
+
+    const tokens = buildTokens(user);
+
+    await storeTokens(tokens.access_token, tokens.refresh_token);
+    await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(user));
+
+    return {
+      ...tokens,
+      user,
+    };
+  } catch (error: any) {
+    console.error("FULL TURSO ERROR:", JSON.stringify(error));
+    console.error("STACK:", error?.stack);
+    throw error;
   }
-
-  if (!userRow) {
-    throw new Error("Unable to login. Please try again.");
-  }
-
-  const user: User = {
-    id: String(userRow.id),
-    role: userRow.role as UserRole, // Use role directly from database, bypassing CHECK constraint for app layer
-    name: userRow.full_name,
-    contact_number: userRow.contact_number,
-    email: userRow.email || undefined,
-    avatar_url: userRow.avatar_url || undefined,
-  };
-
-  const tokens = buildTokens(user);
-
-  await storeTokens(tokens.access_token, tokens.refresh_token);
-  await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(user));
-
-  return {
-    ...tokens,
-    user,
-  };
 };
 
 /**

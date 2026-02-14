@@ -1,70 +1,22 @@
-import { createClient } from "@libsql/client/web";
-import Constants from "expo-constants";
+// Turso database service - using API-based approach to avoid build issues
+import { getDatabase, testTursoConnection, rawTursoTest, queryRows, querySingle, normalizeRows } from './database-api';
 
-const resolveEnv = (key: string): string | undefined => {
-  const expoConfig = Constants.expoConfig?.extra as Record<string, unknown> | undefined;
-  const manifest = Constants.manifest?.extra as Record<string, unknown> | undefined;
+// Export the database instance and functions
+export let db: any = null;
 
-  const fromExpo = expoConfig?.[key];
-  const fromManifest = manifest?.[key];
+// Initialize the database when this module is imported
+getDatabase()
+  .then(database => {
+    db = database;
+    console.log("✅ Database module loaded successfully");
+  })
+  .catch(error => {
+    console.error("❌ Failed to load database module:", error);
+    // Note: We don't throw here to avoid breaking the module loading process
+    // The actual error will be caught when database functions are used
+  });
 
-  if (typeof fromExpo === "string" && fromExpo.length > 0) return fromExpo;
-  if (typeof fromManifest === "string" && fromManifest.length > 0) return fromManifest;
+// Export other functions
+export { testTursoConnection, rawTursoTest, queryRows, querySingle, normalizeRows };
 
-  return undefined;
-};
 
-const databaseUrl =
-  process.env.EXPO_PUBLIC_TURSO_DATABASE_URL ||
-  process.env.TURSO_DATABASE_URL ||
-  resolveEnv("tursoDatabaseUrl") ||
-  resolveEnv("TURSO_DATABASE_URL");
-
-const authToken =
-  process.env.EXPO_PUBLIC_TURSO_AUTH_TOKEN ||
-  process.env.TURSO_AUTH_TOKEN ||
-  resolveEnv("tursoAuthToken") ||
-  resolveEnv("TURSO_AUTH_TOKEN");
-
-if (!databaseUrl) {
-  throw new Error(
-    "Missing Turso database URL. Set EXPO_PUBLIC_TURSO_DATABASE_URL or TURSO_DATABASE_URL.",
-  );
-}
-
-export const db = createClient({
-  url: databaseUrl,
-  authToken: authToken || undefined,
-});
-
-const normalizeRows = <T>(result: any): T[] => {
-  if (!result || !Array.isArray(result.rows)) return [];
-
-  if (result.rows.length === 0) return [];
-
-  const firstRow = result.rows[0];
-  if (Array.isArray(firstRow) && Array.isArray(result.columns)) {
-    return result.rows.map((row: unknown[]) => {
-      const entry: Record<string, unknown> = {};
-      result.columns.forEach((column: string, index: number) => {
-        entry[column] = row[index];
-      });
-      return entry as T;
-    });
-  }
-
-  return result.rows as T[];
-};
-
-export const queryRows = async <T>(sql: string, args: unknown[] = []): Promise<T[]> => {
-  const result = await db.execute({ sql, args });
-  return normalizeRows<T>(result);
-};
-
-export const querySingle = async <T>(
-  sql: string,
-  args: unknown[] = [],
-): Promise<T | null> => {
-  const rows = await queryRows<T>(sql, args);
-  return rows[0] ?? null;
-};

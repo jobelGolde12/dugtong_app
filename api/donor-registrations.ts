@@ -82,63 +82,82 @@ const mapRegistrationRow = (row: Record<string, any>): DonorRegistrationResponse
 export const createDonorRegistration = async (
   data: DonorRegistrationRequest,
 ): Promise<DonorRegistrationResponse> => {
-  const normalized = {
-    ...data,
-    contact_number: normalizeContactNumber(data.contact_number),
-    availability: data.availability || "Available",
-  };
+  try {
+    const normalized = {
+      ...data,
+      contact_number: normalizeContactNumber(data.contact_number),
+      availability: data.availability || "Available",
+    };
 
-  const parsed = donorRegistrationSchema.safeParse(normalized);
-  if (!parsed.success) {
-    const validationErrors = parsed.error.issues.map((issue) => ({
-      field: issue.path.join("."),
-      message: issue.message,
-    }));
+    const parsed = donorRegistrationSchema.safeParse(normalized);
+    if (!parsed.success) {
+      const validationErrors = parsed.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+      }));
 
-    const error = new Error("Validation error. Please check your input.");
-    (error as any).validation_errors = validationErrors;
+      const error = new Error("Validation error. Please check your input.");
+      (error as any).validation_errors = validationErrors;
+      throw error;
+    }
+
+    const now = new Date().toISOString();
+
+    console.log("REGISTER ATTEMPT:", normalized.full_name, normalized.email);
+
+    // Insert into remote Turso database
+    const result = await db.execute({
+      sql: `INSERT INTO donor_registrations (
+        full_name,
+        contact_number,
+        email,
+        age,
+        blood_type,
+        municipality,
+        availability,
+        status,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        normalized.full_name,
+        normalized.contact_number,
+        normalized.email ?? null,
+        normalized.age,
+        normalized.blood_type,
+        normalized.municipality,
+        normalized.availability,
+        "pending",
+        now,
+      ],
+    });
+
+    console.log("REGISTER SUCCESS");
+
+    // Retrieve the inserted record
+    const selectResult = await db.execute({
+      sql: "SELECT * FROM donor_registrations WHERE id = ?",
+      args: [result.lastInsertRowid],
+    });
+
+    if (selectResult.rows.length === 0) {
+      throw new Error("Failed to create donor registration.");
+    }
+
+    // Process the result
+    const columns = selectResult.columns;
+    const firstRow = selectResult.rows[0] as any[];
+    
+    const row = {};
+    columns.forEach((col, index) => {
+      row[col] = firstRow[index];
+    });
+
+    return mapRegistrationRow(row);
+  } catch (error: any) {
+    console.error("FULL TURSO ERROR:", JSON.stringify(error));
+    console.error("STACK:", error?.stack);
     throw error;
   }
-
-  const now = new Date().toISOString();
-
-  const result = await db.execute({
-    sql: `INSERT INTO donor_registrations (
-      full_name,
-      contact_number,
-      email,
-      age,
-      blood_type,
-      municipality,
-      availability,
-      status,
-      created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ,
-    args: [
-      normalized.full_name,
-      normalized.contact_number,
-      normalized.email ?? null,
-      normalized.age,
-      normalized.blood_type,
-      normalized.municipality,
-      normalized.availability,
-      "pending",
-      now,
-    ],
-  });
-
-  const insertedId = Number(result?.lastInsertRowid ?? 0);
-  const row = await querySingle<Record<string, any>>(
-    "SELECT * FROM donor_registrations WHERE id = ?",
-    [insertedId],
-  );
-
-  if (!row) {
-    throw new Error("Failed to create donor registration.");
-  }
-
-  return mapRegistrationRow(row);
 };
 
 /**
@@ -147,16 +166,30 @@ export const createDonorRegistration = async (
 export const getDonorRegistration = async (
   id: string,
 ): Promise<DonorRegistrationResponse> => {
-  const row = await querySingle<Record<string, any>>(
-    "SELECT * FROM donor_registrations WHERE id = ?",
-    [id],
-  );
+  try {
+    const result = await db.execute({
+      sql: "SELECT * FROM donor_registrations WHERE id = ?",
+      args: [id],
+    });
 
-  if (!row) {
-    throw new Error("Registration not found.");
+    if (result.rows.length === 0) {
+      throw new Error("Registration not found.");
+    }
+
+    const columns = result.columns;
+    const firstRow = result.rows[0] as any[];
+    
+    const row = {};
+    columns.forEach((col, index) => {
+      row[col] = firstRow[index];
+    });
+
+    return mapRegistrationRow(row);
+  } catch (error: any) {
+    console.error("FULL TURSO ERROR:", JSON.stringify(error));
+    console.error("STACK:", error?.stack);
+    throw error;
   }
-
-  return mapRegistrationRow(row);
 };
 
 /**
@@ -171,32 +204,49 @@ export const getDonorRegistrations = async (
     offset?: number;
   },
 ): Promise<DonorRegistrationResponse[]> => {
-  const conditions: string[] = [];
-  const args: unknown[] = [];
+  try {
+    const conditions: string[] = [];
+    const args: unknown[] = [];
 
-  if (params?.status) {
-    conditions.push("status = ?");
-    args.push(params.status);
+    if (params?.status) {
+      conditions.push("status = ?");
+      args.push(params.status);
+    }
+    if (params?.municipality) {
+      conditions.push("municipality = ?");
+      args.push(params.municipality);
+    }
+    if (params?.blood_type) {
+      conditions.push("blood_type = ?");
+      args.push(params.blood_type);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const limit = params?.limit ?? 100;
+    const offset = params?.offset ?? 0;
+
+    const sql = `SELECT * FROM donor_registrations ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    const result = await db.execute({
+      sql,
+      args: [...args, limit, offset],
+    });
+
+    // Process all rows
+    const registrations = [];
+    for (const rowArray of result.rows as any[][]) {
+      const row = {};
+      result.columns.forEach((col, index) => {
+        row[col] = rowArray[index];
+      });
+      registrations.push(mapRegistrationRow(row));
+    }
+
+    return registrations;
+  } catch (error: any) {
+    console.error("FULL TURSO ERROR:", JSON.stringify(error));
+    console.error("STACK:", error?.stack);
+    throw error;
   }
-  if (params?.municipality) {
-    conditions.push("municipality = ?");
-    args.push(params.municipality);
-  }
-  if (params?.blood_type) {
-    conditions.push("blood_type = ?");
-    args.push(params.blood_type);
-  }
-
-  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  const limit = params?.limit ?? 100;
-  const offset = params?.offset ?? 0;
-
-  const rows = await queryRows<Record<string, any>>(
-    `SELECT * FROM donor_registrations ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    [...args, limit, offset],
-  );
-
-  return rows.map(mapRegistrationRow);
 };
 
 /**
@@ -206,43 +256,55 @@ export const updateDonorRegistrationStatus = async (
   id: string,
   status: "approved" | "rejected",
 ): Promise<DonorRegistrationResponse> => {
-  const now = new Date().toISOString();
+  try {
+    const now = new Date().toISOString();
 
-  // Get the registration before updating status to use its data for creating donor
-  const registration = await getDonorRegistration(id);
+    // Get the registration before updating status to use its data for creating donor
+    const registration = await getDonorRegistration(id);
 
-  await db.execute({
-    sql: "UPDATE donor_registrations SET status = ?, updated_at = ? WHERE id = ?",
-    args: [status, now, id],
-  });
-
-  // If the registration is approved, create a new donor record
-  if (status === "approved") {
-    // Import donor service dynamically to avoid circular dependencies
-    const donorServiceModule = await import("../src/services/donorService");
-    const donorService = donorServiceModule.default;
-    
-    // Create a new donor from the registration data
-    await donorService.createDonor({
-      name: registration.full_name,
-      age: registration.age,
-      sex: registration.sex,
-      bloodType: registration.blood_type,
-      contactNumber: registration.contact_number,
-      municipality: registration.municipality,
-      availabilityStatus: registration.availability || "Available",
+    await db.execute({
+      sql: "UPDATE donor_registrations SET status = ?, updated_at = ? WHERE id = ?",
+      args: [status, now, id],
     });
-  }
 
-  return getDonorRegistration(id);
+    // If the registration is approved, create a new donor record
+    if (status === "approved") {
+      // Import donor service dynamically to avoid circular dependencies
+      const donorServiceModule = await import("../src/services/donorService");
+      const donorService = donorServiceModule.donorService;
+
+      // Create a new donor from the registration data
+      await donorService.createDonor({
+        name: registration.full_name,
+        age: registration.age,
+        sex: registration.sex,
+        bloodType: registration.blood_type,
+        contactNumber: registration.contact_number,
+        municipality: registration.municipality,
+        availabilityStatus: registration.availability || "Available",
+      });
+    }
+
+    return getDonorRegistration(id);
+  } catch (error: any) {
+    console.error("FULL TURSO ERROR:", JSON.stringify(error));
+    console.error("STACK:", error?.stack);
+    throw error;
+  }
 };
 
 /**
  * Delete donor registration (for admin use)
  */
 export const deleteDonorRegistration = async (id: string): Promise<void> => {
-  await db.execute({
-    sql: "DELETE FROM donor_registrations WHERE id = ?",
-    args: [id],
-  });
+  try {
+    await db.execute({
+      sql: "DELETE FROM donor_registrations WHERE id = ?",
+      args: [id],
+    });
+  } catch (error: any) {
+    console.error("FULL TURSO ERROR:", JSON.stringify(error));
+    console.error("STACK:", error?.stack);
+    throw error;
+  }
 };

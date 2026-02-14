@@ -35,8 +35,7 @@ export const alertApi = {
     const status = resolveStatus(Boolean(data.send_now), data.schedule_at || undefined);
     const sentAt = data.send_now ? now : null;
 
-    const result = await db.execute({
-      sql: `INSERT INTO alerts (
+    const result = await db.execute(`INSERT INTO alerts (
         title,
         message,
         alert_type,
@@ -50,9 +49,7 @@ export const alertApi = {
         sent_at,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ,
-      args: [
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
         data.title,
         data.message,
         data.alert_type,
@@ -66,8 +63,7 @@ export const alertApi = {
         sentAt,
         now,
         now,
-      ],
-    });
+      ]);
 
     const insertedId = Number(result?.lastInsertRowid ?? 0);
     const row = await querySingle<Record<string, any>>(
@@ -129,10 +125,7 @@ export const alertApi = {
   sendAlert: async (id: string): Promise<Alert> => {
     const now = new Date().toISOString();
 
-    await db.execute({
-      sql: 'UPDATE alerts SET status = ?, sent_at = ?, updated_at = ? WHERE id = ?',
-      args: ['sent', now, now, id],
-    });
+    await db.execute('UPDATE alerts SET status = ?, sent_at = ?, updated_at = ? WHERE id = ?', ['sent', now, now, id]);
 
     return alertApi.getAlert(id);
   }

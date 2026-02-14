@@ -15,13 +15,19 @@ export const ConnectionProvider: React.FC<{ children: ReactNode }> = ({ children
   const wasOffline = useRef(false);
 
   useEffect(() => {
-    setOnlineStatus(connection.isConnected);
+    try {
+      setOnlineStatus(connection.isConnected);
 
-    if (!connection.isConnected) {
-      wasOffline.current = true;
-    } else if (wasOffline.current) {
-      syncOfflineQueue().catch(console.error);
-      wasOffline.current = false;
+      if (!connection.isConnected) {
+        wasOffline.current = true;
+      } else if (wasOffline.current) {
+        syncOfflineQueue().catch(error => {
+          console.warn('Failed to sync offline queue:', error);
+        });
+        wasOffline.current = false;
+      }
+    } catch (error) {
+      console.error('Error in connection context:', error);
     }
   }, [connection.isConnected]);
 

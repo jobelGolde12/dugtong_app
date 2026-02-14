@@ -35,17 +35,13 @@ export const donationsApi = {
    * Create a new donation
    */
   createDonation: async (data: Omit<Donation, 'id'>): Promise<Donation> => {
-    const result = await db.execute({
-      sql: `INSERT INTO donations (
+    const result = await db.execute(`INSERT INTO donations (
         donor_id,
         donation_date,
         blood_type,
         quantity,
         location
-      ) VALUES (?, ?, ?, ?, ?)`
-      ,
-      args: [data.donor_id || null, data.donation_date, data.blood_type, data.quantity, data.location],
-    });
+      ) VALUES (?, ?, ?, ?, ?)`, [data.donor_id || null, data.donation_date, data.blood_type, data.quantity, data.location]);
 
     const insertedId = Number(result?.lastInsertRowid ?? 0);
     const row = await querySingle<Record<string, any>>(
@@ -74,8 +70,7 @@ export const donationsApi = {
    * Create a new blood request
    */
   createBloodRequest: async (data: Omit<BloodRequest, 'id' | 'status'>): Promise<BloodRequest> => {
-    const result = await db.execute({
-      sql: `INSERT INTO blood_requests (
+    const result = await db.execute(`INSERT INTO blood_requests (
         requester_name,
         blood_type,
         quantity,
@@ -83,9 +78,7 @@ export const donationsApi = {
         location,
         status,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ,
-      args: [
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`, [
         data.requester_name,
         data.blood_type,
         data.quantity,
@@ -93,8 +86,7 @@ export const donationsApi = {
         data.location,
         'pending',
         new Date().toISOString(),
-      ],
-    });
+      ]);
 
     const insertedId = Number(result?.lastInsertRowid ?? 0);
     const row = await querySingle<Record<string, any>>(

@@ -1,43 +1,27 @@
-import { db } from './turso';
-import { offlineService } from '../services/OfflineService';
+import { getDatabase } from './turso';
 
-let isOnline = true;
-
-export const setOnlineStatus = (status: boolean) => {
-  isOnline = status;
-};
-
+// For remote database, we always execute directly
 export const executeWithOfflineSupport = async (
   sql: string,
   args?: any[],
   table?: string
 ): Promise<any> => {
-  if (isOnline) {
-    return await db.execute({ sql, args: args || [] });
-  } else {
-    await offlineService.addToQueue({
-      operation: 'QUERY',
-      table: table || 'unknown',
-      data: { sql, args },
-    });
-    return { rows: [], lastInsertRowid: null };
+  try {
+    const db = await getDatabase();
+    // Note: The new API-based client uses execute(sql, params) instead of execute({sql, args})
+    return await db.execute(sql, args || []);
+  } catch (error: any) {
+    console.error("FULL TURSO ERROR:", JSON.stringify(error));
+    console.error("STACK:", error?.stack);
+    throw error;
   }
 };
 
+// Placeholder functions for compatibility
+export const setOnlineStatus = (status: boolean) => {
+  // No-op for remote database
+};
+
 export const syncOfflineQueue = async (): Promise<void> => {
-  const queue = await offlineService.getQueue();
-  
-  for (const operation of queue) {
-    try {
-      if (operation.data.sql) {
-        await db.execute({
-          sql: operation.data.sql,
-          args: operation.data.args || [],
-        });
-      }
-      await offlineService.removeFromQueue(operation.id);
-    } catch (error) {
-      console.error('Sync error:', error);
-    }
-  }
+  // No-op for remote database
 };

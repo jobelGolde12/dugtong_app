@@ -28,18 +28,14 @@ export const messageApi = {
     const now = new Date().toISOString();
     const senderId = await getCurrentUserId();
 
-    const result = await db.execute({
-      sql: `INSERT INTO messages (
+    const result = await db.execute(`INSERT INTO messages (
         sender_id,
         subject,
         content,
         is_read,
         is_closed,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?)`
-      ,
-      args: [senderId, data.subject, data.content, 0, 0, now],
-    });
+      ) VALUES (?, ?, ?, ?, ?, ?)`, [senderId, data.subject, data.content, 0, 0, now]);
 
     const insertedId = Number(result?.lastInsertRowid ?? 0);
     const row = await querySingle<Record<string, any>>(
@@ -114,10 +110,7 @@ export const messageApi = {
   closeMessage: async (id: string): Promise<Message> => {
     const now = new Date().toISOString();
 
-    await db.execute({
-      sql: "UPDATE messages SET is_closed = 1, updated_at = ? WHERE id = ?",
-      args: [now, id],
-    });
+    await db.execute("UPDATE messages SET is_closed = 1, updated_at = ? WHERE id = ?", [now, id]);
 
     const row = await querySingle<Record<string, any>>(
       `SELECT m.*, u.full_name as sender_full_name, u.contact_number as sender_contact_number

@@ -1,186 +1,142 @@
-You are a Senior React Native + TypeScript + Expo Developer.
+OBJECTIVE:
+Fix "Database connection failed" in standalone APK by correctly configuring
+EAS environment variables and removing unsafe fallbacks.
 
-Your task is to enhance the existing project by implementing Role-Based Access Control (RBAC) and role-specific navigation flows, based on the specifications below.
+The app:
 
-🎯 CORE OBJECTIVE
+- Works in development
+- Fails only in standalone APK
+- Uses Turso (libsql)
+- Uses EXPO_PUBLIC_TURSO_DATABASE_URL
+- Uses EXPO_PUBLIC_TURSO_AUTH_TOKEN
 
-The project currently supports ADMIN only.
+We must guarantee that environment variables are properly embedded in the APK build.
 
-You must add support for additional user roles while preserving all existing code, UI, and behavior that is not directly related to this task.
+==================================================
+PHASE 1 — REMOVE FALLBACK VALUES (FAIL FAST)
+==================================================
 
-⚠️ STRICT RULES
+Open: src/lib/turso.ts
 
-❌ DO NOT remove existing code
+REPLACE any fallback logic like:
 
-❌ DO NOT modify UI/design not related to role access
+const TURSO_DATABASE_URL =
+process.env.EXPO_PUBLIC_TURSO_DATABASE_URL || "hardcoded";
 
-❌ DO NOT refactor unrelated logic
+WITH strict validation:
 
-✅ ONLY add what is necessary to support roles and flows
+---
 
-✅ Use existing pages wherever possible
+const TURSO_DATABASE_URL = process.env.EXPO_PUBLIC_TURSO_DATABASE_URL;
+const TURSO_AUTH_TOKEN = process.env.EXPO_PUBLIC_TURSO_AUTH_TOKEN;
 
-✅ Create new pages ONLY if explicitly required
-
-👥 USER ROLES TO SUPPORT
-Existing
-
-admin ✅ (already implemented)
-
-Add These Roles
-
-donor
-
-hospital_staff
-
-health_officer
-
-🗄 DATABASE CONTEXT (DO NOT CHANGE EXISTING TABLE STRUCTURE)
-
-Current table:
-
-CREATE TABLE users (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-full_name TEXT NOT NULL,
-contact_number TEXT NOT NULL UNIQUE,
-role TEXT DEFAULT 'donor' CHECK(role IN ('admin', 'donor')),
-email TEXT,
-avatar_url TEXT,
-created_at TEXT,
-updated_at TEXT
+if (!TURSO_DATABASE_URL || !TURSO_AUTH_TOKEN) {
+throw new Error(
+"Turso environment variables missing in standalone build"
 );
+}
 
-Required Enhancement
+---
 
-Extend role handling in the application layer to support:
+No fallback allowed.
+No silent masking.
+Fail loudly if env missing.
 
-donor
+==================================================
+PHASE 2 — CONFIGURE eas.json PROPERLY
+==================================================
 
-hospital_staff
+Open eas.json.
 
-health_officer
+Inside build.preview add:
 
-❗ Do NOT break existing admin or donor logic
+---
 
-❗ Do NOT remove default role behavior (donor)
+{
+"build": {
+"preview": {
+"env": {
+"EXPO_PUBLIC_TURSO_DATABASE_URL": "libsql://your-db.turso.io",
+"EXPO_PUBLIC_TURSO_AUTH_TOKEN": "your_real_token_here"
+}
+}
+}
+}
 
-🔄 ROLE FLOWS & ACCESS RULES
-🩸 FLOW 1 — DONOR
+---
 
-Registration → Donor Dashboard (NEW PAGE)
+If production profile exists, add env there too.
 
-Donor Dashboard must include:
+DO NOT use eas secret for EXPO_PUBLIC variables.
+Use env field only.
 
-View Donor Information
+==================================================
+PHASE 3 — VERIFY VARIABLES AT RUNTIME
+==================================================
 
-Leave Message to Admin
+In src/lib/turso.ts, add logging at startup:
 
-Delete Donor Data
+---
 
-📌 Notes:
+console.log("TURSO URL:", TURSO_DATABASE_URL);
+console.log("TURSO TOKEN PREFIX:", TURSO_AUTH_TOKEN?.slice(0, 8));
 
-Donor Dashboard does NOT exist yet → create this screen
+---
 
-All other donor-related pages already exist → reuse them
+==================================================
+PHASE 4 — FORCE CLEAN BUILD
+==================================================
 
-Donor is the default role
+Run:
 
-🛠 FLOW 2 — ADMIN (ALREADY EXISTS)
+eas build -p android --profile preview --clear-cache
 
-Admin Dashboard includes:
+Important:
+--clear-cache is mandatory.
 
-View Reports
+==================================================
+PHASE 5 — TEST IN REAL APK
+==================================================
 
-Find Donors
+1. Install APK on physical device
+2. Open app
+3. Attempt:
+   - Login
+   - Register
+4. Capture logs:
 
-Manage Donors
+adb logcat | grep -i "TURSO\|environment\|missing"
 
-Access Donors Bot (AI)
+==================================================
+EXPECTED SUCCESS
+==================================================
 
-Send Notifications
+In standalone logs we must see:
 
-Settings
+TURSO URL: libsql://...
+TURSO TOKEN PREFIX: abc12345
+Running in: standalone
+RAW TURSO RESPONSE: ...
 
-📌 Notes:
+If URL or token prints undefined:
+→ eas.json env configuration is incorrect.
 
-Do NOT change admin UI or logic
+==================================================
+FINAL CONDITION
+==================================================
 
-Only ensure access is properly restricted to admin
+The app must:
 
-🏥 FLOW 3 — HOSPITAL STAFF
+- Successfully connect to Turso
+- Register users without error
+- Login users successfully
+- Insert donor records
+- Use Turso cloud database only
+- Have zero masked errors
 
-Hospital Staff Login → Hospital Dashboard
-
-Hospital Dashboard features:
-
-Search Donors
-
-View Donor Profiles
-
-Send Blood Request Notifications
-
-Update Request Status
-
-📌 Notes:
-
-Pages already exist → map access via role
-
-Hospital Staff must NOT access admin or donor dashboards
-
-🏢 FLOW 4 — HEALTH OFFICER
-
-Health Officer Login → Health Officer Dashboard
-
-Health Officer Dashboard features:
-
-View Donor List by Municipality
-
-Monitor Donor Availability
-
-Send Notifications to Donors
-
-Generate Simple Reports
-
-📌 Notes:
-
-Pages already exist → role-gate access
-
-No admin privileges
-
-🧭 NAVIGATION & ACCESS CONTROL REQUIREMENTS
-
-Implement role-based routing/navigation
-
-After login, redirect users based on their role
-
-Block unauthorized screen access
-
-Handle fallback/unauthorized states safely
-
-Keep navigation logic clean and minimal
-
-🧩 TECHNICAL EXPECTATIONS
-
-React Native + TypeScript + Expo compatible
-
-Centralized role handling (context / hook / guard)
-
-Clear role constants or enums
-
-No breaking changes
-
-No unnecessary refactors
-
-✅ FINAL DELIVERABLES
-
-Role-based navigation logic
-
-Donor Dashboard screen (new)
-
-Access control per role
-
-Clean, minimal, scoped changes only
-
-💡 If a feature or page already exists, reuse it.
-If it doesn’t exist (Donor Dashboard), create it.
-Nothing else should change.
+No fallback.
+No local DB.
+No development-only behavior.
+Standalone must behave identical to development.
+
+Return logs if any error persists.

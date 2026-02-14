@@ -114,10 +114,7 @@ export const getNotificationById = async (
  * Mark notification as read
  */
 export const markAsRead = async (id: string): Promise<Notification> => {
-  await db.execute({
-    sql: "UPDATE notifications SET is_read = 1 WHERE id = ?",
-    args: [id],
-  });
+  await db.execute("UPDATE notifications SET is_read = 1 WHERE id = ?", [id]);
 
   return getNotificationById(id);
 };
@@ -126,28 +123,21 @@ export const markAsRead = async (id: string): Promise<Notification> => {
  * Mark multiple or all notifications as read
  */
 export const markAllAsRead = async (): Promise<void> => {
-  await db.execute({
-    sql: "UPDATE notifications SET is_read = 1",
-  });
+  await db.execute("UPDATE notifications SET is_read = 1");
 };
 
 /**
  * Delete a notification
  */
 export const deleteNotification = async (id: string): Promise<void> => {
-  await db.execute({
-    sql: "DELETE FROM notifications WHERE id = ?",
-    args: [id],
-  });
+  await db.execute("DELETE FROM notifications WHERE id = ?", [id]);
 };
 
 /**
  * Delete all notifications
  */
 export const deleteAllNotifications = async (): Promise<void> => {
-  await db.execute({
-    sql: "DELETE FROM notifications",
-  });
+  await db.execute("DELETE FROM notifications");
 };
 
 /**

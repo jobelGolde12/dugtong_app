@@ -8,6 +8,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -700,5 +701,3 @@ const styles = StyleSheet.create({
   },
 });
 
-// Import RefreshControl if not already imported
-import { RefreshControl } from 'react-native';

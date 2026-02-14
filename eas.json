@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 16.32.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -9,10 +9,18 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_TURSO_DATABASE_URL": "libsql://dugtong-blood-bank-turso.turso.io",
+        "EXPO_PUBLIC_TURSO_AUTH_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MzcyNjI4ODEsImp0aSI6IjhiZjU3YjM4LTVkOTgtNDM3OS1hMWU2LTVhMmQ3OTJkNjFkNyIsInJlc3RyaWN0aW9ucyI6eyJhcHBSb2xlIjoibm9uZSIsImV4cCI6MTc0Mjg0MDQ4MSwidHJhY2tJZCI6IjhiZjU3YjM4LTVkOTgtNDM3OS1hMWU2LTVhMmQ3OTJkNjFkNyJ9fQ.y8mJ_k3q7O5yL6Xh8LpKQ6xJHcW4dR6tP3sT9fW2n8o"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_TURSO_DATABASE_URL": "libsql://dugtong-blood-bank-turso.turso.io",
+        "EXPO_PUBLIC_TURSO_AUTH_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MzcyNjI4ODEsImp0aSI6IjhiZjU3YjM4LTVkOTgtNDM3OS1hMWU2LTVhMmQ3OTJkNjFkNyIsInJlc3RyaWN0aW9ucyI6eyJhcHBSb2xlIjoibm9uZSIsImV4cCI6MTc0Mjg0MDQ4MSwidHJhY2tJZCI6IjhiZjU3YjM4LTVkOTgtNDM3OS1hMWU2LTVhMmQ3OTJkNjFkNyJ9fQ.y8mJ_k3q7O5yL6Xh8LpKQ6xJHcW4dR6tP3sT9fW2n8o"
+      }
     }
   },
   "submit": {
