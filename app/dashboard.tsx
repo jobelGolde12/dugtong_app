@@ -11,6 +11,11 @@ export default function DashboardScreen() {
   const { colors } = useTheme();
 
   useEffect(() => {
+    // Wait for userRole to be loaded
+    if (userRole === null || userRole === undefined) {
+      return;
+    }
+    
     // Redirect based on role
     if (userRole === USER_ROLES.DONOR) {
       router.replace('/DonorDashboard');

@@ -33,6 +33,13 @@ interface UserProviderProps {
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const defaultPreferences: UserPreferences = {
+    theme_mode: 'system',
+    notifications_enabled: true,
+    email_notifications: true,
+    sms_notifications: false,
+    language: 'en',
+  };
   const [state, setState] = useState<UserState>({
     user: null,
     preferences: null,
@@ -55,15 +62,24 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const [userResponse, preferencesResponse] = await Promise.all([
+      const [userResult, preferencesResult] = await Promise.allSettled([
         getUserProfile(),
         getUserPreferences(),
       ]);
 
+      if (userResult.status === 'rejected') {
+        throw userResult.reason;
+      }
+
+      const preferences =
+        preferencesResult.status === 'fulfilled'
+          ? preferencesResult.value
+          : defaultPreferences;
+
       setState((prev) => ({
         ...prev,
-        user: userResponse,
-        preferences: preferencesResponse,
+        user: userResult.value,
+        preferences,
         isLoading: false,
       }));
     } catch (error) {

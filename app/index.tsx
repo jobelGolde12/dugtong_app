@@ -4,16 +4,29 @@ import { ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } f
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SplashScreen from './components/SplashScreen';
 import { useAppLoading } from '../hooks/useAppLoading';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { isLoading, hasDonorProfile } = useAppLoading();
+  const { isAuthenticated, userRole } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && hasDonorProfile) {
-      router.replace('/DonorDashboard');
+    // Only redirect if app loading is done
+    if (!isLoading) {
+      // If user is authenticated, redirect based on role
+      if (isAuthenticated && userRole) {
+        if (userRole === 'donor') {
+          router.replace('/DonorDashboard');
+        } else {
+          router.replace('/dashboard');
+        }
+      } else if (hasDonorProfile) {
+        // If not authenticated but has donor profile, go to DonorDashboard
+        router.replace('/DonorDashboard');
+      }
     }
-  }, [isLoading, hasDonorProfile, router]);
+  }, [isLoading, hasDonorProfile, isAuthenticated, userRole, router]);
 
   // Show splash screen while app is loading
   if (isLoading) {
