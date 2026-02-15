@@ -40,8 +40,18 @@ export const getDonorRegistrations = async (
   const queryString = queryParams.toString();
   const endpoint = `/donor-registrations${queryString ? `?${queryString}` : ""}`;
   
-  const response = await apiClient.get<{ registrations: DonorRegistrationResponse[] }>(endpoint);
-  return response.registrations;
+  const response = await apiClient.get<any>(endpoint);
+  
+  // Handle multiple response formats
+  if (response?.items && Array.isArray(response.items)) {
+    return response.items;
+  } else if (response?.registrations && Array.isArray(response.registrations)) {
+    return response.registrations;
+  } else if (Array.isArray(response)) {
+    return response;
+  }
+  
+  return [];
 };
 
 export const createDonorRegistration = async (

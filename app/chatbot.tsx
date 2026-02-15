@@ -20,7 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDonorRegistrations } from '../api/donor-registrations';
 import { donorApi } from '../api/donors';
-import { getGroupedNotifications, getNotifications, getUnreadCount } from '../api/notifications';
+import { notificationApi } from '../api/notifications';
 import chatbotRules from '../chatbot-rules.json';
 import { USER_ROLES } from '../constants/roles.constants';
 import { useTheme } from '../contexts/ThemeContext';
@@ -28,10 +28,10 @@ import { useRoleAccess } from '../hooks/useRoleAccess';
 import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
 import { RoleGuard } from './components/RoleGuard';
 
-// HARD CODED OPEN ROUTER API KEYS
-const OPEN_ROUTER_API_KEY1 = "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";
-const OPEN_ROUTER_API_KEY2 = "sk-or-v1-8a7b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1";
-const OPEN_ROUTER_API_KEY3 = "sk-or-v1-7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f";
+// OpenRouter API Keys from environment
+const OPEN_ROUTER_API_KEY1 = process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY1 || "";
+const OPEN_ROUTER_API_KEY2 = process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY2 || "";
+const OPEN_ROUTER_API_KEY3 = process.env.EXPO_PUBLIC_OPEN_ROUTER_API_KEY3 || "";
 
 type MessageType = {
   id: string;
@@ -93,18 +93,18 @@ export default function ChatbotScreen() {
   const fetchLiveData = async () => {
     try {
       // Fetch all data in parallel with individual error handling
-      const [donorsData, registrationsData, notificationsData, unreadData, groupedData] = await Promise.all([
+      const [donorsData, registrationsData, notificationsData] = await Promise.all([
         // Donors endpoint with error handling
         donorApi.getDonors({ 
-          bloodType: '', 
-          municipality: '', 
-          availability: '', 
+          bloodType: null, 
+          municipality: null, 
+          availability: null, 
           searchQuery: '', 
-          page: 0, 
+          page: 1, 
           page_size: 100 
         }).catch(error => {
           console.error('Error fetching donors:', error);
-          return { items: [], total: 0, page: 0, page_size: 0 };
+          return { items: [], total: 0, page: 1, page_size: 100 };
         }),
         
         // Donor registrations endpoint with error handling
@@ -114,40 +114,24 @@ export default function ChatbotScreen() {
         }),
         
         // Notifications endpoint with error handling
-        getNotifications({ page_size: 50 }).catch(error => {
+        notificationApi.getNotifications({ limit: 50 }).catch(error => {
           console.error('Error fetching notifications:', error);
-          return { items: [], total: 0, page: 0, page_size: 0, unread_count: 0 };
-        }),
-        
-        // Unread count endpoint with error handling
-        getUnreadCount().catch(error => {
-          console.error('Error fetching unread count:', error);
-          return { unread_count: 0 };
-        }),
-        
-        // Grouped notifications endpoint with error handling
-        getGroupedNotifications().catch(error => {
-          console.error('Error fetching grouped notifications:', error);
-          return { today: [], yesterday: [], earlier: [], unread_count: 0 };
+          return [];
         })
       ]);
 
       return {
         donors: donorsData,
         registrations: registrationsData,
-        notifications: notificationsData,
-        unreadCount: unreadData,
-        groupedNotifications: groupedData
+        notifications: notificationsData
       };
     } catch (error) {
       console.error('Critical error fetching live data:', error);
       // Return default empty data structure to prevent crashes
       return {
-        donors: { items: [], total: 0, page: 0, page_size: 0 },
+        donors: { items: [], total: 0, page: 1, page_size: 100 },
         registrations: [],
-        notifications: { items: [], total: 0, page: 0, page_size: 0, unread_count: 0 },
-        unreadCount: { unread_count: 0 },
-        groupedNotifications: { today: [], yesterday: [], earlier: [], unread_count: 0 }
+        notifications: []
       };
     }
   };
@@ -158,10 +142,10 @@ export default function ChatbotScreen() {
       return 'Unable to fetch live data at the moment.';
     }
 
-    const { donors, registrations, notifications, unreadCount, groupedNotifications } = data;
+    const { donors, registrations, notifications } = data;
 
     // Safely handle cases where data might be undefined or null
-    if (!donors || !registrations || !notifications || !unreadCount || !groupedNotifications) {
+    if (!donors || !registrations || !notifications) {
       return 'Some data sources are temporarily unavailable.';
     }
 
@@ -169,7 +153,7 @@ export default function ChatbotScreen() {
       const bloodTypeCounts: Record<string, number> = {};
       if (donors.items && Array.isArray(donors.items)) {
         donors.items.forEach((donor: any) => {
-          const bloodType = donor?.blood_type || 'Unknown';
+          const bloodType = donor?.bloodType || donor?.blood_type || 'Unknown';
           bloodTypeCounts[bloodType] = (bloodTypeCounts[bloodType] || 0) + 1;
         });
       }
@@ -177,6 +161,11 @@ export default function ChatbotScreen() {
       const availableDonors = donors.items?.filter((d: any) => d?.availability_status === 'Available').length || 0;
       const pendingRegistrations = registrations.filter((r: any) => r?.status === 'pending').length || 0;
       const approvedRegistrations = registrations.filter((r: any) => r?.status === 'approved').length || 0;
+
+      // Calculate unread notifications
+      const unreadCount = Array.isArray(notifications) 
+        ? notifications.filter((n: any) => !n.is_read).length 
+        : 0;
 
       return `
 Donors Summary:
@@ -190,10 +179,8 @@ Registrations Summary:
 - Approved: ${approvedRegistrations}
 
 Notifications Summary:
-- Total Notifications: ${notifications.total || 0}
-- Unread: ${unreadCount.unread_count || 0}
-- Today: ${groupedNotifications.today?.length || 0}
-- Yesterday: ${groupedNotifications.yesterday?.length || 0}
+- Total Notifications: ${Array.isArray(notifications) ? notifications.length : 0}
+- Unread: ${unreadCount}
 `.trim();
     } catch (error) {
       console.error('Error generating data summary:', error);
@@ -378,7 +365,9 @@ BEHAVIOR GUIDELINES:
     }
 
     console.error('❌ All OpenRouter API keys and models failed, falling back to rule-based responses');
-    console.error('Last error:', lastError?.message);
+    if (lastError) {
+      console.error('Last error:', lastError.message || lastError);
+    }
     setIsTyping(false);
     setCannotReceiveMessages(false);
     return await getHumanLikeResponse(input);
