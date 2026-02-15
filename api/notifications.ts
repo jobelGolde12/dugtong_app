@@ -33,11 +33,15 @@ export const notificationApi = {
       const queryString = queryParams.toString();
       const endpoint = `/notifications${queryString ? `?${queryString}` : ""}`;
       
-      const response = await apiClient.get<{ success: boolean; data: { notifications: Notification[] } }>(endpoint);
+      const response = await apiClient.get<any>(endpoint);
       
-      // Handle both response formats
-      if (response?.data?.notifications) {
-        return response.data.notifications;
+      console.log('📊 Notifications response:', response);
+      
+      // Handle multiple response formats
+      if (response?.items && Array.isArray(response.items)) {
+        return response.items;
+      } else if (response?.notifications && Array.isArray(response.notifications)) {
+        return response.notifications;
       } else if (Array.isArray(response)) {
         return response;
       }

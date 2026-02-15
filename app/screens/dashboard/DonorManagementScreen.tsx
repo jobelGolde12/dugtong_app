@@ -1032,14 +1032,6 @@ const DonorCard: React.FC<{
             </View>
 
             <View style={{ flexDirection: 'row', gap: SPACING.xs }}>
-              {canEdit && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => onEdit(donor as Donor)}
-                  leftIcon={<Edit2 size={16} color={COLORS.neutral[500]} />}
-                />
-              )}
               {canDelete && (
                 <Button
                   variant="ghost"
