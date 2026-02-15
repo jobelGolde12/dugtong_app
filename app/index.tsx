@@ -1,32 +1,43 @@
 import { Link, useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SplashScreen from './components/SplashScreen';
 import { useAppLoading } from '../hooks/useAppLoading';
 import { useAuth } from '../contexts/AuthContext';
+import { USER_ROLES } from '../constants/roles.constants';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { isLoading, hasDonorProfile } = useAppLoading();
   const { isAuthenticated, userRole } = useAuth();
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   useEffect(() => {
-    // Only redirect if app loading is done
-    if (!isLoading) {
-      // If user is authenticated, redirect based on role
-      if (isAuthenticated && userRole) {
-        if (userRole === 'donor') {
-          router.replace('/DonorDashboard');
-        } else {
-          router.replace('/dashboard');
-        }
-      } else if (hasDonorProfile) {
-        // If not authenticated but has donor profile, go to DonorDashboard
+    // Prevent multiple redirects
+    if (hasNavigated) return;
+    
+    // Don't redirect if still loading
+    if (isLoading) return;
+    
+    // If user is authenticated, redirect based on role
+    if (isAuthenticated && userRole) {
+      console.log('HomeScreen: Authenticated, role:', userRole);
+      setHasNavigated(true);
+      if (userRole === USER_ROLES.DONOR) {
         router.replace('/DonorDashboard');
+      } else {
+        router.replace('/dashboard');
       }
     }
-  }, [isLoading, hasDonorProfile, isAuthenticated, userRole, router]);
+    // Only use donor profile as fallback if NOT authenticated
+    else if (!isAuthenticated && hasDonorProfile) {
+      console.log('HomeScreen: Not authenticated, has donor profile');
+      setHasNavigated(true);
+      router.replace('/DonorDashboard');
+    }
+    // Otherwise stay on home
+  }, [isLoading, hasDonorProfile, isAuthenticated, userRole, router, hasNavigated]);
 
   // Show splash screen while app is loading
   if (isLoading) {

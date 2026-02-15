@@ -84,20 +84,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Extract user role from user object or token
   const extractUserRole = (user: User): UserRole | null => {
-    // First try to get role from the user object directly
-    const userObj = user as Record<string, unknown>;
-    const rawRole = typeof userObj.role === 'string' ? userObj.role : 
-                   typeof userObj.user_role === 'string' ? userObj.user_role :
-                   typeof userObj.userRole === 'string' ? userObj.userRole : '';
+    console.log('🔍 extractUserRole input:', JSON.stringify(user));
+    
+    // Try to get role directly from user object
+    let rawRole = '';
+    const userAny = user as unknown as Record<string, unknown>;
+    
+    if (userAny.role && typeof userAny.role === 'string') {
+      rawRole = userAny.role as string;
+    } else if (userAny.user_role && typeof userAny.user_role === 'string') {
+      rawRole = userAny.user_role as string;
+    } else if (userAny.userRole && typeof userAny.userRole === 'string') {
+      rawRole = userAny.userRole as string;
+    }
 
-    if (!rawRole || typeof rawRole !== 'string') {
+    console.log('🔍 rawRole:', rawRole);
+
+    if (!rawRole) {
+      console.log('🔍 No role found, returning default donor role');
       return DEFAULT_ROLE;
     }
 
-    const normalizedRole = rawRole
-      .trim()
-      .toLowerCase()
-      .replace(/[\s-]+/g, '_');
+    const normalizedRole = rawRole.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    console.log('🔍 normalizedRole:', normalizedRole);
 
     const roleAliases: Record<string, UserRole> = {
       admin: USER_ROLES.ADMIN,
@@ -109,7 +118,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       healthofficer: USER_ROLES.HEALTH_OFFICER,
     };
 
-    return roleAliases[normalizedRole] ?? DEFAULT_ROLE;
+    const result = roleAliases[normalizedRole] ?? DEFAULT_ROLE;
+    console.log('🔍 extractUserRole result:', result);
+    return result;
   };
 
   // Clear all auth state
@@ -130,11 +141,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await loginApi(credentials);
       const { user, access_token } = response;
 
+      console.log('🔐 Login response:', JSON.stringify(user));
+
       // Save user to secure storage
       await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(user));
 
-      const role = extractUserRole(user);
+      // Get role directly - simple string comparison
+      const userAny = user as unknown as Record<string, unknown>;
+      const rawRole = String(userAny.role || userAny.user_role || userAny.userRole || 'donor');
+      const roleLower = rawRole.toLowerCase().trim();
+      
+      console.log('🔐 Raw role:', roleLower);
 
+      // Determine role - simple if/else
+      let role: UserRole;
+      if (roleLower === 'admin') {
+        role = USER_ROLES.ADMIN;
+      } else if (roleLower === 'hospital_staff') {
+        role = USER_ROLES.HOSPITAL_STAFF;
+      } else if (roleLower === 'health_officer') {
+        role = USER_ROLES.HEALTH_OFFICER;
+      } else {
+        role = USER_ROLES.DONOR;
+      }
+
+      console.log('🔐 Final role:', role);
+
+      // Set state
       setState({
         isLoading: false,
         isAuthenticated: true,
@@ -143,22 +176,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         accessToken: access_token,
       });
 
-      // Navigate based on role
-      switch (role) {
-        case USER_ROLES.ADMIN:
-          router.replace('/dashboard');
-          break;
-        case USER_ROLES.DONOR:
-          router.replace('/DonorDashboard');
-          break;
-        case USER_ROLES.HOSPITAL_STAFF:
-          router.replace('/dashboard'); // Hospital staff uses same dashboard but with restricted access
-          break;
-        case USER_ROLES.HEALTH_OFFICER:
-          router.replace('/dashboard'); // Health officer uses same dashboard but with restricted access
-          break;
-        default:
-          router.replace('/DonorDashboard');
+      // Navigate based on role - IMMEDIATELY, no delays
+      console.log('🔐 About to navigate to:', role === USER_ROLES.DONOR ? '/DonorDashboard' : '/dashboard');
+      
+      if (role === USER_ROLES.DONOR) {
+        router.replace('/DonorDashboard');
+      } else {
+        router.replace('/dashboard');
       }
 
       return { success: true };
@@ -175,7 +199,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       return { success: false, error: errorMessage };
     }
-  }, []);
+  }, [router]);
 
   // Logout
   const logout = useCallback(async () => {

@@ -51,16 +51,26 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const text = await response.text();
-        console.error(`❌ Response Error: ${text}`);
+        let errorMessage = `HTTP ${response.status}`;
         
-        let error;
         try {
-          error = JSON.parse(text);
-        } catch {
-          error = { message: text || response.statusText };
+          const text = await response.text();
+          console.error(`❌ Response Error (${response.status}):`, text);
+          
+          if (text) {
+            try {
+              const errorData = JSON.parse(text);
+              errorMessage = errorData.error || errorData.message || text;
+            } catch {
+              errorMessage = text || response.statusText;
+            }
+          }
+        } catch (e) {
+          console.error('Failed to read error response:', e);
+          errorMessage = response.statusText || `HTTP ${response.status}`;
         }
-        throw new Error(error.message || `HTTP ${response.status}`);
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

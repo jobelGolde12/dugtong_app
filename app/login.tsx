@@ -1,7 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { USER_ROLES } from '../constants/roles.constants';
 import {
   Animated,
   Dimensions,
@@ -35,7 +37,7 @@ type InputField = 'fullName' | 'contactNumber';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, userRole } = useAuth();
   const [formValues, setFormValues] = useState<FormValues>({
     fullName: '',
     contactNumber: ''
@@ -194,14 +196,20 @@ export default function LoginScreen() {
 
     // Call actual authentication
     try {
+      // Clear old donor profile before login to prevent conflicts
+      await AsyncStorage.removeItem('donorProfile');
+      
+      // Clean contact number - remove dashes
+      const cleanContactNumber = formValues.contactNumber.replace(/-/g, '');
+      
       console.log('🔐 Attempting login with:', {
         full_name: formValues.fullName,
-        contact_number: formValues.contactNumber
+        contact_number: cleanContactNumber
       });
 
       const result = await login({
         full_name: formValues.fullName,
-        contact_number: formValues.contactNumber
+        contact_number: cleanContactNumber
       });
       
       console.log('📡 Login result:', result);
@@ -213,17 +221,12 @@ export default function LoginScreen() {
         return;
       }
       
-      console.log('✅ Login successful');
-      // Navigation will be handled by the AuthContext based on user role
+      console.log('✅ Login successful, waiting for navigation...');
+      // Navigation will be handled by AuthContext
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      console.error('Error details:', {
-        message: error?.message,
-        response: error?.response,
-        stack: error?.stack
-      });
-      
-      alert(`Login Error\n\n${error?.message || 'Network request failed. Please check your connection and try again.'}`);
+      const errorMsg = error?.message || 'Network request failed. Please check your connection and try again.';
+      alert(`Login Error\n\n${errorMsg}`);
       setIsLoading(false);
     }
   };

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -34,61 +34,47 @@ interface DonorProfile {
 export default function DonorDashboard() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { userRole, isDonor, isLoading: authLoading } = useRoleAccess();
+  const { userRole } = useRoleAccess();
   const [donorData, setDonorData] = useState<DonorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Redirect if user is not a donor
-  useEffect(() => {
-    if (!authLoading && userRole && userRole !== USER_ROLES.DONOR) {
-      router.replace('/dashboard');
-    }
-  }, [userRole, authLoading, router]);
-
-  const loadDonorData = async () => {
+  // Load donor data function
+  const loadDonorData = useCallback(async () => {
     try {
       setIsRefreshing(true);
       const savedData = await AsyncStorage.getItem('donorProfile');
       if (savedData) {
         const donorProfile = JSON.parse(savedData);
         setDonorData(donorProfile);
-      } else {
-        Alert.alert('No Data', 'No donor profile found. Please register first.');
       }
     } catch (error) {
       console.error('Error loading donor data:', error);
-      Alert.alert('Error', 'Failed to load donor data.');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, []);
 
+  // Load data on mount
   useEffect(() => {
     loadDonorData();
-  }, []);
+  }, [loadDonorData]);
 
   const handleClearData = async () => {
     Alert.alert(
       'Clear Data',
-      'Are you sure you want to clear your donor data? This action cannot be undone.',
+      'Are you sure you want to clear your donor data?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Clear',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await AsyncStorage.removeItem('donorProfile');
-              setDonorData(null);
-              Alert.alert('Success', 'Donor data cleared successfully.');
-            } catch (error) {
-              console.error('Error clearing donor data:', error);
-              Alert.alert('Error', 'Failed to clear donor data.');
-            }
+            await AsyncStorage.removeItem('donorProfile');
+            setDonorData(null);
           }
         }
       ]
@@ -97,25 +83,17 @@ export default function DonorDashboard() {
 
   const handleSendMessage = async () => {
     if (!message.trim()) {
-      Alert.alert('Error', 'Please enter a message before sending.');
+      Alert.alert('Error', 'Please enter a message.');
       return;
     }
-
     setIsSending(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      Alert.alert('Success', 'Your message has been sent to the admin.');
-      setMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
-    } finally {
-      setIsSending(false);
-    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    Alert.alert('Success', 'Message sent to admin.');
+    setMessage('');
+    setIsSending(false);
   };
 
+  // Show loading while data loads
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -128,6 +106,7 @@ export default function DonorDashboard() {
     );
   }
 
+  // Show "No Profile Found" only for donors without profile
   if (!donorData) {
     return (
       <SafeAreaView style={styles.safeArea}>

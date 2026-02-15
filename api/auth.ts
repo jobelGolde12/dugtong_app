@@ -25,7 +25,7 @@ export interface LoginResponse {
 
 export interface User {
   id: string;
-  role: UserRole;
+  role: string;
   name: string;
   contact_number: string;
   email?: string;
@@ -57,20 +57,25 @@ export const login = async (data: LoginRequest): Promise<LoginResponse> => {
   try {
     const response = await apiClient.post<{ success: boolean; data: LoginResponse }>("/auth/login", data, false);
     
+    console.log('📡 Full API Response:', JSON.stringify(response));
+    
     if (!response.success || !response.data) {
       throw new Error("Login failed: Invalid response");
     }
 
     const { access_token, refresh_token, user } = response.data;
     
+    console.log('📡 API Response user:', JSON.stringify(user));
+    console.log('📡 API Response user.role:', user.role);
+    
     await storeTokens(access_token, refresh_token);
     await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(user));
 
     return response.data;
   } catch (error: any) {
-    console.error("Login error:", error);
-    console.error("STACK:", error?.stack);
-    throw new Error(error.message || "Login failed");
+    console.error("❌ Login error:", error);
+    console.error("❌ Error message:", error?.message);
+    throw error;
   }
 };
 
