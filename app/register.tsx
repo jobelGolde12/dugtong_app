@@ -265,8 +265,17 @@ export default function RegisterScreen() {
 
       console.log('✅ Registration successful:', response);
 
-      // Save donor profile to AsyncStorage
-      await AsyncStorage.setItem('donorProfile', JSON.stringify(registrationData));
+      // Save donor profile to AsyncStorage with correct field names
+      const donorProfile = {
+        full_name: registrationData.full_name,
+        contact_number: registrationData.contact_number,
+        age: registrationData.age,
+        sex: registrationData.sex,
+        blood_type: registrationData.blood_type,
+        municipality: registrationData.municipality,
+        availability: registrationData.availability_status,
+      };
+      await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfile));
       
       Alert.alert(
         'Registration Submitted 🎉',

@@ -84,13 +84,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Extract user role from user object or token
   const extractUserRole = (user: User): UserRole | null => {
-    const rawRole =
-      (user as unknown as { role?: string; user_role?: string; userRole?: string }).role ??
-      (user as unknown as { role?: string; user_role?: string; userRole?: string }).user_role ??
-      (user as unknown as { role?: string; user_role?: string; userRole?: string }).userRole ??
-      '';
+    // First try to get role from the user object directly
+    const userObj = user as Record<string, unknown>;
+    const rawRole = typeof userObj.role === 'string' ? userObj.role : 
+                   typeof userObj.user_role === 'string' ? userObj.user_role :
+                   typeof userObj.userRole === 'string' ? userObj.userRole : '';
 
-    if (typeof rawRole !== 'string') {
+    if (!rawRole || typeof rawRole !== 'string') {
       return DEFAULT_ROLE;
     }
 

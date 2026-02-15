@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useRoleAccess } from '../hooks/useRoleAccess';
+import { USER_ROLES } from '../constants/roles.constants';
 
 interface DonorProfile {
   full_name: string;
@@ -39,6 +40,13 @@ export default function DonorDashboard() {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Redirect if user is not a donor
+  useEffect(() => {
+    if (!authLoading && userRole && userRole !== USER_ROLES.DONOR) {
+      router.replace('/dashboard');
+    }
+  }, [userRole, authLoading, router]);
 
   const loadDonorData = async () => {
     try {
@@ -350,7 +358,7 @@ export default function DonorDashboard() {
 const InfoItem = ({ label, value, icon, isHighlighted = false }: {
   label: string;
   value: string | number;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   isHighlighted?: boolean;
 }) => (
   <View style={styles.infoItem}>
