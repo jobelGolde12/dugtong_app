@@ -15,7 +15,9 @@ import {
 } from 'react-native';
 
 import { useTheme } from '../../../contexts/ThemeContext';
-import { queryRows } from '../../../src/lib/turso';
+import { donorApi } from '../../../api/donors';
+import { bloodRequestApi } from '../../../api/blood-requests';
+import { donationApi } from '../../../api/donations';
 import LoadingIndicator from './LoadingIndicator';
 
 // ========== Modern Animated Action Button ==========
@@ -218,32 +220,22 @@ const StatDetailModal: React.FC<{
   const fetchExpandedDonorData = async (donorId: string) => {
     try {
       setLoadingExpanded(true);
-      const rows = await queryRows<Record<string, any>>(
-        `SELECT id, full_name, blood_type, availability_status, municipality, 
-                last_donation_date, contact_number, age, sex, created_at, notes
-         FROM donors 
-         WHERE id = ? AND is_deleted = 0
-         LIMIT 1`,
-        [donorId]
-      );
-
-      if (rows.length > 0) {
-        const row = rows[0];
-        setExpandedDonorData({
-          id: String(row.id),
-          name: row.full_name,
-          bloodType: row.blood_type,
-          availability: row.availability_status,
-          location: row.municipality || 'Unknown',
-          lastDonation: row.last_donation_date,
-          phoneNumber: row.contact_number,
-          email: undefined, // email column doesn't exist in donors table
-          age: row.age,
-          sex: row.sex,
-          dateRegistered: row.created_at, // using created_at instead of date_registered
-          notes: row.notes,
-        });
-      }
+      const donor = await donorApi.getDonor(donorId);
+      
+      setExpandedDonorData({
+        id: donor.id,
+        name: donor.name,
+        bloodType: donor.bloodType,
+        availability: donor.availabilityStatus,
+        location: donor.municipality || 'Unknown',
+        lastDonation: donor.lastDonationDate,
+        phoneNumber: donor.contactNumber,
+        email: undefined,
+        age: donor.age,
+        sex: donor.sex,
+        dateRegistered: donor.dateRegistered,
+        notes: donor.notes,
+      });
     } catch (error) {
       console.error('Error fetching expanded donor data:', error);
       Alert.alert('Error', 'Failed to load donor details');
@@ -779,55 +771,47 @@ const StatsGrid: React.FC<StatsGridProps> = ({
 
       switch (statType) {
         case 'totalDonors': {
-          const rows = await queryRows<Record<string, any>>(
-            `SELECT id, full_name, blood_type, availability_status, municipality, last_donation_date, contact_number 
-             FROM donors 
-             WHERE is_deleted = 0
-             ORDER BY full_name ASC 
-             LIMIT 50`
-          );
-
-          const donors: DonorDetail[] = rows.map(row => ({
-            id: String(row.id),
-            name: row.full_name,
-            bloodType: row.blood_type,
-            availability: row.availability_status,
-            location: row.municipality || 'Unknown',
-            lastDonation: row.last_donation_date,
-            phoneNumber: row.contact_number,
+          const response = await donorApi.getDonors({ page: 0, page_size: 50 });
+          
+          const donors: DonorDetail[] = response.items.map(donor => ({
+            id: donor.id,
+            name: donor.name,
+            bloodType: donor.bloodType,
+            availability: donor.availabilityStatus,
+            location: donor.municipality || 'Unknown',
+            lastDonation: donor.lastDonationDate,
+            phoneNumber: donor.contactNumber,
           }));
 
           setSelectedStatData({
             title: 'Total Donors',
             data: donors,
-            totalCount: donors.length,
+            totalCount: response.total,
             lastUpdated: currentTime,
           });
           break;
         }
 
         case 'availableDonors': {
-          const rows = await queryRows<Record<string, any>>(
-            `SELECT id, full_name, blood_type, availability_status, municipality, contact_number 
-             FROM donors 
-             WHERE availability_status = 'Available' AND is_deleted = 0
-             ORDER BY full_name ASC 
-             LIMIT 50`
-          );
+          const response = await donorApi.getDonors({ 
+            availability: 'Available',
+            page: 0,
+            page_size: 50 
+          });
 
-          const donors: DonorDetail[] = rows.map(row => ({
-            id: String(row.id),
-            name: row.full_name,
-            bloodType: row.blood_type,
-            availability: row.availability_status,
-            location: row.municipality || 'Unknown',
-            phoneNumber: row.contact_number,
+          const donors: DonorDetail[] = response.items.map(donor => ({
+            id: donor.id,
+            name: donor.name,
+            bloodType: donor.bloodType,
+            availability: donor.availabilityStatus,
+            location: donor.municipality || 'Unknown',
+            phoneNumber: donor.contactNumber,
           }));
 
           setSelectedStatData({
             title: 'Available Donors',
             data: donors,
-            totalCount: donors.length,
+            totalCount: response.total,
             lastUpdated: currentTime,
           });
           break;
@@ -835,28 +819,24 @@ const StatsGrid: React.FC<StatsGridProps> = ({
 
         case 'requestsThisMonth': {
           const currentMonth = new Date().toISOString().slice(0, 7);
-          const rows = await queryRows<Record<string, any>>(
-            `SELECT id, requester_name, blood_type, urgency, location, created_at, status
-             FROM blood_requests 
-             WHERE strftime('%Y-%m', created_at) = ?
-             ORDER BY created_at DESC 
-             LIMIT 50`,
-            [currentMonth]
-          );
+          const requests = await bloodRequestApi.getBloodRequests({
+            month: currentMonth,
+            limit: 50,
+          });
 
-          const requests: RequestDetail[] = rows.map(row => ({
-            id: String(row.id),
-            patientName: row.requester_name,
-            bloodType: row.blood_type,
-            urgency: row.urgency,
-            location: row.location,
-            createdAt: row.created_at,
-            status: row.status || 'Active',
+          const requestDetails: RequestDetail[] = requests.map(req => ({
+            id: req.id,
+            patientName: req.requester_name,
+            bloodType: req.blood_type,
+            urgency: req.urgency,
+            location: req.location,
+            createdAt: req.created_at,
+            status: req.status || 'active',
           }));
 
           setSelectedStatData({
             title: 'Requests This Month',
-            data: requests,
+            data: requestDetails,
             totalCount: requests.length,
             lastUpdated: currentTime,
           });
@@ -864,27 +844,36 @@ const StatsGrid: React.FC<StatsGridProps> = ({
         }
 
         case 'successfulDonations': {
-          const rows = await queryRows<Record<string, any>>(
-            `SELECT d.id, dr.full_name as donor_name, d.blood_type, d.donation_date, d.location, d.quantity
-             FROM donations d
-             JOIN donors dr ON d.donor_id = dr.id
-             WHERE dr.is_deleted = 0
-             ORDER BY d.donation_date DESC 
-             LIMIT 50`
-          );
+          const donations = await donationApi.getDonations({ limit: 50 });
 
-          const donations: DonationDetail[] = rows.map(row => ({
-            id: String(row.id),
-            donorName: row.donor_name,
-            bloodType: row.blood_type,
-            date: row.donation_date,
-            location: row.location,
-            volume: `${row.quantity || 450}ml`,
-          }));
+          const donationDetails: DonationDetail[] = await Promise.all(
+            donations.map(async (donation) => {
+              try {
+                const donor = await donorApi.getDonor(donation.donor_id);
+                return {
+                  id: donation.id,
+                  donorName: donor.name,
+                  bloodType: donation.blood_type,
+                  date: donation.donation_date,
+                  location: donation.location,
+                  volume: `${donation.quantity_ml || 450}ml`,
+                };
+              } catch (error) {
+                return {
+                  id: donation.id,
+                  donorName: 'Unknown',
+                  bloodType: donation.blood_type,
+                  date: donation.donation_date,
+                  location: donation.location,
+                  volume: `${donation.quantity_ml || 450}ml`,
+                };
+              }
+            })
+          );
 
           setSelectedStatData({
             title: 'Successful Donations',
-            data: donations,
+            data: donationDetails,
             totalCount: donations.length,
             lastUpdated: currentTime,
           });

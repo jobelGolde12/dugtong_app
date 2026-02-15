@@ -1,83 +1,54 @@
-import {
-  ReportSummary,
-  BloodTypeDistribution,
-  MonthlyDonationData,
-  AvailabilityTrend
-} from '../types/report.types';
-import { queryRows, querySingle } from '../src/lib/turso';
+import { apiClient } from "../src/services/apiClient";
 
-export const reportsApi = {
-  /**
-   * Get summary statistics
-   */
-  getSummary: async (): Promise<ReportSummary> => {
-    const totalRow = await querySingle<{ count: number }>(
-      'SELECT COUNT(*) as count FROM donors WHERE is_deleted = 0',
-    );
-    const availableRow = await querySingle<{ count: number }>(
-      "SELECT COUNT(*) as count FROM donors WHERE is_deleted = 0 AND availability_status = 'Available'",
-    );
-    const requestsRow = await querySingle<{ count: number }>(
-      "SELECT COUNT(*) as count FROM blood_requests WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')",
-    );
-    const donationsRow = await querySingle<{ count: number }>(
-      'SELECT COUNT(*) as count FROM donations',
-    );
+export interface ReportData {
+  totalDonors: number;
+  activeDonors: number;
+  totalDonations: number;
+  donationsByBloodType: Record<string, number>;
+  donationsByMonth: Array<{ month: string; count: number }>;
+  donorsByMunicipality: Record<string, number>;
+}
 
-    return {
-      totalDonors: Number(totalRow?.count ?? 0),
-      availableDonors: Number(availableRow?.count ?? 0),
-      requestsThisMonth: Number(requestsRow?.count ?? 0),
-      successfulDonations: Number(donationsRow?.count ?? 0),
-    };
+export const reportApi = {
+  getReportData: async (params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ReportData> => {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.start_date) queryParams.append("start_date", params.start_date);
+    if (params?.end_date) queryParams.append("end_date", params.end_date);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/reports${queryString ? `?${queryString}` : ""}`;
+    
+    return apiClient.get<ReportData>(endpoint);
   },
 
-  /**
-   * Get blood type distribution
-   */
-  getBloodTypeDistribution: async (): Promise<BloodTypeDistribution[]> => {
-    const rows = await queryRows<Record<string, any>>(
-      'SELECT blood_type as bloodType, COUNT(*) as count FROM donors WHERE is_deleted = 0 GROUP BY blood_type',
-    );
+  exportReport: async (format: "pdf" | "csv", params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<Blob> => {
+    const queryParams = new URLSearchParams();
+    
+    queryParams.append("format", format);
+    if (params?.start_date) queryParams.append("start_date", params.start_date);
+    if (params?.end_date) queryParams.append("end_date", params.end_date);
 
-    return rows.map((row) => ({
-      bloodType: row.bloodType,
-      count: Number(row.count ?? 0),
-    }));
+    const queryString = queryParams.toString();
+    const endpoint = `/reports/export${queryString ? `?${queryString}` : ""}`;
+    
+    const token = await import("./client").then(m => m.getAccessToken());
+    const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || "https://dugtung-next.vercel.app/api"}${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to export report");
+    }
+
+    return response.blob();
   },
-
-  /**
-   * Get monthly donations
-   */
-  getMonthlyDonations: async (): Promise<MonthlyDonationData[]> => {
-    const rows = await queryRows<Record<string, any>>(
-      "SELECT strftime('%Y-%m', donation_date) as month, COUNT(*) as donations FROM donations GROUP BY month ORDER BY month",
-    );
-
-    return rows.map((row) => ({
-      month: row.month,
-      donations: Number(row.donations ?? 0),
-    }));
-  },
-
-  /**
-   * Get availability trend
-   */
-  getAvailabilityTrend: async (): Promise<AvailabilityTrend[]> => {
-    const rows = await queryRows<Record<string, any>>(
-      `SELECT date(created_at) as date,
-        SUM(CASE WHEN availability_status = 'Available' THEN 1 ELSE 0 END) as availableCount,
-        SUM(CASE WHEN availability_status != 'Available' THEN 1 ELSE 0 END) as unavailableCount
-       FROM donors
-       WHERE is_deleted = 0 AND date(created_at) >= date('now', '-30 day')
-       GROUP BY date(created_at)
-       ORDER BY date(created_at)`
-    );
-
-    return rows.map((row) => ({
-      date: row.date,
-      availableCount: Number(row.availableCount ?? 0),
-      unavailableCount: Number(row.unavailableCount ?? 0),
-    }));
-  }
 };

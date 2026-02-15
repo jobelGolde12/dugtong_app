@@ -1,103 +1,56 @@
-import { Donation, BloodRequest } from '../types/donation.types';
-import { db, queryRows, querySingle } from '../src/lib/turso';
+import { apiClient } from "../src/services/apiClient";
 
-const mapDonationRow = (row: Record<string, any>): Donation => ({
-  id: String(row.id),
-  donor_id: row.donor_id ? String(row.donor_id) : '',
-  donation_date: row.donation_date,
-  blood_type: row.blood_type,
-  quantity: Number(row.quantity),
-  location: row.location,
-});
+export interface Donation {
+  id: string;
+  donor_id: string;
+  donation_date: string;
+  blood_type: string;
+  quantity_ml: number;
+  location: string;
+  notes?: string;
+  created_at: string;
+}
 
-const mapBloodRequestRow = (row: Record<string, any>): BloodRequest => ({
-  id: String(row.id),
-  requester_name: row.requester_name,
-  blood_type: row.blood_type,
-  quantity: Number(row.quantity),
-  urgency: row.urgency,
-  location: row.location,
-  status: row.status,
-});
+interface GetDonationsParams {
+  donor_id?: string;
+  blood_type?: string;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}
 
-export const donationsApi = {
-  /**
-   * Get list of donations
-   */
-  getDonations: async (): Promise<Donation[]> => {
-    const rows = await queryRows<Record<string, any>>(
-      'SELECT * FROM donations ORDER BY donation_date DESC',
-    );
-    return rows.map(mapDonationRow);
+export const donationApi = {
+  getDonations: async (params?: GetDonationsParams): Promise<Donation[]> => {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.donor_id) queryParams.append("donor_id", params.donor_id);
+    if (params?.blood_type) queryParams.append("blood_type", params.blood_type);
+    if (params?.start_date) queryParams.append("start_date", params.start_date);
+    if (params?.end_date) queryParams.append("end_date", params.end_date);
+    if (params?.limit) queryParams.append("limit", String(params.limit));
+    if (params?.offset) queryParams.append("offset", String(params.offset));
+
+    const queryString = queryParams.toString();
+    const endpoint = `/donations${queryString ? `?${queryString}` : ""}`;
+    
+    const response = await apiClient.get<{ donations: Donation[] }>(endpoint);
+    return response.donations;
   },
 
-  /**
-   * Create a new donation
-   */
-  createDonation: async (data: Omit<Donation, 'id'>): Promise<Donation> => {
-    const result = await db.execute(`INSERT INTO donations (
-        donor_id,
-        donation_date,
-        blood_type,
-        quantity,
-        location
-      ) VALUES (?, ?, ?, ?, ?)`, [data.donor_id || null, data.donation_date, data.blood_type, data.quantity, data.location]);
-
-    const insertedId = Number(result?.lastInsertRowid ?? 0);
-    const row = await querySingle<Record<string, any>>(
-      'SELECT * FROM donations WHERE id = ?',
-      [insertedId],
-    );
-
-    if (!row) {
-      throw new Error('Failed to create donation.');
-    }
-
-    return mapDonationRow(row);
+  createDonation: async (
+    data: Omit<Donation, "id" | "created_at">
+  ): Promise<Donation> => {
+    const response = await apiClient.post<{ donation: Donation }>("/donations", data);
+    return response.donation;
   },
 
-  /**
-   * Get list of blood requests
-   */
-  getBloodRequests: async (): Promise<BloodRequest[]> => {
-    const rows = await queryRows<Record<string, any>>(
-      'SELECT * FROM blood_requests ORDER BY created_at DESC',
-    );
-    return rows.map(mapBloodRequestRow);
+  updateDonation: async (id: string, data: Partial<Donation>): Promise<Donation> => {
+    const response = await apiClient.put<{ donation: Donation }>(`/donations/${id}`, data);
+    return response.donation;
   },
 
-  /**
-   * Create a new blood request
-   */
-  createBloodRequest: async (data: Omit<BloodRequest, 'id' | 'status'>): Promise<BloodRequest> => {
-    const result = await db.execute(`INSERT INTO blood_requests (
-        requester_name,
-        blood_type,
-        quantity,
-        urgency,
-        location,
-        status,
-        created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`, [
-        data.requester_name,
-        data.blood_type,
-        data.quantity,
-        data.urgency,
-        data.location,
-        'pending',
-        new Date().toISOString(),
-      ]);
-
-    const insertedId = Number(result?.lastInsertRowid ?? 0);
-    const row = await querySingle<Record<string, any>>(
-      'SELECT * FROM blood_requests WHERE id = ?',
-      [insertedId],
-    );
-
-    if (!row) {
-      throw new Error('Failed to create blood request.');
-    }
-
-    return mapBloodRequestRow(row);
-  }
+  deleteDonation: async (id: string): Promise<void> => {
+    await apiClient.delete(`/donations/${id}`);
+  },
 };

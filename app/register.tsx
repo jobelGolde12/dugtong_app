@@ -255,13 +255,15 @@ export default function RegisterScreen() {
         age: parseInt(formData.age, 10),
         blood_type: formData.bloodType,
         municipality: formData.municipality,
-        availability,
+        availability_status: availability,
         sex: formData.sex, // Add sex field
       };
 
-      console.log('Submitting donor registration:', registrationData);
+      console.log('📝 Submitting donor registration:', registrationData);
       
       const response = await createDonorRegistration(registrationData);
+
+      console.log('✅ Registration successful:', response);
 
       // Save donor profile to AsyncStorage
       await AsyncStorage.setItem('donorProfile', JSON.stringify(registrationData));
@@ -278,10 +280,19 @@ export default function RegisterScreen() {
           }
         ]
       );
-    } catch (error) {
-      console.error('Error submitting donor registration:', error);
+    } catch (error: any) {
+      console.error('❌ Registration error:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        response: error?.response,
+        stack: error?.stack
+      });
+      
       const errorMessage = getApiErrorMessage(error);
-      Alert.alert('Registration Error', errorMessage);
+      Alert.alert(
+        'Registration Error',
+        `${errorMessage}\n\nPlease check your connection and try again.`
+      );
     } finally {
       setIsSubmitting(false);
     }

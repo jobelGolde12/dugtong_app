@@ -1,6 +1,5 @@
 import React, { createContext, ReactNode, useContext, useEffect, useRef } from 'react';
 import { useConnection } from '../hooks/useConnection';
-import { setOnlineStatus, syncOfflineQueue } from '../src/lib/turso-offline';
 
 interface ConnectionContextValue {
   isConnected: boolean;
@@ -16,14 +15,10 @@ export const ConnectionProvider: React.FC<{ children: ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      setOnlineStatus(connection.isConnected);
-
       if (!connection.isConnected) {
         wasOffline.current = true;
       } else if (wasOffline.current) {
-        syncOfflineQueue().catch(error => {
-          console.warn('Failed to sync offline queue:', error);
-        });
+        console.log('Connection restored');
         wasOffline.current = false;
       }
     } catch (error) {

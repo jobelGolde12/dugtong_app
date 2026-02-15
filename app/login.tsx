@@ -194,22 +194,36 @@ export default function LoginScreen() {
 
     // Call actual authentication
     try {
+      console.log('🔐 Attempting login with:', {
+        full_name: formValues.fullName,
+        contact_number: formValues.contactNumber
+      });
+
       const result = await login({
         full_name: formValues.fullName,
         contact_number: formValues.contactNumber
       });
       
+      console.log('📡 Login result:', result);
+      
       if (!result.success) {
-        // Handle login error - you might want to show an error message
-        console.error('Login failed:', result.error);
-        // For now, we'll just stop loading and let user try again
+        console.error('❌ Login failed:', result.error);
+        alert(`Login Failed\n\n${result.error || 'Unknown error occurred'}`);
         setIsLoading(false);
         return;
       }
       
+      console.log('✅ Login successful');
       // Navigation will be handled by the AuthContext based on user role
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        response: error?.response,
+        stack: error?.stack
+      });
+      
+      alert(`Login Error\n\n${error?.message || 'Network request failed. Please check your connection and try again.'}`);
       setIsLoading(false);
     }
   };

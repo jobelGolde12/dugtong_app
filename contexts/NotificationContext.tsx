@@ -1,6 +1,6 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getApiErrorMessage } from '../api/client';
-import * as notificationsApi from '../api/notifications';
+import { notificationApi } from '../api/notifications';
 import { Notification, NotificationFilter } from '../types/notification.types';
 
 // ==================== Types ====================
@@ -51,12 +51,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const response = await notificationsApi.getNotifications(filters || {});
+      const notifications = await notificationApi.getNotifications(filters || {});
 
       setState((prev) => ({
         ...prev,
-        notifications: response.items,
-        unreadCount: response.unread_count,
+        notifications,
+        unreadCount: notifications.filter(n => !n.is_read).length,
         isLoading: false,
       }));
     } catch (error) {
@@ -94,12 +94,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     setState((prev) => ({ ...prev, isRefreshing: true, error: null }));
 
     try {
-      const response = await notificationsApi.getNotifications({});
+      const notifications = await notificationApi.getNotifications({});
 
       setState((prev) => ({
         ...prev,
-        notifications: response.items,
-        unreadCount: response.unread_count,
+        notifications,
+        unreadCount: notifications.filter(n => !n.is_read).length,
         isRefreshing: false,
       }));
     } catch (error) {
@@ -142,7 +142,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }));
 
     try {
-      await notificationsApi.markAsRead(id);
+      await notificationApi.markAsRead(id);
     } catch (error) {
       console.error('Error marking notification as read:', error);
 
@@ -168,7 +168,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }));
 
     try {
-      await notificationsApi.markAllAsRead();
+      await notificationApi.markAllAsRead(''); // TODO: Pass actual user ID
     } catch (error) {
       console.error('Error marking all as read:', error);
 
@@ -196,7 +196,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }));
 
     try {
-      await notificationsApi.deleteNotification(id);
+      await notificationApi.deleteNotification(id);
     } catch (error) {
       console.error('Error deleting notification:', error);
 

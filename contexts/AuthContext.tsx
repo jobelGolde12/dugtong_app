@@ -84,10 +84,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Extract user role from user object or token
   const extractUserRole = (user: User): UserRole | null => {
-    if (Object.values(USER_ROLES).includes(user.role as UserRole)) {
-      return user.role as UserRole;
+    const rawRole =
+      (user as unknown as { role?: string; user_role?: string; userRole?: string }).role ??
+      (user as unknown as { role?: string; user_role?: string; userRole?: string }).user_role ??
+      (user as unknown as { role?: string; user_role?: string; userRole?: string }).userRole ??
+      '';
+
+    if (typeof rawRole !== 'string') {
+      return DEFAULT_ROLE;
     }
-    return DEFAULT_ROLE;
+
+    const normalizedRole = rawRole
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, '_');
+
+    const roleAliases: Record<string, UserRole> = {
+      admin: USER_ROLES.ADMIN,
+      administrator: USER_ROLES.ADMIN,
+      donor: USER_ROLES.DONOR,
+      hospital_staff: USER_ROLES.HOSPITAL_STAFF,
+      hospitalstaff: USER_ROLES.HOSPITAL_STAFF,
+      health_officer: USER_ROLES.HEALTH_OFFICER,
+      healthofficer: USER_ROLES.HEALTH_OFFICER,
+    };
+
+    return roleAliases[normalizedRole] ?? DEFAULT_ROLE;
   };
 
   // Clear all auth state

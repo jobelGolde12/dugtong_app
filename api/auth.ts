@@ -1,13 +1,19 @@
 import * as SecureStore from "expo-secure-store";
-import { db, querySingle } from "../src/lib/turso";
 import { clearTokens, getAccessToken, storeTokens } from "./client";
-import { USER_ROLES, UserRole, DEFAULT_ROLE } from "../constants/roles.constants";
+import { UserRole } from "../constants/roles.constants";
+import { apiClient } from "../src/services/apiClient";
 
 // ==================== Types ====================
 
 export interface LoginRequest {
   full_name: string;
   contact_number: string;
+}
+
+export interface RegisterRequest {
+  full_name: string;
+  contact_number: string;
+  email?: string;
 }
 
 export interface LoginResponse {
@@ -42,219 +48,91 @@ export interface LogoutResponse {
 
 const USER_STORAGE_KEY = "user_data";
 
-const normalizeContactNumber = (value: string): string => {
-  const digits = value.replace(/\D/g, "");
-  if (digits.startsWith("63") && digits.length === 12) return `0${digits.slice(2)}`;
-  if (digits.startsWith("9") && digits.length === 10) return `0${digits}`;
-  return digits;
-};
-
-const buildTokens = (user: User) => {
-  const access_token = `local:${user.id}:${user.role}`;
-  const refresh_token = `refresh:${user.id}`;
-
-  return { access_token, refresh_token, token_type: "bearer" };
-};
-
-const getUserIdFromToken = (token: string | null): number | null => {
-  if (!token) return null;
-  const parts = token.split(":");
-  if (parts.length < 2 || parts[0] !== "local") return null;
-  const id = Number(parts[1]);
-  return Number.isFinite(id) ? id : null;
-};
-
-// ==================== DB Endpoints ====================
+// ==================== API Endpoints ====================
 
 /**
  * Login with name and contact number
  */
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
   try {
-    const fullName = data.full_name.trim();
-    const contactNumber = normalizeContactNumber(data.contact_number);
-
-    console.log("LOGIN ATTEMPT:", fullName, contactNumber);
-
-    if (!fullName || !contactNumber) {
-      throw new Error("Full name and contact number are required.");
+    const response = await apiClient.post<{ success: boolean; data: LoginResponse }>("/auth/login", data, false);
+    
+    if (!response.success || !response.data) {
+      throw new Error("Login failed: Invalid response");
     }
 
-    // Query remote Turso database
-    const result = await db.execute({
-      sql: "SELECT * FROM users WHERE full_name = ? AND contact_number = ?",
-      args: [fullName, contactNumber],
-    });
-
-    console.log("LOGIN QUERY RESULT:", result.rows);
-
-    let userRow = null;
-    if (result.rows.length > 0) {
-      // Assuming the result comes back as an array of arrays when using the web client
-      const columns = result.columns;
-      const firstRow = result.rows[0] as any[];
-      
-      userRow = {};
-      columns.forEach((col, index) => {
-        userRow[col] = firstRow[index];
-      });
-    }
-
-    if (!userRow) {
-      const now = new Date().toISOString();
-      const insertResult = await db.execute({
-        sql: "INSERT INTO users (full_name, contact_number, role, created_at) VALUES (?, ?, ?, ?)",
-        args: [fullName, contactNumber, "donor", now],
-      });
-
-      // Get the inserted user
-      const selectResult = await db.execute({
-        sql: "SELECT * FROM users WHERE id = ?",
-        args: [insertResult.lastInsertRowid],
-      });
-
-      if (selectResult.rows.length > 0) {
-        const columns = selectResult.columns;
-        const firstRow = selectResult.rows[0] as any[];
-        
-        userRow = {};
-        columns.forEach((col, index) => {
-          userRow[col] = firstRow[index];
-        });
-      }
-    }
-
-    if (!userRow) {
-      throw new Error("Unable to login. Please try again.");
-    }
-
-    const user: User = {
-      id: String(userRow.id),
-      role: userRow.role as UserRole,
-      name: userRow.full_name,
-      contact_number: userRow.contact_number,
-      email: userRow.email || undefined,
-      avatar_url: userRow.avatar_url || undefined,
-    };
-
-    const tokens = buildTokens(user);
-
-    await storeTokens(tokens.access_token, tokens.refresh_token);
+    const { access_token, refresh_token, user } = response.data;
+    
+    await storeTokens(access_token, refresh_token);
     await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(user));
 
-    return {
-      ...tokens,
-      user,
-    };
+    return response.data;
   } catch (error: any) {
-    console.error("FULL TURSO ERROR:", JSON.stringify(error));
+    console.error("Login error:", error);
     console.error("STACK:", error?.stack);
-    throw error;
+    throw new Error(error.message || "Login failed");
   }
 };
 
 /**
- * Refresh access token
- */
-export const refreshToken = async (
-  refreshTokenValue: string,
-): Promise<RefreshTokenResponse> => {
-  if (!refreshTokenValue || !refreshTokenValue.startsWith("refresh:")) {
-    throw new Error("Invalid refresh token.");
-  }
-
-  const accessToken = await getAccessToken();
-  const userId = getUserIdFromToken(accessToken);
-
-  if (!userId) {
-    throw new Error("Session expired. Please log in again.");
-  }
-
-  const userRow = await querySingle<Record<string, any>>(
-    "SELECT * FROM users WHERE id = ?",
-    [userId],
-  );
-
-  if (!userRow) {
-    throw new Error("Session expired. Please log in again.");
-  }
-
-  const user: User = {
-    id: String(userRow.id),
-    role: userRow.role as UserRole, // Use role directly from database, bypassing CHECK constraint for app layer
-    name: userRow.full_name,
-    contact_number: userRow.contact_number,
-    email: userRow.email || undefined,
-    avatar_url: userRow.avatar_url || undefined,
-  };
-
-  const tokens = buildTokens(user);
-  await storeTokens(tokens.access_token, tokens.refresh_token);
-
-  return tokens;
-};
-
-/**
- * Logout and revoke tokens
+ * Logout user
  */
 export const logout = async (): Promise<LogoutResponse> => {
-  await clearTokens();
-  await SecureStore.deleteItemAsync(USER_STORAGE_KEY);
+  try {
+    await apiClient.post<LogoutResponse>("/auth/logout", {});
+  } catch (error) {
+    console.error("Logout error:", error);
+  } finally {
+    await clearTokens();
+    await SecureStore.deleteItemAsync(USER_STORAGE_KEY);
+  }
   return { message: "Successfully logged out" };
 };
 
 /**
- * Get current user profile
+ * Get current user from API
  */
 export const getCurrentUser = async (): Promise<User> => {
-  const accessToken = await getAccessToken();
-  const userId = getUserIdFromToken(accessToken);
-
-  if (!userId) {
-    throw new Error("Not authenticated.");
+  try {
+    const response = await apiClient.get<{ user: User }>("/auth/me");
+    return response.user;
+  } catch (error: any) {
+    console.error("Get current user error:", error);
+    throw new Error(error.message || "Failed to get user");
   }
+};
 
-  const userRow = await querySingle<Record<string, any>>(
-    "SELECT * FROM users WHERE id = ?",
-    [userId],
-  );
-
-  if (!userRow) {
-    throw new Error("User not found.");
+/**
+ * Get user by ID
+ */
+export const getUserById = async (userId: string): Promise<User> => {
+  try {
+    const response = await apiClient.get<{ user: User }>(`/users/${userId}`);
+    return response.user;
+  } catch (error: any) {
+    console.error("Get user by ID error:", error);
+    throw new Error(error.message || "Failed to get user");
   }
-
-  return {
-    id: String(userRow.id),
-    role: userRow.role as UserRole, // Use role directly from database, bypassing CHECK constraint for app layer
-    name: userRow.full_name,
-    contact_number: userRow.contact_number,
-    email: userRow.email || undefined,
-    avatar_url: userRow.avatar_url || undefined,
-  };
 };
 
 /**
  * Check if user is authenticated
  */
 export const isAuthenticated = async (): Promise<boolean> => {
-  return !!(await getAccessToken());
+  const token = await getAccessToken();
+  return !!token;
 };
 
 /**
- * Decode token to get user info (client-side only)
+ * Decode JWT token
  */
 export const decodeToken = (token: string): Record<string, unknown> | null => {
   if (!token) return null;
 
-  if (token.startsWith("local:")) {
-    const parts = token.split(":");
-    if (parts.length >= 3) {
-      return { id: parts[1], role: parts[2] };
-    }
-  }
-
   try {
     const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+    
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const jsonPayload = decodeURIComponent(
       atob(base64)
@@ -270,7 +148,7 @@ export const decodeToken = (token: string): Record<string, unknown> | null => {
 };
 
 /**
- * Get user role from storage
+ * Get user role from token
  */
 export const getUserRoleFromStorage = async (): Promise<UserRole | null> => {
   const token = await getAccessToken();
@@ -282,7 +160,15 @@ export const getUserRoleFromStorage = async (): Promise<UserRole | null> => {
   return (decoded as { role?: UserRole }).role ?? null;
 };
 
-export const getCurrentUserId = async (): Promise<number | null> => {
+/**
+ * Get current user ID from token
+ */
+export const getCurrentUserId = async (): Promise<string | null> => {
   const token = await getAccessToken();
-  return getUserIdFromToken(token);
+  if (!token) return null;
+
+  const decoded = decodeToken(token);
+  if (!decoded) return null;
+
+  return (decoded as { userId?: string }).userId ?? null;
 };
