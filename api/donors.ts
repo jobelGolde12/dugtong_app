@@ -16,7 +16,7 @@ export const donorApi = {
     
     if (filter.bloodType) params.append("bloodType", filter.bloodType);
     if (filter.municipality) params.append("municipality", filter.municipality);
-    if (filter.availability) params.append("availability", filter.availability);
+    if (filter.availability) params.append("availability", String(filter.availability));
     if (filter.searchQuery) params.append("search", filter.searchQuery);
     if (filter.page !== undefined) params.append("page", String(filter.page));
     if (filter.page_size !== undefined) params.append("page_size", String(filter.page_size));
@@ -67,20 +67,20 @@ export const donorApi = {
   },
 
   createDonor: async (data: Omit<Donor, "id" | "dateRegistered">): Promise<Donor> => {
-    const response = await apiClient.post<{ donor: Donor }>("/donors", data);
-    return response.donor;
+    const response = await apiClient.post<Donor>("/donors", { data });
+    return response;
   },
 
   updateDonor: async (id: string, data: Partial<Donor>): Promise<Donor> => {
-    const response = await apiClient.put<{ donor: Donor }>(`/donors/${id}`, data);
-    return response.donor;
+    const response = await apiClient.put<Donor>(`/donors/${id}`, { data });
+    return response;
   },
 
   updateAvailability: async (id: string, availabilityStatus: string): Promise<Donor> => {
-    const response = await apiClient.patch<{ donor: Donor }>(`/donors/${id}/availability`, {
+    const response = await apiClient.patch<Donor>(`/donors/${id}/availability`, {
       availabilityStatus,
     });
-    return response.donor;
+    return response;
   },
 
   deleteDonor: async (id: string): Promise<void> => {

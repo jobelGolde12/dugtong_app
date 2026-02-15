@@ -55,15 +55,16 @@ const USER_STORAGE_KEY = "user_data";
  */
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
   try {
-    const response = await apiClient.post<{ success: boolean; data: LoginResponse }>("/auth/login", data, false);
+    const response = await apiClient.post<LoginResponse>("/auth/login", data, false);
     
     console.log('📡 Full API Response:', JSON.stringify(response));
     
-    if (!response.success || !response.data) {
+    // After apiClient unwraps { success: true, data: {...} }, response is the LoginResponse directly
+    if (!response.access_token || !response.user) {
       throw new Error("Login failed: Invalid response");
     }
 
-    const { access_token, refresh_token, user } = response.data;
+    const { access_token, refresh_token, user } = response;
     
     console.log('📡 API Response user:', JSON.stringify(user));
     console.log('📡 API Response user.role:', user.role);
@@ -71,7 +72,7 @@ export const login = async (data: LoginRequest): Promise<LoginResponse> => {
     await storeTokens(access_token, refresh_token);
     await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(user));
 
-    return response.data;
+    return response;
   } catch (error: any) {
     console.error("❌ Login error:", error);
     console.error("❌ Error message:", error?.message);

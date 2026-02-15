@@ -74,10 +74,11 @@ class ApiClient {
       }
 
       const data = await response.json();
-      console.log(`✅ Response Success`);
+      console.log(`✅ Response Success`, data);
       
-      // Unwrap { success: true, data: {...} } responses
-      if (data && data.success && data.data !== undefined) {
+      // Handle { success: true, data: {...} } responses from Next.js API routes
+      // Also handle direct responses like { items: [...] } or { donor: {...} }
+      if (data && data.success === true && data.data !== undefined) {
         return data.data;
       }
       

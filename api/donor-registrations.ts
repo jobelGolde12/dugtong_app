@@ -57,16 +57,17 @@ export const getDonorRegistrations = async (
 export const createDonorRegistration = async (
   data: DonorRegistrationRequest
 ): Promise<DonorRegistrationResponse> => {
-  const response = await apiClient.post<{ success: boolean; data: { registration: DonorRegistrationResponse } }>(
+  const response = await apiClient.post<{ registration: DonorRegistrationResponse }>(
     "/donor-registrations",
     data
   );
 
-  if (!response.success || !response.data?.registration) {
+  // After apiClient unwraps { success: true, data: {...} }, response is { registration: ... }
+  if (!response?.registration) {
     throw new Error("Registration failed: Invalid response");
   }
 
-  return response.data.registration;
+  return response.registration;
 };
 
 export const updateDonorRegistrationStatus = async (

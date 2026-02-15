@@ -214,17 +214,25 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
       Alert.alert('Error', 'No phone number available for this donor.');
       return;
     }
-    const url = `sms:${donor.contactNumber}`;
+    // Clean the contact number (remove dashes, spaces, etc.)
+    const cleanNumber = donor.contactNumber.replace(/[^0-9]/g, '');
+    const smsUrl = `sms:${cleanNumber}`;
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Error', 'Messaging is not available on this device.');
-      }
+      await Linking.openURL(smsUrl);
     } catch (error) {
-      console.error('Failed to open messaging app:', error);
-      Alert.alert('Error', 'Failed to open messaging app.');
+      // Try alternative SMS URL with message field
+      try {
+        const smsWithMessageUrl = `sms:${cleanNumber}?body=`;
+        await Linking.openURL(smsWithMessageUrl);
+      } catch (fallbackError) {
+        console.error('Failed to open messaging app:', fallbackError);
+        // Try to copy number to clipboard as fallback
+        Clipboard.setString(cleanNumber);
+        Alert.alert(
+          'Messaging Unavailable',
+          'Could not open messaging app. Phone number has been copied to clipboard.'
+        );
+      }
     }
   };
 
