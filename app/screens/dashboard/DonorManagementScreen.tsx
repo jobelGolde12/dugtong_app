@@ -1241,32 +1241,34 @@ const DonorManagementScreen: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch both regular donors and pending registrations
-      const [donorResult, pendingRegistrations] = await Promise.all([
-        donorApi.getDonors({
-          bloodType: filters.bloodType || null,
-          municipality: filters.municipality || null,
-          availability: filters.availability,
-          searchQuery: filters.searchQuery,
-        }),
-        filters.showPending 
-          ? donorApi.getPendingRegistrations({
-              status: 'pending',
-              blood_type: filters.bloodType || undefined,
-              municipality: filters.municipality || undefined,
-            })
-          : Promise.resolve([])
-      ]);
-
-      // Combine both results
-      let combinedResults: (Donor | PendingDonorRegistration)[] = [...donorResult.items];
+      console.log('🔍 Fetching donors with filters:', filters);
       
-      if (filters.showPending) {
-        combinedResults = [...combinedResults, ...pendingRegistrations];
+      // Fetch donors
+      const donorResult = await donorApi.getDonors({
+        bloodType: filters.bloodType || null,
+        municipality: filters.municipality || null,
+        availability: filters.availability,
+        searchQuery: filters.searchQuery,
+      });
+
+      console.log('📊 Donor result:', donorResult);
+      console.log('📊 Items:', donorResult?.items);
+      console.log('📊 Items length:', donorResult?.items?.length);
+
+      // Get donors array
+      let combinedResults: Donor[] = [];
+      
+      if (donorResult && donorResult.items && Array.isArray(donorResult.items)) {
+        combinedResults = [...donorResult.items];
+      } else if (Array.isArray(donorResult)) {
+        // Fallback if response is direct array
+        combinedResults = [...donorResult];
       }
 
+      console.log('✅ Combined results:', combinedResults.length);
       setDonors(combinedResults);
     } catch (err: any) {
+      console.error('❌ Error fetching donors:', err);
       setError(err.message || 'Failed to fetch donors');
     } finally {
       setLoading(false);

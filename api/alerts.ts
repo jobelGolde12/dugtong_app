@@ -36,25 +36,27 @@ export const alertApi = {
     const queryString = queryParams.toString();
     const endpoint = `/alerts${queryString ? `?${queryString}` : ""}`;
     
-    const response = await apiClient.get<{ alerts: Alert[] }>(endpoint);
-    return response.alerts;
+    const response = await apiClient.get<{ items: Alert[] }>(endpoint);
+    return response.items || [];
   },
 
   createAlert: async (
-    data: Omit<Alert, "id" | "created_at" | "is_active">
+    alertData: any
   ): Promise<Alert> => {
-    const response = await apiClient.post<{ alert: Alert }>("/alerts", data);
-    return response.alert;
+    // Backend expects { data: {...} } wrapper
+    const response = await apiClient.post<Alert>("/alerts", { data: alertData });
+    return response;
   },
 
-  updateAlert: async (id: string, data: Partial<Alert>): Promise<Alert> => {
-    const response = await apiClient.put<{ alert: Alert }>(`/alerts/${id}`, data);
-    return response.alert;
+  updateAlert: async (id: string, alertData: any): Promise<Alert> => {
+    // Backend expects { data: {...} } wrapper
+    const response = await apiClient.put<Alert>(`/alerts/${id}`, { data: alertData });
+    return response;
   },
 
   deactivateAlert: async (id: string): Promise<Alert> => {
-    const response = await apiClient.patch<{ alert: Alert }>(`/alerts/${id}/deactivate`, {});
-    return response.alert;
+    const response = await apiClient.patch<Alert>(`/alerts/${id}/deactivate`, {});
+    return response;
   },
 
   deleteAlert: async (id: string): Promise<void> => {

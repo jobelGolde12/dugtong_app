@@ -37,6 +37,7 @@ import Animated, {
   withSpring
 } from 'react-native-reanimated';
 import { alertApi } from '../api/alerts';
+import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import SafeScrollView from '../lib/SafeScrollView';
 import { ThemeColors } from '../types/theme';
@@ -416,6 +417,7 @@ const Chip: React.FC<{
 
 const CreateAlertsScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const styles = createStyles(colors);
 
   // Form state
@@ -434,6 +436,7 @@ const CreateAlertsScreen: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAudienceModal, setShowAudienceModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const audienceOptions = [
     { id: 'all', label: 'All Donors', icon: <Globe size={16} color={colors.textSecondary} /> },
@@ -524,33 +527,28 @@ const CreateAlertsScreen: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      const now = new Date().toISOString();
       await alertApi.createAlert({
         title: formData.title,
         message: formData.message,
         alert_type: formData.alertType,
         priority: formData.priority,
-        target_audience: formData.targetAudience,
-        location: formData.location || undefined,
-        schedule_at: formData.sendNow ? undefined : formData.scheduleDate.toISOString(),
-        send_now: formData.sendNow,
+        target_audience: JSON.stringify(formData.targetAudience),
+        location: formData.location || null,
+        schedule_at: formData.sendNow ? null : formData.scheduleDate.toISOString(),
+        send_now: formData.sendNow ? 1 : 0,
+        created_by: user?.id || '',
+        status: formData.sendNow ? 'sent' : 'scheduled',
+        sent_at: formData.sendNow ? now : null,
+        created_at: now,
+        updated_at: now,
       });
 
-      Alert.alert(
-        'Success!',
-        `Alert "${formData.title}" has been created successfully.`,
-        [
-          {
-            text: 'Create Another',
-            onPress: () => resetForm(),
-            style: 'default'
-          },
-          {
-            text: 'View Alerts',
-            onPress: () => { },
-            style: 'cancel'
-          }
-        ]
-      );
+      setShowSuccessModal(true);
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        resetForm();
+      }, 2500);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to create alert. Please try again.');
     } finally {
@@ -933,6 +931,30 @@ const CreateAlertsScreen: React.FC = () => {
                 <Text style={styles.modalDoneText}>Done</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </Modal>
+
+        {/* Success Modal */}
+        <Modal
+          visible={showSuccessModal}
+          transparent
+          animationType="fade"
+        >
+          <View style={styles.successModalOverlay}>
+            <Animated.View 
+              entering={FadeIn.duration(300)}
+              style={styles.successModalContent}
+            >
+              <View style={styles.successIconContainer}>
+                <View style={styles.successIconCircle}>
+                  <Text style={styles.successCheckmark}>✓</Text>
+                </View>
+              </View>
+              <Text style={styles.successTitle}>Alert Sent Successfully!</Text>
+              <Text style={styles.successMessage}>
+                Your alert has been created and will be delivered to the selected audience.
+              </Text>
+            </Animated.View>
           </View>
         </Modal>
       </SafeScrollView>
@@ -1446,6 +1468,50 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.textOnPrimary,
     fontWeight: '600',
     fontSize: 14,
+  },
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  successModalContent: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    width: '90%',
+    maxWidth: 400,
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successCheckmark: {
+    fontSize: 48,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
 
