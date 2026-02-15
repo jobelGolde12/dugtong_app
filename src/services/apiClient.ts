@@ -75,6 +75,12 @@ class ApiClient {
 
       const data = await response.json();
       console.log(`✅ Response Success`);
+      
+      // Unwrap { success: true, data: {...} } responses
+      if (data && data.success && data.data !== undefined) {
+        return data.data;
+      }
+      
       return data;
     } catch (error: any) {
       // Check if it's a network error (backend not running)

@@ -21,19 +21,32 @@ interface GetNotificationsParams {
 
 export const notificationApi = {
   getNotifications: async (params?: GetNotificationsParams): Promise<Notification[]> => {
-    const queryParams = new URLSearchParams();
-    
-    if (params?.user_id) queryParams.append("user_id", params.user_id);
-    if (params?.is_read !== undefined) queryParams.append("is_read", String(params.is_read));
-    if (params?.type) queryParams.append("type", params.type);
-    if (params?.limit) queryParams.append("limit", String(params.limit));
-    if (params?.offset) queryParams.append("offset", String(params.offset));
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (params?.user_id) queryParams.append("user_id", params.user_id);
+      if (params?.is_read !== undefined) queryParams.append("is_read", String(params.is_read));
+      if (params?.type) queryParams.append("type", params.type);
+      if (params?.limit) queryParams.append("limit", String(params.limit));
+      if (params?.offset) queryParams.append("offset", String(params.offset));
 
-    const queryString = queryParams.toString();
-    const endpoint = `/notifications${queryString ? `?${queryString}` : ""}`;
-    
-    const response = await apiClient.get<{ notifications: Notification[] }>(endpoint);
-    return response.notifications;
+      const queryString = queryParams.toString();
+      const endpoint = `/notifications${queryString ? `?${queryString}` : ""}`;
+      
+      const response = await apiClient.get<{ success: boolean; data: { notifications: Notification[] } }>(endpoint);
+      
+      // Handle both response formats
+      if (response?.data?.notifications) {
+        return response.data.notifications;
+      } else if (Array.isArray(response)) {
+        return response;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return [];
+    }
   },
 
   createNotification: async (

@@ -24,12 +24,46 @@ export const donorApi = {
     const queryString = params.toString();
     const endpoint = `/donors${queryString ? `?${queryString}` : ""}`;
     
-    return apiClient.get<GetDonorsResponse>(endpoint);
+    const response = await apiClient.get<GetDonorsResponse>(endpoint);
+    
+    // Map backend fields to frontend fields
+    if (response.items) {
+      response.items = response.items.map((donor: any) => ({
+        id: String(donor.id),
+        name: donor.full_name || donor.name,
+        age: donor.age,
+        sex: donor.sex,
+        bloodType: donor.blood_type || donor.bloodType,
+        contactNumber: donor.contact_number || donor.contactNumber,
+        municipality: donor.municipality,
+        availabilityStatus: donor.availability_status || donor.availabilityStatus,
+        lastDonationDate: donor.last_donation_date || donor.lastDonationDate,
+        dateRegistered: donor.created_at || donor.dateRegistered,
+        notes: donor.notes
+      }));
+    }
+    
+    return response;
   },
 
   getDonor: async (id: string): Promise<Donor> => {
-    const response = await apiClient.get<{ donor: Donor }>(`/donors/${id}`);
-    return response.donor;
+    const response = await apiClient.get<{ donor: any }>(`/donors/${id}`);
+    const donor = response.donor;
+    
+    // Map backend fields to frontend fields
+    return {
+      id: String(donor.id),
+      name: donor.full_name || donor.name,
+      age: donor.age,
+      sex: donor.sex,
+      bloodType: donor.blood_type || donor.bloodType,
+      contactNumber: donor.contact_number || donor.contactNumber,
+      municipality: donor.municipality,
+      availabilityStatus: donor.availability_status || donor.availabilityStatus,
+      lastDonationDate: donor.last_donation_date || donor.lastDonationDate,
+      dateRegistered: donor.created_at || donor.dateRegistered,
+      notes: donor.notes
+    };
   },
 
   createDonor: async (data: Omit<Donor, "id" | "dateRegistered">): Promise<Donor> => {

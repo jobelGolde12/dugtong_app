@@ -1,4 +1,10 @@
 import { apiClient } from "../src/services/apiClient";
+import type {
+  ReportSummary,
+  BloodTypeDistribution,
+  MonthlyDonationData,
+  AvailabilityTrend
+} from "../types/report.types";
 
 export interface ReportData {
   totalDonors: number;
@@ -9,7 +15,52 @@ export interface ReportData {
   donorsByMunicipality: Record<string, number>;
 }
 
-export const reportApi = {
+export const reportsApi = {
+  getSummary: async (): Promise<ReportSummary> => {
+    const data = await apiClient.get<any>("/reports/summary");
+    return {
+      totalDonors: data.totalDonors || 0,
+      availableDonors: data.availableDonors || 0,
+      requestsThisMonth: data.bloodRequestsThisMonth || 0,
+      successfulDonations: data.totalDonations || 0
+    };
+  },
+
+  getBloodTypeDistribution: async (): Promise<BloodTypeDistribution[]> => {
+    const data = await apiClient.get<any[]>("/reports/blood-types");
+    return Array.isArray(data) ? data.map((item: any) => ({
+      bloodType: item.bloodType || item.blood_type,
+      count: item.count || 0
+    })) : [];
+  },
+
+  getMonthlyDonations: async (): Promise<MonthlyDonationData[]> => {
+    try {
+      const data = await apiClient.get<any[]>("/reports/monthly-donations");
+      return Array.isArray(data) ? data.map((item: any) => ({
+        month: item.month,
+        donations: item.donations || item.count || 0
+      })) : [];
+    } catch (error) {
+      console.error('Error fetching monthly donations:', error);
+      return [];
+    }
+  },
+
+  getAvailabilityTrend: async (): Promise<AvailabilityTrend[]> => {
+    try {
+      const data = await apiClient.get<any[]>("/reports/availability-trend");
+      return Array.isArray(data) ? data.map((item: any) => ({
+        date: item.date,
+        availableCount: item.availableCount || item.available_count || 0,
+        unavailableCount: item.unavailableCount || item.unavailable_count || 0
+      })) : [];
+    } catch (error) {
+      console.error('Error fetching availability trend:', error);
+      return [];
+    }
+  },
+
   getReportData: async (params?: {
     start_date?: string;
     end_date?: string;

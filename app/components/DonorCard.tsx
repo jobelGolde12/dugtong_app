@@ -2,8 +2,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Donor } from '@/types/donor.types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { Alert, Animated, Linking, Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions, Clipboard } from 'react-native';
-import { checkPhonePermission, requestPhonePermission, openAppSettings, PermissionStatus } from '../../lib/utils/permissions';
+import { Alert, Animated, Clipboard, Linking, Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { checkPhonePermission, openAppSettings, requestPhonePermission } from '../../lib/utils/permissions';
 import { getPermissionRequestCount, incrementPermissionRequestCount } from '../../lib/utils/storage';
 import PermissionRequestModal from './permissions/PermissionRequestModal';
 import SettingsRedirectModal from './permissions/SettingsRedirectModal';
@@ -288,7 +288,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
                     color: colors.primary
                   }
                 ]}>
-                  {donor.name.charAt(0)}
+                  {donor.name ? donor.name.charAt(0).toUpperCase() : '?'}
                 </Text>
               </View>
 
@@ -312,7 +312,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
                     fontSize: isSmallDevice ? 16 : 18
                   }
                 ]} numberOfLines={1}>
-                  {donor.name}
+                  {donor.name || 'Unknown'}
                 </Text>
 
                 {/* Combined age and gender badge */}
@@ -436,13 +436,6 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
           ]}
         >
           <View style={styles.actionButtonsContainer}>
-            <ActionButton
-              icon="call"
-              label="Call"
-              variant="call"
-              onPress={handleCall}
-              disabled={!isAvailable || !donor.contactNumber}
-            />
             <ActionButton
               icon="chatbubble"
               label="Message"

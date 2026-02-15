@@ -55,37 +55,19 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       setState((prev) => ({
         ...prev,
-        notifications,
-        unreadCount: notifications.filter(n => !n.is_read).length,
+        notifications: Array.isArray(notifications) ? notifications : [],
+        unreadCount: Array.isArray(notifications) ? notifications.filter(n => !n.is_read).length : 0,
         isLoading: false,
       }));
     } catch (error) {
       console.error('Error loading notifications:', error);
-
-      // Check if it's a network error or auth error and handle gracefully
-      const errorMessage = getApiErrorMessage(error);
-      const isNetworkError = error?.message?.includes('Network Error') ||
-        error?.code === 'ERR_NETWORK' ||
-        error?.response?.status === 0;
-      const isAuthError = error?.response?.status === 401;
-
-      // If it's a network or auth error, set empty state instead of error to prevent blocking the app
-      if (isNetworkError || isAuthError) {
-        setState((prev) => ({
-          ...prev,
-          notifications: [],
-          unreadCount: 0,
-          isLoading: false,
-          error: null, // Don't set error for network/auth issues to prevent blocking the app
-        }));
-      } else {
-        // For other errors, set the error state
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: errorMessage,
-        }));
-      }
+      setState((prev) => ({
+        ...prev,
+        notifications: [],
+        unreadCount: 0,
+        isLoading: false,
+        error: null,
+      }));
     }
   }, []);
 
@@ -98,35 +80,17 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       setState((prev) => ({
         ...prev,
-        notifications,
-        unreadCount: notifications.filter(n => !n.is_read).length,
+        notifications: Array.isArray(notifications) ? notifications : [],
+        unreadCount: Array.isArray(notifications) ? notifications.filter(n => !n.is_read).length : 0,
         isRefreshing: false,
       }));
     } catch (error) {
       console.error('Error refreshing notifications:', error);
-
-      // Check if it's a network error or auth error and handle gracefully
-      const errorMessage = getApiErrorMessage(error);
-      const isNetworkError = error?.message?.includes('Network Error') ||
-        error?.code === 'ERR_NETWORK' ||
-        error?.response?.status === 0;
-      const isAuthError = error?.response?.status === 401;
-
-      // If it's a network or auth error, don't set error to prevent blocking the app
-      if (isNetworkError || isAuthError) {
-        setState((prev) => ({
-          ...prev,
-          isRefreshing: false,
-          error: null, // Don't set error for network/auth issues to prevent blocking the app
-        }));
-      } else {
-        // For other errors, set the error state
-        setState((prev) => ({
-          ...prev,
-          isRefreshing: false,
-          error: errorMessage,
-        }));
-      }
+      setState((prev) => ({
+        ...prev,
+        isRefreshing: false,
+        error: null,
+      }));
     }
   }, []);
 
@@ -145,16 +109,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       await notificationApi.markAsRead(id);
     } catch (error) {
       console.error('Error marking notification as read:', error);
-
-      // Check if it's a network error
-      const isNetworkError = error?.message?.includes('Network Error') ||
-        error?.code === 'ERR_NETWORK' ||
-        error?.response?.status === 0;
-
-      // Only revert on non-network errors to prevent blocking the UI
-      if (!isNetworkError) {
-        loadNotifications();
-      }
+      loadNotifications();
     }
   }, [loadNotifications]);
 
@@ -168,19 +123,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }));
 
     try {
-      await notificationApi.markAllAsRead(''); // TODO: Pass actual user ID
+      await notificationApi.markAllAsRead('');
     } catch (error) {
       console.error('Error marking all as read:', error);
-
-      // Check if it's a network error
-      const isNetworkError = error?.message?.includes('Network Error') ||
-        error?.code === 'ERR_NETWORK' ||
-        error?.response?.status === 0;
-
-      // Only revert on non-network errors to prevent blocking the UI
-      if (!isNetworkError) {
-        loadNotifications();
-      }
+      loadNotifications();
     }
   }, [loadNotifications]);
 
@@ -199,16 +145,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       await notificationApi.deleteNotification(id);
     } catch (error) {
       console.error('Error deleting notification:', error);
-
-      // Check if it's a network error
-      const isNetworkError = error?.message?.includes('Network Error') ||
-        error?.code === 'ERR_NETWORK' ||
-        error?.response?.status === 0;
-
-      // Only revert on non-network errors to prevent blocking the UI
-      if (!isNetworkError) {
-        loadNotifications();
-      }
+      loadNotifications();
     }
   }, [state.notifications, loadNotifications]);
 
