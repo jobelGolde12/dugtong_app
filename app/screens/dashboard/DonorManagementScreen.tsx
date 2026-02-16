@@ -42,6 +42,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { donorApi } from '../../../api/donors';
 import { Donor } from '../../../types/donor.types';
 import ErrorToast from '../../components/ErrorToast';
+import DonorDetailsModal from './DonorDetailsModal';
 
 // ============ TYPES & INTERFACES ============
 // Using types from types/donor.types.ts
@@ -1300,7 +1301,7 @@ const DonorManagementScreen: React.FC = () => {
     const isPendingRegistration = 'type' in donor && donor.type === 'registration';
     
     if (isPendingRegistration) {
-      // Format details for pending registration
+      // For pending registrations, keep the Alert for approve/reject actions
       const reg = donor as PendingDonorRegistration;
       Alert.alert(
         'Pending Registration Details',
@@ -1320,7 +1321,6 @@ const DonorManagementScreen: React.FC = () => {
                     try {
                       await donorApi.approveRegistration(String(reg.id));
                       Alert.alert('Success', `${reg.full_name}'s registration has been approved.`);
-                      // Refresh the list to remove the pending registration
                       fetchDonors();
                     } catch (error: any) {
                       Alert.alert('Error', error.message || 'Failed to approve registration.');
@@ -1343,7 +1343,6 @@ const DonorManagementScreen: React.FC = () => {
                     try {
                       await donorApi.rejectRegistration(String(reg.id));
                       Alert.alert('Rejected', `${reg.full_name}'s registration has been rejected.`);
-                      // Refresh the list to remove the pending registration
                       fetchDonors();
                     } catch (error: any) {
                       Alert.alert('Error', error.message || 'Failed to reject registration.');
@@ -1356,13 +1355,8 @@ const DonorManagementScreen: React.FC = () => {
         ]
       );
     } else {
-      // Format details for regular donor
-      const regDonor = donor as Donor;
-      Alert.alert(
-        'Donor Details',
-        `Name: ${regDonor.name}\nBlood Type: ${regDonor.bloodType}\nLocation: ${regDonor.municipality}\nStatus: ${regDonor.availabilityStatus}\nContact: ${regDonor.contactNumber || 'N/A'}\nEmail: undefined\nLast Donation: ${regDonor.lastDonationDate || 'N/A'}\nNotes: ${regDonor.notes || 'None'}`,
-        [{ text: 'OK', style: 'default' }]
-      );
+      // For regular donors, show the detailed modal
+      setSelectedDonor(donor as Donor);
     }
   }, []);
 
@@ -1574,6 +1568,12 @@ const DonorManagementScreen: React.FC = () => {
           onFilterChange={handleFilterChange}
           onApply={() => { }}
           onReset={handleClearFilters}
+        />
+
+        <DonorDetailsModal
+          visible={!!selectedDonor}
+          donor={selectedDonor as Donor | null}
+          onClose={() => setSelectedDonor(null)}
         />
       </Container>
     </TouchableWithoutFeedback>

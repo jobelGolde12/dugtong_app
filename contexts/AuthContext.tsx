@@ -220,8 +220,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         accessToken: null,
       });
 
-      // Navigate to login
-      router.replace('/login');
+      // Navigate to welcome page
+      router.replace('/');
     } catch (error) {
       console.error('Logout error:', error);
 

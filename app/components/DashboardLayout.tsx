@@ -18,6 +18,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface DashboardLayoutProps {
@@ -27,6 +28,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { logout } = useAuth();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -118,10 +120,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: () => router.replace('/') },
+        { 
+          text: 'Logout', 
+          onPress: async () => {
+            await logout();
+          }
+        },
       ]
     );
-  }, []);
+  }, [logout]);
 
   /**
    * Navigation items with icon configuration

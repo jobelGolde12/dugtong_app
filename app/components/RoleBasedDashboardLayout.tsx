@@ -31,7 +31,7 @@ interface RoleBasedDashboardLayoutProps {
 export default function RoleBasedDashboardLayout({ children }: RoleBasedDashboardLayoutProps) {
   const pathname = usePathname();
   const { colors } = useTheme();
-  const { userRole } = useAuth();
+  const { logout, userRole } = useAuth();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -146,10 +146,15 @@ export default function RoleBasedDashboardLayout({ children }: RoleBasedDashboar
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: () => router.replace('/') },
+        { 
+          text: 'Logout', 
+          onPress: async () => {
+            await logout();
+          }
+        },
       ]
     );
-  }, []);
+  }, [logout]);
 
   const navigationItems = getNavigationItemsForRole(userRole);
 

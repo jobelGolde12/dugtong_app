@@ -774,9 +774,25 @@ const StatsGrid: React.FC<StatsGridProps> = ({
       setLoading(true);
       const currentTime = new Date().toISOString();
 
+      console.log(`Fetching stat details for: ${statType}`);
+
       switch (statType) {
         case 'totalDonors': {
-          const response = await donorApi.getDonors({ page: 0, page_size: 50 });
+          console.log('Fetching all donors...');
+          const response = await donorApi.getDonors({ page: 1, page_size: 50 });
+          console.log('Donors response:', response);
+          
+          // Handle null/undefined response - show empty state instead of error
+          if (!response || !response.items) {
+            console.log('No donors data or invalid response');
+            setSelectedStatData({
+              title: 'Total Donors',
+              data: [],
+              totalCount: 0,
+              lastUpdated: currentTime,
+            });
+            break;
+          }
           
           const donors: DonorDetail[] = response.items.map(donor => ({
             id: donor.id,
@@ -798,11 +814,25 @@ const StatsGrid: React.FC<StatsGridProps> = ({
         }
 
         case 'availableDonors': {
+          console.log('Fetching available donors...');
           const response = await donorApi.getDonors({ 
             availability: 'Available',
-            page: 0,
+            page: 1,
             page_size: 50 
           });
+          console.log('Available donors response:', response);
+
+          // Handle null/undefined response - show empty state instead of error
+          if (!response || !response.items) {
+            console.log('No available donors data or invalid response');
+            setSelectedStatData({
+              title: 'Available Donors',
+              data: [],
+              totalCount: 0,
+              lastUpdated: currentTime,
+            });
+            break;
+          }
 
           const donors: DonorDetail[] = response.items.map(donor => ({
             id: donor.id,
@@ -823,13 +853,19 @@ const StatsGrid: React.FC<StatsGridProps> = ({
         }
 
         case 'requestsThisMonth': {
+          console.log('Fetching blood requests...');
           const currentMonth = new Date().toISOString().slice(0, 7);
           const requests = await bloodRequestApi.getBloodRequests({
             month: currentMonth,
             limit: 50,
           });
+          console.log('Blood requests response:', requests);
 
-          const requestDetails: RequestDetail[] = requests.map(req => ({
+          // Handle null/undefined response - show empty state instead of error
+          const requestsData = requests || [];
+          console.log('Blood requests data:', requestsData);
+
+          const requestDetails: RequestDetail[] = requestsData.map((req: any) => ({
             id: req.id,
             patientName: req.requester_name,
             bloodType: req.blood_type,
@@ -842,17 +878,23 @@ const StatsGrid: React.FC<StatsGridProps> = ({
           setSelectedStatData({
             title: 'Requests This Month',
             data: requestDetails,
-            totalCount: requests.length,
+            totalCount: requestsData.length,
             lastUpdated: currentTime,
           });
           break;
         }
 
         case 'successfulDonations': {
+          console.log('Fetching donations...');
           const donations = await donationApi.getDonations({ limit: 50 });
+          console.log('Donations response:', donations);
+
+          // Handle null/undefined response - show empty state instead of error
+          const donationsData = donations || [];
+          console.log('Donations data:', donationsData);
 
           const donationDetails: DonationDetail[] = await Promise.all(
-            donations.map(async (donation) => {
+            donationsData.map(async (donation: any) => {
               try {
                 const donor = await donorApi.getDonor(donation.donor_id);
                 return {
@@ -879,7 +921,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
           setSelectedStatData({
             title: 'Successful Donations',
             data: donationDetails,
-            totalCount: donations.length,
+            totalCount: donationsData.length,
             lastUpdated: currentTime,
           });
           break;
@@ -892,7 +934,30 @@ const StatsGrid: React.FC<StatsGridProps> = ({
       setModalVisible(true);
     } catch (error) {
       console.error('Error fetching stat details:', error);
-      Alert.alert('Error', 'Failed to load detailed data');
+      let errorMessage = 'Failed to load detailed data';
+      
+      if (error instanceof Error) {
+        console.log('Error message:', error.message);
+        if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
+          errorMessage = 'Unable to connect to server. Please check your internet connection.';
+        } else if (error.message === 'Unauthorized' || error.message.includes('401')) {
+          errorMessage = 'Session expired. Please login again.';
+        } else if (error.message === 'Invalid response from server') {
+          errorMessage = 'Server returned invalid data. Please try again.';
+        } else {
+          // Show the actual error message from the server
+          errorMessage = error.message || 'Failed to load detailed data';
+        }
+      } else if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+        if (axiosError.response?.status === 401) {
+          errorMessage = 'Session expired. Please login again.';
+        } else if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        }
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
