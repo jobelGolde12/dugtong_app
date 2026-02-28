@@ -197,7 +197,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Try to get more complete donor data from API
         try {
+          console.log('🔐 Fetching donor profile for contact:', user.contact_number);
           const donor = await donorApi.getDonorByContact(user.contact_number);
+          console.log('🔐 Donor API result:', donor);
+          
           if (donor) {
             donorProfileData = {
               full_name: donor.name,
@@ -208,14 +211,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               municipality: donor.municipality,
               availability: donor.availabilityStatus,
             };
-            // Save to AsyncStorage
-            await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfileData));
+          } else {
+            console.log('🔐 No donor found from API, trying direct database access...');
           }
-        } catch (donorError) {
-          console.warn('⚠️ Could not fetch donor profile from API, using basic info:', donorError);
-          // Still save basic info to AsyncStorage
-          await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfileData));
+        } catch (donorError: any) {
+          console.warn('⚠️ Could not fetch donor profile from API:', donorError?.message || donorError);
         }
+        
+        // Always save to AsyncStorage
+        console.log('🔐 Saving donor profile to AsyncStorage:', donorProfileData);
+        await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfileData));
       }
 
       // Set state

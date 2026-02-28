@@ -67,9 +67,15 @@ export const donorApi = {
   },
 
   getDonorByContact: async (contactNumber: string): Promise<Donor | null> => {
-    const response = await donorApi.getDonors({ searchQuery: contactNumber });
+    const response = await donorApi.getDonors({});
+    // Filter client-side since backend search might not work
+    const cleanNumber = contactNumber.replace(/\D/g, '');
     if (response.items && response.items.length > 0) {
-      return response.items[0];
+      const matched = response.items.find((donor: any) => {
+        const donorNumber = (donor.contactNumber || donor.contact_number || '').replace(/\D/g, '');
+        return donorNumber === cleanNumber;
+      });
+      return matched || null;
     }
     return null;
   },
