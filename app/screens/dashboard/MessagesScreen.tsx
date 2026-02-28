@@ -28,62 +28,6 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { messageApi, Message } from '../../../api/messages';
 
-// ============ DESIGN SYSTEM CONSTANTS ============
-const COLORS = {
-  primary: {
-    50: '#EFF6FF',
-    100: '#DBEAFE',
-    200: '#BFDBFE',
-    300: '#93C5FD',
-    400: '#60A5FA',
-    500: '#3B82F6',
-    600: '#2563EB',
-    700: '#1D4ED8',
-    800: '#1E40AF',
-    900: '#1E3A8A',
-  },
-  neutral: {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
-  },
-  success: {
-    50: '#F0FDF4',
-    100: '#DCFCE7',
-    500: '#22C55E',
-    600: '#16A34A',
-  },
-  warning: {
-    50: '#FFFBEB',
-    100: '#FEF3C7',
-    500: '#F59E0B',
-    600: '#D97706',
-  },
-  error: {
-    50: '#FEF2F2',
-    100: '#FEE2E2',
-    500: '#EF4444',
-    600: '#DC2626',
-  },
-  info: {
-    50: '#EFF6FF',
-    100: '#DBEAFE',
-    500: '#3B82F6',
-    600: '#2563EB',
-  },
-  surface: {
-    light: '#FFFFFF',
-    dark: '#1E1E1E',
-  },
-};
-
 const SPACING = {
   xs: 4,
   sm: 8,
@@ -145,7 +89,8 @@ const Card: React.FC<{
   variant?: 'default' | 'elevated' | 'outlined';
   style?: any;
   isUnread?: boolean;
-}> = ({ children, onPress, variant = 'default', style, isUnread }) => {
+  colors: any;
+}> = ({ children, onPress, variant = 'default', style, isUnread, colors }) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -165,18 +110,18 @@ const Card: React.FC<{
   };
 
   const cardStyles = {
-    backgroundColor: COLORS.surface.light,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
     ...(variant === 'elevated' && SHADOWS.md),
     ...(variant === 'outlined' && {
       borderWidth: 1,
-      borderColor: COLORS.neutral[200],
+      borderColor: colors.border,
       backgroundColor: 'transparent',
     }),
     ...(isUnread && {
       borderLeftWidth: 4,
-      borderLeftColor: COLORS.primary[500],
+      borderLeftColor: colors.primary,
     }),
   };
 
@@ -206,38 +151,34 @@ const Badge: React.FC<{
   children: React.ReactNode;
   variant?: 'success' | 'warning' | 'error' | 'neutral' | 'primary' | 'info';
   size?: 'sm' | 'md';
-}> = ({ children, variant = 'neutral', size = 'md' }) => {
-  const variantConfig = {
-    success: {
-      backgroundColor: COLORS.success[50],
-      textColor: COLORS.success[600],
-    },
-    warning: {
-      backgroundColor: COLORS.warning[50],
-      textColor: COLORS.warning[600],
-    },
-    error: {
-      backgroundColor: COLORS.error[50],
-      textColor: COLORS.error[600],
-    },
-    neutral: {
-      backgroundColor: COLORS.neutral[100],
-      textColor: COLORS.neutral[700],
-    },
-    primary: {
-      backgroundColor: COLORS.primary[50],
-      textColor: COLORS.primary[600],
-    },
-    info: {
-      backgroundColor: COLORS.info[50],
-      textColor: COLORS.info[600],
-    },
+  colors: any;
+}> = ({ children, variant = 'neutral', size = 'md', colors }) => {
+  // Create semi-transparent backgrounds using the theme colors
+  const getBadgeColors = () => {
+    switch (variant) {
+      case 'success':
+        return { backgroundColor: colors.success + '20', textColor: colors.success };
+      case 'warning':
+        return { backgroundColor: colors.warning + '20', textColor: colors.warning };
+      case 'error':
+        return { backgroundColor: colors.error + '20', textColor: colors.error };
+      case 'neutral':
+        return { backgroundColor: colors.surfaceVariant, textColor: colors.textSecondary };
+      case 'primary':
+        return { backgroundColor: colors.primary + '20', textColor: colors.primary };
+      case 'info':
+        return { backgroundColor: colors.info + '20', textColor: colors.info };
+      default:
+        return { backgroundColor: colors.surfaceVariant, textColor: colors.textSecondary };
+    }
   };
+
+  const badgeColors = getBadgeColors();
 
   return (
     <View
       style={{
-        backgroundColor: variantConfig[variant].backgroundColor,
+        backgroundColor: badgeColors.backgroundColor,
         paddingHorizontal: size === 'sm' ? SPACING.sm : SPACING.md,
         paddingVertical: size === 'sm' ? 2 : SPACING.xs,
         borderRadius: RADIUS.full,
@@ -246,7 +187,7 @@ const Badge: React.FC<{
     >
       <Text
         style={{
-          color: variantConfig[variant].textColor,
+          color: badgeColors.textColor,
           fontSize: size === 'sm' ? 10 : 12,
           fontWeight: '600',
         }}
@@ -264,18 +205,20 @@ const Button: React.FC<{
   size?: 'sm' | 'md' | 'lg';
   icon?: React.ReactNode;
   style?: any;
+  colors: any;
 }> = ({
   children,
   onPress,
   variant = 'primary',
   size = 'md',
   icon,
-  style
+  style,
+  colors
 }) => {
   const scale = useSharedValue(1);
   const bgColor = useSharedValue(
-    variant === 'primary' ? COLORS.primary[500] :
-      variant === 'secondary' ? COLORS.neutral[100] :
+    variant === 'primary' ? colors.primary :
+      variant === 'secondary' ? colors.surfaceVariant :
         'transparent'
   );
 
@@ -304,40 +247,40 @@ const Button: React.FC<{
 
   const variantStyles = {
     primary: {
-      backgroundColor: COLORS.primary[500],
-      textColor: '#ffffff',
+      backgroundColor: colors.primary,
+      textColor: colors.textOnPrimary,
     },
     secondary: {
-      backgroundColor: COLORS.neutral[100],
-      textColor: COLORS.neutral[700],
+      backgroundColor: colors.surfaceVariant,
+      textColor: colors.text,
     },
     ghost: {
       backgroundColor: 'transparent',
-      textColor: COLORS.primary[500],
+      textColor: colors.primary,
     },
     outline: {
       backgroundColor: 'transparent',
-      textColor: COLORS.neutral[700],
+      textColor: colors.text,
       borderWidth: 1,
-      borderColor: COLORS.neutral[300],
+      borderColor: colors.border,
     },
   };
 
   const handlePressIn = () => {
     scale.value = withSpring(0.98);
     if (variant === 'primary') {
-      bgColor.value = withTiming(COLORS.primary[600]);
+      bgColor.value = withTiming(colors.primaryVariant || colors.primary);
     } else if (variant === 'secondary') {
-      bgColor.value = withTiming(COLORS.neutral[200]);
+      bgColor.value = withTiming(colors.border);
     }
   };
 
   const handlePressOut = () => {
     scale.value = withSpring(1);
     if (variant === 'primary') {
-      bgColor.value = withTiming(COLORS.primary[500]);
+      bgColor.value = withTiming(colors.primary);
     } else if (variant === 'secondary') {
-      bgColor.value = withTiming(COLORS.neutral[100]);
+      bgColor.value = withTiming(colors.surfaceVariant);
     }
   };
 
@@ -380,6 +323,7 @@ const Button: React.FC<{
 // ============ MAIN SCREEN COMPONENT ============
 export default function MessagesScreen() {
   const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
@@ -388,7 +332,7 @@ export default function MessagesScreen() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterVisible, setFilterVisible] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'read' | 'unread' | 'closed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'read' | 'unread'>('all');
   const searchInputRef = useRef<TextInput>(null);
 
   const loadMessages = useCallback(async () => {
@@ -428,8 +372,6 @@ export default function MessagesScreen() {
         filtered = filtered.filter((msg) => msg.is_read && !msg.is_closed);
       } else if (statusFilter === 'unread') {
         filtered = filtered.filter((msg) => !msg.is_read);
-      } else if (statusFilter === 'closed') {
-        filtered = filtered.filter((msg) => msg.is_closed);
       }
     }
 
@@ -461,15 +403,15 @@ export default function MessagesScreen() {
     }
   };
 
-  const getStatusBadge = (message: Message) => {
+  const getStatusBadge = useCallback((message: Message) => {
     if (message.is_closed) {
-      return <Badge variant="neutral">Closed</Badge>;
+      return <Badge variant="neutral" colors={colors}>Closed</Badge>;
     }
     if (!message.is_read) {
-      return <Badge variant="primary">New</Badge>;
+      return <Badge variant="primary" colors={colors}>New</Badge>;
     }
-    return <Badge variant="success">Read</Badge>;
-  };
+    return <Badge variant="success" colors={colors}>Read</Badge>;
+  }, [colors]);
 
   const getTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -495,11 +437,12 @@ export default function MessagesScreen() {
         variant="elevated"
         isUnread={!item.is_read && !item.is_closed}
         style={styles.messageCard}
+        colors={colors}
       >
         <View style={styles.messageHeader}>
           <View style={styles.senderInfo}>
-            <View style={[styles.avatarContainer, { backgroundColor: COLORS.primary[100] }]}>
-              <Ionicons name="person" size={20} color={COLORS.primary[600]} />
+            <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="person" size={20} color={colors.primary} />
             </View>
             <View style={styles.senderDetails}>
               <Text style={styles.senderName}>
@@ -537,7 +480,7 @@ export default function MessagesScreen() {
             style={styles.readMoreButton}
           >
             <Text style={styles.readMoreText}>Read message</Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.primary[500]} />
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </Card>
@@ -547,8 +490,8 @@ export default function MessagesScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Animated.View entering={FadeInUp.duration(500)}>
-        <View style={[styles.emptyIconContainer, { backgroundColor: COLORS.primary[50] }]}>
-          <Ionicons name="mail-open-outline" size={48} color={COLORS.primary[500]} />
+        <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary + '20' }]}>
+          <Ionicons name="mail-open-outline" size={48} color={colors.primary} />
         </View>
         <Text style={styles.emptyTitle}>No messages yet</Text>
         <Text style={styles.emptySubtitle}>
@@ -564,6 +507,7 @@ export default function MessagesScreen() {
               setStatusFilter('all');
             }}
             style={{ marginTop: SPACING.lg }}
+            colors={colors}
           >
             Clear filters
           </Button>
@@ -573,7 +517,7 @@ export default function MessagesScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: COLORS.neutral[50] }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <View style={styles.headerTop}>
@@ -591,7 +535,7 @@ export default function MessagesScreen() {
             <Ionicons
               name="refresh"
               size={20}
-              color={COLORS.primary[500]}
+              color={colors.primary}
             />
           </TouchableOpacity>
         </View>
@@ -599,11 +543,11 @@ export default function MessagesScreen() {
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color={COLORS.neutral[400]} style={styles.searchIcon} />
+            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
               ref={searchInputRef}
               placeholder="Search messages..."
-              placeholderTextColor={COLORS.neutral[400]}
+              placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               style={styles.searchInput}
@@ -614,7 +558,7 @@ export default function MessagesScreen() {
                 onPress={() => setSearchQuery('')}
                 style={styles.clearButton}
               >
-                <Ionicons name="close-circle" size={20} color={COLORS.neutral[400]} />
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -627,7 +571,7 @@ export default function MessagesScreen() {
           style={styles.filterContainer}
           contentContainerStyle={styles.filterContent}
         >
-          {(['all', 'unread', 'read', 'closed'] as const).map((filter) => (
+          {(['all', 'unread', 'read'] as const).map((filter) => (
             <TouchableOpacity
               key={filter}
               onPress={() => setStatusFilter(filter)}
@@ -652,7 +596,7 @@ export default function MessagesScreen() {
       {/* Messages List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Ionicons name="hourglass-outline" size={48} color={COLORS.primary[500]} />
+          <Ionicons name="hourglass-outline" size={48} color={colors.primary} />
           <Text style={styles.loadingText}>Loading messages...</Text>
         </View>
       ) : filteredMessages.length === 0 ? (
@@ -665,7 +609,7 @@ export default function MessagesScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={COLORS.primary[500]}
+              tintColor={colors.primary}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -689,7 +633,7 @@ export default function MessagesScreen() {
                 onPress={() => setSelectedMessage(null)}
                 style={styles.modalBackButton}
               >
-                <Ionicons name="arrow-back" size={24} color={COLORS.neutral[700]} />
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
               <View>
                 <Text style={styles.modalTitle}>
@@ -706,7 +650,7 @@ export default function MessagesScreen() {
                   onPress={() => selectedMessage && handleMarkAsRead(selectedMessage.id)}
                   style={styles.modalActionButton}
                 >
-                  <Ionicons name="checkmark-done" size={22} color={COLORS.success[600]} />
+                  <Ionicons name="checkmark-done" size={22} color={colors.success} />
                 </TouchableOpacity>
               )}
               {selectedMessage && !selectedMessage.is_closed && (
@@ -714,7 +658,7 @@ export default function MessagesScreen() {
                   onPress={() => selectedMessage && handleCloseMessage(selectedMessage.id)}
                   style={styles.modalActionButton}
                 >
-                  <Ionicons name="checkmark-circle-outline" size={22} color={COLORS.primary[500]} />
+                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -724,7 +668,7 @@ export default function MessagesScreen() {
             <View style={styles.messageDetailCard}>
               <View style={styles.messageDetailHeader}>
                 <View style={styles.senderAvatar}>
-                  <Ionicons name="person" size={32} color={COLORS.primary[600]} />
+                  <Ionicons name="person" size={32} color={colors.primary} />
                 </View>
                 <View style={styles.messageDetailInfo}>
                   <Text style={styles.messageDetailSender}>
@@ -768,6 +712,7 @@ export default function MessagesScreen() {
               onPress={() => setSelectedMessage(null)}
               style={{ flex: 1 }}
               size="lg"
+              colors={colors}
             >
               Close
             </Button>
@@ -778,7 +723,7 @@ export default function MessagesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -786,7 +731,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.lg,
     paddingBottom: SPACING.md,
-    backgroundColor: COLORS.neutral[50],
+    backgroundColor: colors.background,
   },
   headerTop: {
     flexDirection: 'row',
@@ -797,18 +742,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: COLORS.neutral[900],
+    color: colors.text,
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
     marginTop: 4,
   },
   refreshButton: {
     padding: SPACING.sm,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surface.light,
+    backgroundColor: colors.card,
     ...SHADOWS.sm,
   },
   refreshButtonRotating: {
@@ -820,13 +765,13 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface.light,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.lg,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: COLORS.neutral[200],
+    borderColor: colors.border,
   },
   searchIcon: {
     marginRight: SPACING.sm,
@@ -834,7 +779,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: COLORS.neutral[900],
+    color: colors.text,
     paddingVertical: Platform.OS === 'ios' ? SPACING.xs : 0,
   },
   clearButton: {
@@ -850,21 +795,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surface.light,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: COLORS.neutral[200],
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: COLORS.primary[500],
-    borderColor: COLORS.primary[500],
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.neutral[600],
+    color: colors.textSecondary,
   },
   filterChipTextActive: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
   },
   listContainer: {
     flex: 1,
@@ -901,11 +846,11 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.neutral[900],
+    color: colors.text,
   },
   messageDate: {
     fontSize: 12,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
     marginTop: 2,
   },
   badgeContainer: {
@@ -914,12 +859,12 @@ const styles = StyleSheet.create({
   messageSubject: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.neutral[900],
+    color: colors.text,
     marginBottom: SPACING.sm,
   },
   messagePreview: {
     fontSize: 14,
-    color: COLORS.neutral[600],
+    color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: SPACING.md,
   },
@@ -935,7 +880,7 @@ const styles = StyleSheet.create({
   readMoreText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.primary[500],
+    color: colors.primary,
   },
   loadingContainer: {
     flex: 1,
@@ -944,7 +889,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
     marginTop: SPACING.md,
   },
   emptyContainer: {
@@ -964,17 +909,17 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.neutral[900],
+    color: colors.text,
     marginBottom: SPACING.sm,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: COLORS.neutral[50],
+    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -982,9 +927,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    backgroundColor: COLORS.surface.light,
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.neutral[200],
+    borderBottomColor: colors.border,
   },
   modalHeaderLeft: {
     flexDirection: 'row',
@@ -998,11 +943,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.neutral[900],
+    color: colors.text,
   },
   modalSubtitle: {
     fontSize: 13,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
     marginTop: 2,
   },
   modalActions: {
@@ -1016,7 +961,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messageDetailCard: {
-    backgroundColor: COLORS.surface.light,
+    backgroundColor: colors.card,
     margin: SPACING.lg,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
@@ -1028,13 +973,13 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
     paddingBottom: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.neutral[100],
+    borderBottomColor: colors.border,
   },
   senderAvatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary[100],
+    backgroundColor: colors.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.md,
@@ -1045,11 +990,11 @@ const styles = StyleSheet.create({
   messageDetailSender: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.neutral[900],
+    color: colors.text,
   },
   messageDetailDate: {
     fontSize: 13,
-    color: COLORS.neutral[500],
+    color: colors.textSecondary,
     marginTop: 2,
   },
   messageDetailStatus: {
@@ -1061,23 +1006,23 @@ const styles = StyleSheet.create({
   messageDetailSubjectText: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.neutral[900],
+    color: colors.text,
   },
   messageDetailBody: {
-    backgroundColor: COLORS.neutral[50],
+    backgroundColor: colors.surface,
     borderRadius: RADIUS.md,
     padding: SPACING.lg,
   },
   messageDetailContent: {
     fontSize: 16,
-    color: COLORS.neutral[800],
+    color: colors.text,
     lineHeight: 26,
   },
   modalFooter: {
     flexDirection: 'row',
     padding: SPACING.lg,
-    backgroundColor: COLORS.surface.light,
+    backgroundColor: colors.card,
     borderTopWidth: 1,
-    borderTopColor: COLORS.neutral[200],
+    borderTopColor: colors.border,
   },
 });

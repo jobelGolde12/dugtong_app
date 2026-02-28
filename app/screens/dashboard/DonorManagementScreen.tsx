@@ -39,6 +39,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { donorApi } from '../../../api/donors';
 import { Donor } from '../../../types/donor.types';
 import ErrorToast from '../../components/ErrorToast';
@@ -56,59 +57,6 @@ interface DonorFilter {
   showPending: boolean; // Add filter for showing pending registrations
 }
 
-// ============ DESIGN SYSTEM CONSTANTS ============
-const COLORS = {
-  primary: {
-    50: '#f0f9ff',
-    100: '#e0f2fe',
-    200: '#bae6fd',
-    300: '#7dd3fc',
-    400: '#38bdf8',
-    500: '#0ea5e9',
-    600: '#0284c7',
-    700: '#0369a1',
-    800: '#075985',
-    900: '#0c4a6e',
-  },
-  neutral: {
-    50: '#f8fafc',
-    100: '#f1f5f9',
-    200: '#e2e8f0',
-    300: '#cbd5e1',
-    400: '#94a3b8',
-    500: '#64748b',
-    600: '#475569',
-    700: '#334155',
-    800: '#1e293b',
-    900: '#0f172a',
-  },
-  success: {
-    50: '#f0fdf4',
-    100: '#dcfce7',
-    500: '#10b981',
-    600: '#059669',
-  },
-  warning: {
-    50: '#fffbeb',
-    100: '#fef3c7',
-    500: '#f59e0b',
-    600: '#d97706',
-  },
-  error: {
-    50: '#fef2f2',
-    100: '#fee2e2',
-    500: '#ef4444',
-    600: '#dc2626',
-  },
-  surface: {
-    light: '#ffffff',
-    dark: '#1a1a1a',
-  },
-  gradient: {
-    start: '#0ea5e9',
-    end: '#0284c7',
-  }
-} as const;
 
 const SPACING = {
   xs: 4,
@@ -153,7 +101,7 @@ const SHADOWS = {
     elevation: 8,
   },
   xl: {
-    shadowColor: COLORS.primary[500],
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.15,
     shadowRadius: 32,
@@ -171,1049 +119,1051 @@ const RADIUS = {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// ============ REUSABLE COMPONENTS ============
-const Container: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.neutral[50] }}>
-    {children}
-  </SafeAreaView>
-);
-
-const Text = ({ children, style, variant, ...props }: any) => {
-  const variantStyle = variant ? TYPOGRAPHY[variant as keyof typeof TYPOGRAPHY] : {};
-  return (
-    <Animated.Text
-      style={[{ color: COLORS.neutral[900] }, variantStyle, style]}
-      {...props}
-    >
+// ============ MAIN SCREEN COMPONENT ============
+const DonorManagementScreen: React.FC = () => {
+  const { colors } = useTheme();
+  
+  // ============ REUSABLE COMPONENTS ============
+  const Container: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {children}
-    </Animated.Text>
+    </SafeAreaView>
   );
-};
 
-const Card: React.FC<{
-  children: React.ReactNode;
-  onPress?: () => void;
-  variant?: 'default' | 'elevated' | 'outlined';
-  style?: any;
-}> = ({ children, onPress, variant = 'default', style }) => {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    if (onPress) {
-      scale.value = withSpring(0.98);
-    }
-  };
-
-  const handlePressOut = () => {
-    if (onPress) {
-      scale.value = withSpring(1);
-    }
-  };
-
-  const cardStyles = {
-    backgroundColor: COLORS.surface.light,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    ...(variant === 'elevated' && SHADOWS.md),
-    ...(variant === 'outlined' && {
-      borderWidth: 1,
-      borderColor: COLORS.neutral[200],
-      backgroundColor: 'transparent',
-    }),
-  };
-
-  if (onPress) {
+  const CustomText = ({ children, style, variant, ...props }: any) => {
+    const variantStyle = variant ? TYPOGRAPHY[variant as keyof typeof TYPOGRAPHY] : {};
     return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+      <Animated.Text
+        style={[{ color: colors.text }, variantStyle, style]}
+        {...props}
       >
-        <Animated.View style={[cardStyles, animatedStyle, style]}>
-          {children}
-        </Animated.View>
-      </TouchableOpacity>
+        {children}
+      </Animated.Text>
     );
-  }
+  };
 
-  return (
-    <Animated.View style={[cardStyles, style]}>
-      {children}
-    </Animated.View>
-  );
-};
-
-const Button: React.FC<{
-  children?: React.ReactNode;
-  onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'destructive';
-  size?: 'sm' | 'md' | 'lg';
-  fullWidth?: boolean;
-  loading?: boolean;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  style?: any;
-}> = ({
-  children,
-  onPress,
-  variant = 'primary',
-  size = 'md',
-  fullWidth = false,
-  loading = false,
-  leftIcon,
-  rightIcon,
-  style
-}) => {
+  const Card: React.FC<{
+    children: React.ReactNode;
+    onPress?: () => void;
+    variant?: 'default' | 'elevated' | 'outlined';
+    style?: any;
+  }> = ({ children, onPress, variant = 'default', style }) => {
     const scale = useSharedValue(1);
-    const bgColor = useSharedValue(
-      variant === 'primary' ? COLORS.primary[500] :
-        variant === 'secondary' ? COLORS.neutral[100] :
-          variant === 'destructive' ? COLORS.error[50] :
-            'transparent'
-    );
 
-    const buttonStyle = useAnimatedStyle(() => ({
+    const animatedStyle = useAnimatedStyle(() => ({
       transform: [{ scale: scale.value }],
-      backgroundColor: bgColor.value,
     }));
 
-    const sizeStyles = {
-      sm: {
-        paddingVertical: SPACING.xs,
-        paddingHorizontal: SPACING.md,
-        height: 32,
-      },
-      md: {
-        paddingVertical: SPACING.sm,
-        paddingHorizontal: SPACING.lg,
-        height: 40,
-      },
-      lg: {
-        paddingVertical: SPACING.md,
-        paddingHorizontal: SPACING.xl,
-        height: 48,
-      },
-    };
-
-    const variantStyles = {
-      primary: {
-        backgroundColor: COLORS.primary[500],
-        textColor: '#ffffff',
-        borderColor: COLORS.primary[500],
-      },
-      secondary: {
-        backgroundColor: COLORS.neutral[100],
-        textColor: COLORS.neutral[700],
-        borderColor: COLORS.neutral[200],
-      },
-      ghost: {
-        backgroundColor: 'transparent',
-        textColor: COLORS.primary[500],
-        borderColor: 'transparent',
-      },
-      outline: {
-        backgroundColor: 'transparent',
-        textColor: COLORS.neutral[700],
-        borderColor: COLORS.neutral[300],
-      },
-      destructive: {
-        backgroundColor: COLORS.error[50],
-        textColor: COLORS.error[600],
-        borderColor: 'transparent',
-      }
-    };
-
     const handlePressIn = () => {
-      scale.value = withSpring(0.98);
-      if (variant === 'primary') {
-        bgColor.value = withTiming(COLORS.primary[600]);
-      } else if (variant === 'secondary') {
-        bgColor.value = withTiming(COLORS.neutral[200]);
+      if (onPress) {
+        scale.value = withSpring(0.98);
       }
     };
 
     const handlePressOut = () => {
-      scale.value = withSpring(1);
-      if (variant === 'primary') {
-        bgColor.value = withTiming(COLORS.primary[500]);
-      } else if (variant === 'secondary') {
-        bgColor.value = withTiming(COLORS.neutral[100]);
+      if (onPress) {
+        scale.value = withSpring(1);
       }
     };
 
+    const cardStyles = {
+      backgroundColor: colors.card,
+      borderRadius: RADIUS.lg,
+      padding: SPACING.lg,
+      ...(variant === 'elevated' && SHADOWS.md),
+      ...(variant === 'outlined' && {
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: 'transparent',
+      }),
+    };
+
+    if (onPress) {
+      return (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
+          <Animated.View style={[cardStyles, animatedStyle, style]}>
+            {children}
+          </Animated.View>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <Animated.View style={[cardStyles, style]}>
+        {children}
+      </Animated.View>
+    );
+  };
+
+  const Button: React.FC<{
+    children?: React.ReactNode;
+    onPress: () => void;
+    variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'destructive';
+    size?: 'sm' | 'md' | 'lg';
+    fullWidth?: boolean;
+    loading?: boolean;
+    leftIcon?: React.ReactNode;
+    rightIcon?: React.ReactNode;
+    style?: any;
+  }> = ({
+    children,
+    onPress,
+    variant = 'primary',
+    size = 'md',
+    fullWidth = false,
+    loading = false,
+    leftIcon,
+    rightIcon,
+    style
+  }) => {
+      const scale = useSharedValue(1);
+      const bgColor = useSharedValue(
+        variant === 'primary' ? colors.primary :
+          variant === 'secondary' ? colors.surfaceVariant :
+            variant === 'destructive' ? colors.error + '20' :
+              'transparent'
+      );
+
+      const buttonStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        backgroundColor: bgColor.value,
+      }));
+
+      const sizeStyles = {
+        sm: {
+          paddingVertical: SPACING.xs,
+          paddingHorizontal: SPACING.md,
+          height: 32,
+        },
+        md: {
+          paddingVertical: SPACING.sm,
+          paddingHorizontal: SPACING.lg,
+          height: 40,
+        },
+        lg: {
+          paddingVertical: SPACING.md,
+          paddingHorizontal: SPACING.xl,
+          height: 48,
+        },
+      };
+
+      const variantStyles = {
+        primary: {
+          backgroundColor: colors.primary,
+          textColor: colors.textOnPrimary,
+          borderColor: colors.primary,
+        },
+        secondary: {
+          backgroundColor: colors.surfaceVariant,
+          textColor: colors.text,
+          borderColor: colors.border,
+        },
+        ghost: {
+          backgroundColor: 'transparent',
+          textColor: colors.primary,
+          borderColor: 'transparent',
+        },
+        outline: {
+          backgroundColor: 'transparent',
+          textColor: colors.text,
+          borderColor: colors.border,
+        },
+        destructive: {
+          backgroundColor: colors.error + '20',
+          textColor: colors.error,
+          borderColor: 'transparent',
+        }
+      };
+
+      const handlePressIn = () => {
+        scale.value = withSpring(0.98);
+        if (variant === 'primary') {
+          bgColor.value = withTiming(colors.primaryVariant || colors.primary);
+        } else if (variant === 'secondary') {
+          bgColor.value = withTiming(colors.border);
+        }
+      };
+
+      const handlePressOut = () => {
+        scale.value = withSpring(1);
+        if (variant === 'primary') {
+          bgColor.value = withTiming(colors.primary);
+        } else if (variant === 'secondary') {
+          bgColor.value = withTiming(colors.surfaceVariant);
+        }
+      };
+
+      return (
+        <TouchableOpacity
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          disabled={loading}
+          style={[{ width: fullWidth ? '100%' : 'auto' }, style]}
+        >
+          <Animated.View
+            style={[
+              {
+                borderRadius: RADIUS.md,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: SPACING.sm,
+                opacity: loading ? 0.7 : 1,
+                borderWidth: variant === 'outline' ? 1 : 0,
+                borderColor: variantStyles[variant].borderColor,
+              },
+              sizeStyles[size],
+              variant !== 'ghost' && SHADOWS.sm,
+              buttonStyle,
+            ]}
+          >
+            {loading && (
+              <Animated.View entering={FadeIn}>
+                <RefreshCw
+                  size={size === 'sm' ? 14 : 16}
+                  color={variantStyles[variant].textColor}
+                  style={{ opacity: 0.8 }}
+                />
+              </Animated.View>
+            )}
+            {!loading && leftIcon}
+            <CustomText
+              style={{
+                color: variantStyles[variant].textColor,
+                ...TYPOGRAPHY.button,
+                fontSize: size === 'sm' ? 12 : 14,
+              }}
+            >
+              {children}
+            </CustomText>
+            {!loading && rightIcon}
+          </Animated.View>
+        </TouchableOpacity>
+      );
+    };
+
+  const Badge: React.FC<{
+    children: React.ReactNode;
+    variant?: 'success' | 'warning' | 'error' | 'neutral' | 'primary';
+    size?: 'sm' | 'md';
+  }> = ({ children, variant = 'neutral', size = 'md' }) => {
+    const variantConfig = {
+      success: {
+        backgroundColor: colors.success + '20',
+        textColor: colors.success,
+      },
+      warning: {
+        backgroundColor: colors.warning + '20',
+        textColor: colors.warning,
+      },
+      error: {
+        backgroundColor: colors.error + '20',
+        textColor: colors.error,
+      },
+      neutral: {
+        backgroundColor: colors.surfaceVariant,
+        textColor: colors.text,
+      },
+      primary: {
+        backgroundColor: colors.primary + '20',
+        textColor: colors.primary,
+      },
+    };
+
+    return (
+      <View
+        style={{
+          backgroundColor: variantConfig[variant].backgroundColor,
+          paddingHorizontal: size === 'sm' ? SPACING.sm : SPACING.md,
+          paddingVertical: size === 'sm' ? 2 : SPACING.xs,
+          borderRadius: RADIUS.full,
+          alignSelf: 'flex-start',
+        }}
+      >
+        <CustomText
+          style={{
+            color: variantConfig[variant].textColor,
+            fontSize: size === 'sm' ? 10 : 12,
+            fontWeight: '600',
+          }}
+        >
+          {children}
+        </CustomText>
+      </View>
+    );
+  };
+
+  const Chip: React.FC<{
+    label: string;
+    selected: boolean;
+    onPress: () => void;
+    icon?: React.ReactNode;
+  }> = ({ label, selected, onPress, icon }) => {
     return (
       <TouchableOpacity
         onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        disabled={loading}
-        style={[{ width: fullWidth ? '100%' : 'auto' }, style]}
+        style={{
+          paddingHorizontal: SPACING.lg,
+          paddingVertical: SPACING.sm,
+          borderRadius: RADIUS.full,
+          backgroundColor: selected ? colors.primary : colors.surfaceVariant,
+          borderWidth: 1,
+          borderColor: selected ? colors.primary : colors.border,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: SPACING.xs,
+        }}
       >
-        <Animated.View
-          style={[
-            {
-              borderRadius: RADIUS.md,
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'row',
-              gap: SPACING.sm,
-              opacity: loading ? 0.7 : 1,
-              borderWidth: variant === 'outline' ? 1 : 0,
-              borderColor: variantStyles[variant].borderColor,
-            },
-            sizeStyles[size],
-            variant !== 'ghost' && SHADOWS.sm,
-            buttonStyle,
-          ]}
-        >
-          {loading && (
-            <Animated.View entering={FadeIn}>
-              <RefreshCw
-                size={size === 'sm' ? 14 : 16}
-                color={variantStyles[variant].textColor}
-                style={{ opacity: 0.8 }}
-              />
-            </Animated.View>
-          )}
-          {!loading && leftIcon}
-          <Text
-            style={{
-              color: variantStyles[variant].textColor,
-              ...TYPOGRAPHY.button,
-              fontSize: size === 'sm' ? 12 : 14,
-            }}
-          >
-            {children}
-          </Text>
-          {!loading && rightIcon}
-        </Animated.View>
+        {icon}
+        <CustomText style={{
+          color: selected ? colors.textOnPrimary : colors.text,
+          fontWeight: '500',
+          fontSize: 14,
+        }}>
+          {label}
+        </CustomText>
       </TouchableOpacity>
     );
   };
 
-const Badge: React.FC<{
-  children: React.ReactNode;
-  variant?: 'success' | 'warning' | 'error' | 'neutral' | 'primary';
-  size?: 'sm' | 'md';
-}> = ({ children, variant = 'neutral', size = 'md' }) => {
-  const variantConfig = {
-    success: {
-      backgroundColor: COLORS.success[50],
-      textColor: COLORS.success[600],
-    },
-    warning: {
-      backgroundColor: COLORS.warning[50],
-      textColor: COLORS.warning[600],
-    },
-    error: {
-      backgroundColor: COLORS.error[50],
-      textColor: COLORS.error[600],
-    },
-    neutral: {
-      backgroundColor: COLORS.neutral[100],
-      textColor: COLORS.neutral[700],
-    },
-    primary: {
-      backgroundColor: COLORS.primary[50],
-      textColor: COLORS.primary[600],
-    },
-  };
-
-  return (
-    <View
-      style={{
-        backgroundColor: variantConfig[variant].backgroundColor,
-        paddingHorizontal: size === 'sm' ? SPACING.sm : SPACING.md,
-        paddingVertical: size === 'sm' ? 2 : SPACING.xs,
-        borderRadius: RADIUS.full,
-        alignSelf: 'flex-start',
-      }}
-    >
-      <Text
-        style={{
-          color: variantConfig[variant].textColor,
-          fontSize: size === 'sm' ? 10 : 12,
-          fontWeight: '600',
-        }}
-      >
-        {children}
-      </Text>
-    </View>
-  );
-};
-
-const Chip: React.FC<{
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  icon?: React.ReactNode;
-}> = ({ label, selected, onPress, icon }) => {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
+  // ============ SCREEN COMPONENTS ============
+  const Header: React.FC = () => (
+    <Animated.View
+      entering={FadeInDown.duration(500)}
       style={{
         paddingHorizontal: SPACING.lg,
-        paddingVertical: SPACING.sm,
-        borderRadius: RADIUS.full,
-        backgroundColor: selected ? COLORS.primary[500] : COLORS.neutral[100],
-        borderWidth: 1,
-        borderColor: selected ? COLORS.primary[500] : COLORS.neutral[200],
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: SPACING.xs,
+        paddingTop: SPACING.lg,
+        paddingBottom: SPACING.md,
       }}
-    >
-      {icon}
-      <Text style={{
-        color: selected ? '#ffffff' : COLORS.neutral[700],
-        fontWeight: '500',
-        fontSize: 14,
-      }}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-};
-
-// ============ SCREEN COMPONENTS ============
-const Header: React.FC = () => (
-  <Animated.View
-    entering={FadeInDown.duration(500)}
-    style={{
-      paddingHorizontal: SPACING.lg,
-      paddingTop: SPACING.lg,
-      paddingBottom: SPACING.md,
-    }}
-  >
-    <View style={{
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: SPACING.xs,
-    }}>
-      <View>
-        <Text variant="h1" style={{ color: COLORS.neutral[900] }}>
-          Donor Management
-        </Text>
-        <Text
-          variant="body2"
-          style={{
-            color: COLORS.neutral[500],
-            marginTop: SPACING.xs,
-          }}
-        >
-          {SCREEN_WIDTH > 768 ? 'Manage and monitor blood donors in your network' : 'Monitor blood donors'}
-        </Text>
-      </View>
-
-    </View>
-  </Animated.View>
-);
-
-const SearchBar: React.FC<{
-  value: string;
-  onChangeText: (text: string) => void;
-  onFilterPress: () => void;
-}> = ({ value, onChangeText, onFilterPress }) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef<TextInput>(null);
-  const searchWidth = useSharedValue(SCREEN_WIDTH * 0.9);
-
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      () => {
-        if (SCREEN_WIDTH < 768) {
-          searchWidth.value = withTiming(SCREEN_WIDTH * 0.85);
-        }
-      }
-    );
-
-    const keyboardDidHideListener = Keyboard.addListener(
-      'keyboardDidHide',
-      () => {
-        searchWidth.value = withTiming(SCREEN_WIDTH * 0.9);
-      }
-    );
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    width: searchWidth.value,
-  }));
-
-  return (
-    <Animated.View
-      entering={FadeInDown.delay(100).duration(500)}
-      style={[
-        {
-          alignSelf: 'center',
-          marginBottom: SPACING.lg,
-        },
-        animatedStyle
-      ]}
     >
       <View style={{
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: COLORS.surface.light,
-        borderRadius: RADIUS.lg,
-        borderWidth: 1,
-        borderColor: isFocused ? COLORS.primary[300] : COLORS.neutral[200],
-        paddingVertical: SPACING.sm,
-        ...SHADOWS.sm,
+        marginBottom: SPACING.xs,
       }}>
-        <Search size={20} color={COLORS.neutral[400]} style={{ marginLeft: SPACING.md }} />
-        <TextInput
-          ref={inputRef}
-          placeholder="Search..."
-          placeholderTextColor={COLORS.neutral[400]}
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          style={{
-            flex: 1,
-            fontSize: 16,
-            color: COLORS.neutral[900],
-            marginLeft: SPACING.sm,
-            paddingVertical: Platform.OS === 'ios' ? SPACING.xs : 0,
-            paddingRight: value.length > 0 ? SPACING.xs : SPACING.md + 24, // Adjust space for icon or clear button
-          }}
-          clearButtonMode="never" // We are implementing custom clear/filter buttons
-        />
-        {value.length > 0 ? (
-          <TouchableOpacity
-            onPress={() => {
-              onChangeText('');
-              inputRef.current?.blur();
-            }}
+        <View>
+          <CustomText variant="h1" style={{ color: colors.text }}>
+            Donor Management
+          </CustomText>
+          <CustomText
+            variant="body2"
             style={{
-              padding: SPACING.xs,
-              marginRight: SPACING.xs,
+              color: colors.textSecondary,
+              marginTop: SPACING.xs,
             }}
           >
-            <X size={18} color={COLORS.neutral[400]} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={onFilterPress}
-            style={{
-              padding: SPACING.xs,
-              marginRight: SPACING.xs,
-            }}
-          >
-            <SlidersHorizontal size={18} color={COLORS.neutral[500]} />
-          </TouchableOpacity>
-        )}
+            {SCREEN_WIDTH > 768 ? 'Manage and monitor blood donors in your network' : 'Monitor blood donors'}
+          </CustomText>
+        </View>
+
       </View>
     </Animated.View>
   );
-};
 
-const FilterModal: React.FC<{
-  visible: boolean;
-  onClose: () => void;
-  filters: DonorFilter;
-  onFilterChange: (filterName: keyof DonorFilter, value: any) => void;
-  onApply: () => void;
-  onReset: () => void;
-}> = ({ visible, onClose, filters, onFilterChange, onApply, onReset }) => {
-  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
-  const availabilityOptions = [
-    { label: 'Available', value: 'Available' },
-    { label: 'Temporarily Unavailable', value: 'Temporarily Unavailable' },
-    { label: 'Recently Donated', value: 'Recently Donated' },
-  ];
+  const SearchBar: React.FC<{
+    value: string;
+    onChangeText: (text: string) => void;
+    onFilterPress: () => void;
+  }> = ({ value, onChangeText, onFilterPress }) => {
+    const [isFocused, setIsFocused] = useState(false);
+    const inputRef = useRef<TextInput>(null);
+    const searchWidth = useSharedValue(SCREEN_WIDTH * 0.9);
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.neutral[50] }}>
-        <View style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingHorizontal: SPACING.lg,
-          paddingVertical: SPACING.md,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.neutral[200],
-        }}>
-          <Text variant="h2">Filters</Text>
-          <TouchableOpacity onPress={onClose} style={{ padding: SPACING.xs }}>
-            <X size={24} color={COLORS.neutral[500]} />
-          </TouchableOpacity>
-        </View>
+    useEffect(() => {
+      const keyboardDidShowListener = Keyboard.addListener(
+        'keyboardDidShow',
+        () => {
+          if (SCREEN_WIDTH < 768) {
+            searchWidth.value = withTiming(SCREEN_WIDTH * 0.85);
+          }
+        }
+      );
 
-        <ScrollView style={{ flex: 1, padding: SPACING.lg }}>
-          <View style={{ gap: SPACING.xl }}>
-            {/* Blood Type Filter */}
-            <View>
-              <Text variant="h3" style={{ marginBottom: SPACING.md }}>
-                Blood Type
-              </Text>
-              <View style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: SPACING.sm,
-              }}>
-                {bloodTypes.map((type) => (
-                  <Chip
-                    key={type}
-                    label={type}
-                    selected={filters.bloodType === type}
-                    onPress={() => onFilterChange('bloodType',
-                      filters.bloodType === type ? null : type
-                    )}
-                  />
-                ))}
-              </View>
-            </View>
+      const keyboardDidHideListener = Keyboard.addListener(
+        'keyboardDidHide',
+        () => {
+          searchWidth.value = withTiming(SCREEN_WIDTH * 0.9);
+        }
+      );
 
-            {/* Availability Filter */}
-            <View>
-              <Text variant="h3" style={{ marginBottom: SPACING.md }}>
-                Availability Status
-              </Text>
-              <View style={{ gap: SPACING.sm }}>
-                {availabilityOptions.map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    onPress={() => onFilterChange('availability',
-                      filters.availability === option.value ? null : option.value
-                    )}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: SPACING.md,
-                      backgroundColor: COLORS.neutral[50],
-                      borderRadius: RADIUS.md,
-                      borderWidth: 1,
-                      borderColor: filters.availability === option.value
-                        ? COLORS.primary[500]
-                        : COLORS.neutral[200],
-                    }}
-                  >
-                    <View style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      borderWidth: 2,
-                      borderColor: filters.availability === option.value
-                        ? COLORS.primary[500]
-                        : COLORS.neutral[400],
-                      marginRight: SPACING.md,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      {filters.availability === option.value && (
-                        <View style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: 5,
-                          backgroundColor: COLORS.primary[500],
-                        }} />
-                      )}
-                    </View>
-                    <Text style={{ flex: 1, color: COLORS.neutral[700] }}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+      return () => {
+        keyboardDidShowListener.remove();
+        keyboardDidHideListener.remove();
+      };
+    }, []);
 
-            {/* Municipality Filter */}
-            <View>
-              <Text variant="h3" style={{ marginBottom: SPACING.md }}>
-                Location
-              </Text>
-              <TextInput
-                placeholder="Enter city or municipality..."
-                placeholderTextColor={COLORS.neutral[400]}
-                value={filters.municipality || ''}
-                onChangeText={(text) => onFilterChange('municipality', text)}
-                style={{
-                  backgroundColor: COLORS.surface.light,
-                  borderRadius: RADIUS.md,
-                  borderWidth: 1,
-                  borderColor: COLORS.neutral[200],
-                  padding: SPACING.md,
-                  fontSize: 16,
-                  color: COLORS.neutral[900],
-                }}
-              />
-            </View>
+    const animatedStyle = useAnimatedStyle(() => ({
+      width: searchWidth.value,
+    }));
 
-            {/* Show Pending Registrations Toggle */}
-            <View>
-              <Text variant="h3" style={{ marginBottom: SPACING.md }}>
-                Options
-              </Text>
-              <TouchableOpacity
-                onPress={() => onFilterChange('showPending', !filters.showPending)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  padding: SPACING.md,
-                  backgroundColor: COLORS.neutral[50],
-                  borderRadius: RADIUS.md,
-                  borderWidth: 1,
-                  borderColor: filters.showPending ? COLORS.primary[500] : COLORS.neutral[200],
-                }}
-              >
-                <View style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  borderWidth: 2,
-                  borderColor: filters.showPending ? COLORS.primary[500] : COLORS.neutral[400],
-                  marginRight: SPACING.md,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  {filters.showPending && (
-                    <View style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 5,
-                      backgroundColor: COLORS.primary[500],
-                    }} />
-                  )}
-                </View>
-                <Text style={{ flex: 1, color: COLORS.neutral[700] }}>
-                  Show Pending Registrations
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-
-        <View style={{
-          flexDirection: 'row',
-          gap: SPACING.md,
-          padding: SPACING.lg,
-          borderTopWidth: 1,
-          borderTopColor: COLORS.neutral[200],
-        }}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onPress={onReset}
-          >
-            Reset All
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onPress={() => {
-              onApply();
-              onClose();
-            }}
-          >
-            Apply Filters
-          </Button>
-        </View>
-      </SafeAreaView>
-    </Modal>
-  );
-};
-
-const StatsBar: React.FC<{ donors: (Donor | PendingDonorRegistration)[] }> = ({ donors }) => {
-  const regularDonors = donors.filter(d => !('type' in d)) as Donor[];
-  const pendingRegistrations = donors.filter(d => 'type' in d && d.type === 'registration') as PendingDonorRegistration[];
-  
-  const availableDonors = regularDonors.filter(d => d.availabilityStatus === 'Available').length;
-  const totalRegularDonors = regularDonors.length;
-  const recentlyDonated = regularDonors.filter(d => d.availabilityStatus === 'Recently Donated').length;
-
-  const stats = [
-    { 
-      label: 'Total Donors', 
-      value: totalRegularDonors, 
-      color: COLORS.neutral[700],
-      bgColor: COLORS.neutral[50],
-      icon: Users
-    },
-    { 
-      label: 'Available Now', 
-      value: availableDonors, 
-      color: COLORS.success[600],
-      bgColor: COLORS.success[50],
-      icon: CheckCircle
-    },
-    { 
-      label: 'Recently Donated', 
-      value: recentlyDonated, 
-      color: COLORS.warning[600],
-      bgColor: COLORS.warning[50],
-      icon: Clock
-    },
-    { 
-      label: 'Pending Reviews', 
-      value: pendingRegistrations.length, 
-      color: COLORS.warning[600],
-      bgColor: COLORS.warning[50],
-      icon: Clock
-    },
-    {
-      label: 'Availability',
-      value: totalRegularDonors > 0 ? `${((availableDonors / totalRegularDonors) * 100).toFixed(0)}%` : '0%',
-      color: COLORS.primary[600],
-      bgColor: COLORS.primary[50],
-      icon: CheckCircle
-    },
-  ];
-
-  return (
-    <Animated.View
-      entering={FadeInDown.delay(200).duration(500)}
-      style={{
-        paddingHorizontal: SPACING.lg,
-        marginBottom: SPACING.lg,
-      }}
-    >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: SPACING.md }}
+    return (
+      <Animated.View
+        entering={FadeInDown.delay(100).duration(500)}
+        style={[
+          {
+            alignSelf: 'center',
+            marginBottom: SPACING.lg,
+          },
+          animatedStyle
+        ]}
       >
-        {stats.map((stat, index) => (
-          <Animated.View
-            key={stat.label}
-            entering={FadeInDown.delay(300 + index * 100).duration(500)}
-            layout={Layout.springify()}
-          >
-            <Card variant="elevated" style={{ 
-              minWidth: SCREEN_WIDTH > 768 ? 180 : 140,
-              backgroundColor: stat.bgColor,
-              borderWidth: 1,
-              borderColor: stat.color + '20',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              {/* Gradient overlay effect */}
-              <View style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                width: 60,
-                height: 60,
-                backgroundColor: stat.color + '10',
-                borderRadius: 30,
-                marginTop: -20,
-                marginRight: -20,
-              }} />
-              
-              <View style={{ gap: SPACING.xs, position: 'relative', zIndex: 1 }}>
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}>
-                  <Text variant="h2" style={{ 
-                    color: stat.color,
-                    fontWeight: '800',
-                    fontSize: 24
-                  }}>
-                    {stat.value}
-                  </Text>
-                  <View style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: stat.color + '20',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <stat.icon size={16} color={stat.color} />
-                  </View>
-                </View>
-                <Text variant="caption" style={{ 
-                  color: stat.color,
-                  fontWeight: '600',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                  marginTop: 4
-                }}>
-                  {stat.label}
-                </Text>
-              </View>
-            </Card>
-          </Animated.View>
-        ))}
-      </ScrollView>
-    </Animated.View>
-  );
-};
-
-const DonorCard: React.FC<{
-  donor: Donor | PendingDonorRegistration;
-  onViewDetails: (donor: Donor | PendingDonorRegistration) => void;
-  onToggleAvailability: (donor: Donor) => void;
-  onDelete: (donor: Donor) => void;
-  onEdit: (donor: Donor) => void;
-  index: number;
-}> = ({ donor, onViewDetails, onToggleAvailability, onDelete, onEdit, index }) => {
-  // Check if this is a pending registration
-  const isPendingRegistration = 'type' in donor && donor.type === 'registration';
-  
-  // Define status config for both regular donors and pending registrations
-  const statusConfig = {
-    'Available': { color: COLORS.success[500], bgColor: COLORS.success[50], icon: CheckCircle },
-    'Temporarily Unavailable': { color: COLORS.warning[500], bgColor: COLORS.warning[50], icon: XCircle },
-    'Recently Donated': { color: COLORS.neutral[500], bgColor: COLORS.neutral[100], icon: CheckCircle },
-    'pending': { color: COLORS.warning[500], bgColor: COLORS.warning[50], icon: Clock },
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: colors.card,
+          borderRadius: RADIUS.lg,
+          borderWidth: 1,
+          borderColor: isFocused ? colors.primary : colors.border,
+          paddingVertical: SPACING.sm,
+          ...SHADOWS.sm,
+        }}>
+          <Search size={20} color={colors.textSecondary} style={{ marginLeft: SPACING.md }} />
+          <TextInput
+            ref={inputRef}
+            placeholder="Search..."
+            placeholderTextColor={colors.textSecondary}
+            value={value}
+            onChangeText={onChangeText}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            style={{
+              flex: 1,
+              fontSize: 16,
+              color: colors.text,
+              marginLeft: SPACING.sm,
+              paddingVertical: Platform.OS === 'ios' ? SPACING.xs : 0,
+              paddingRight: value.length > 0 ? SPACING.xs : SPACING.md + 24, // Adjust space for icon or clear button
+            }}
+            clearButtonMode="never" // We are implementing custom clear/filter buttons
+          />
+          {value.length > 0 ? (
+            <TouchableOpacity
+              onPress={() => {
+                onChangeText('');
+                inputRef.current?.blur();
+              }}
+              style={{
+                padding: SPACING.xs,
+                marginRight: SPACING.xs,
+              }}
+            >
+              <X size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={onFilterPress}
+              style={{
+                padding: SPACING.xs,
+                marginRight: SPACING.xs,
+              }}
+            >
+              <SlidersHorizontal size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </Animated.View>
+    );
   };
 
-  // Determine status based on donor type
-  let status;
-  if (isPendingRegistration) {
-    status = statusConfig['pending'];
-  } else {
-    status = statusConfig[donor.availabilityStatus] || statusConfig['Available'];
-  }
+  const FilterModal: React.FC<{
+    visible: boolean;
+    onClose: () => void;
+    filters: DonorFilter;
+    onFilterChange: (filterName: keyof DonorFilter, value: any) => void;
+    onApply: () => void;
+    onReset: () => void;
+  }> = ({ visible, onClose, filters, onFilterChange, onApply, onReset }) => {
+    const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+    const availabilityOptions = [
+      { label: 'Available', value: 'Available' },
+      { label: 'Temporarily Unavailable', value: 'Temporarily Unavailable' },
+      { label: 'Recently Donated', value: 'Recently Donated' },
+    ];
 
-  // Extract data based on donor type
-  const name = isPendingRegistration ? donor.full_name : donor.name;
-  const bloodType = isPendingRegistration ? donor.blood_type : donor.bloodType;
-  const municipality = isPendingRegistration ? donor.municipality : donor.municipality;
-  const contactNumber = isPendingRegistration ? donor.contact_number : donor.contactNumber;
-  const availabilityStatus = isPendingRegistration ? 'Pending Review' : donor.availabilityStatus;
-  const lastDonationDate = isPendingRegistration ? undefined : donor.lastDonationDate;
-
-  // Determine if we can perform certain actions based on donor type
-  const canToggleAvailability = !isPendingRegistration;
-  const canEdit = !isPendingRegistration;
-  const canDelete = !isPendingRegistration;
-
-  return (
-    <Animated.View
-      entering={FadeInUp.delay(100 + index * 50).duration(500)}
-      layout={Layout.springify()}
-    >
-      <Card
-        onPress={() => onViewDetails(donor)}
-        variant="elevated"
-        style={{ marginBottom: SPACING.md }}
+    return (
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
       >
-        <View style={{ gap: SPACING.lg }}>
-          {/* Header */}
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
           <View style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            gap: SPACING.md,
+            alignItems: 'center',
+            paddingHorizontal: SPACING.lg,
+            paddingVertical: SPACING.md,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
           }}>
-            <View style={{ flex: 1, gap: SPACING.xs }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
-                <Text variant="h3" style={{ color: COLORS.neutral[900], flex: 1 }}>
-                  {name}
-                </Text>
-                <Badge variant={isPendingRegistration ? "warning" : "primary"} size="sm">
-                  {bloodType}
-                </Badge>
-              </View>
-              <Text variant="body2" style={{ color: COLORS.neutral[500] }}>
-                {municipality} • {contactNumber || 'No contact'}
-              </Text>
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: SPACING.xs }}>
-              {canDelete && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => onDelete(donor as Donor)}
-                  leftIcon={<Trash2 size={16} color={COLORS.error[500]} />}
-                />
-              )}
-              {isPendingRegistration && (
-                <Badge variant="warning" size="sm">
-                  PENDING
-                </Badge>
-              )}
-            </View>
-          </View>
-
-          {/* Status & Info */}
-          <View style={{
-            flexDirection: SCREEN_WIDTH > 768 ? 'row' : 'column',
-            justifyContent: 'space-between',
-            alignItems: SCREEN_WIDTH > 768 ? 'center' : 'flex-start',
-            gap: SPACING.md,
-          }}>
-            <View style={{ flexDirection: 'row', gap: SPACING.md, flexWrap: 'wrap' }}>
-              <TouchableOpacity 
-                onPress={canToggleAvailability ? () => onToggleAvailability(donor as Donor) : undefined}
-                disabled={!canToggleAvailability}
-              >
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: SPACING.md,
-                  paddingVertical: SPACING.xs,
-                  backgroundColor: status.bgColor,
-                  borderRadius: RADIUS.full,
-                  gap: SPACING.xs,
-                }}>
-                  <View style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: status.color,
-                  }} />
-                  <Text style={{
-                    color: status.color,
-                    fontSize: 12,
-                    fontWeight: '600',
-                  }}>
-                    {availabilityStatus}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {lastDonationDate && (
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: SPACING.xs,
-                }}>
-                  <Text variant="caption" style={{ color: COLORS.neutral[400] }}>
-                    Last:
-                  </Text>
-                  <Text variant="caption" style={{ color: COLORS.neutral[600], fontWeight: '500' }}>
-                    {lastDonationDate}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <TouchableOpacity
-              onPress={() => onViewDetails(donor)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: SPACING.xs,
-              }}
-            >
-              <Text style={{
-                color: COLORS.primary[500],
-                fontWeight: '600',
-                fontSize: 14,
-                opacity: 0.8
-              }}>
-                Details
-              </Text>
-              <ChevronRight size={16} color={COLORS.primary[500]} />
+            <CustomText variant="h2">Filters</CustomText>
+            <TouchableOpacity onPress={onClose} style={{ padding: SPACING.xs }}>
+              <X size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-        </View>
-      </Card>
-    </Animated.View>
-  );
-};
 
-const EmptyState: React.FC<{
-  message: string;
-  onAddDonor: () => void;
-}> = ({ message, onAddDonor }) => (
-  <Animated.View
-    entering={FadeIn.duration(600)}
-    style={{
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: SPACING.lg,
-      paddingVertical: SPACING['3xl'],
-      minHeight: 400,
-    }}
-  >
-    <View style={{
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: COLORS.neutral[100],
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: SPACING.lg,
-    }}>
-      <Users size={48} color={COLORS.neutral[400]} />
-    </View>
-    <Text variant="h3" style={{
-      color: COLORS.neutral[700],
-      marginBottom: SPACING.sm,
-      textAlign: 'center',
-    }}>
-      No donors found
-    </Text>
-    <Text variant="body1" style={{
-      color: COLORS.neutral[500],
-      textAlign: 'center',
-      marginBottom: SPACING.lg,
-    }}>
-      {message}
-    </Text>
-    <Button
-      variant="primary"
-      size="lg"
-      onPress={onAddDonor}
-      leftIcon={<Plus size={20} color="#ffffff" />}
-    >
-      Add New Donor
-    </Button>
-  </Animated.View>
-);
+          <ScrollView style={{ flex: 1, padding: SPACING.lg }}>
+            <View style={{ gap: SPACING.xl }}>
+              {/* Blood Type Filter */}
+              <View>
+                <CustomText variant="h3" style={{ marginBottom: SPACING.md }}>
+                  Blood Type
+                </CustomText>
+                <View style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  gap: SPACING.sm,
+                }}>
+                  {bloodTypes.map((type) => (
+                    <Chip
+                      key={type}
+                      label={type}
+                      selected={filters.bloodType === type}
+                      onPress={() => onFilterChange('bloodType',
+                        filters.bloodType === type ? null : type
+                      )}
+                    />
+                  ))}
+                </View>
+              </View>
 
-const LoadingIndicator: React.FC = () => (
-  <Animated.View
-    entering={FadeIn}
-    style={{
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: 400,
-      padding: SPACING['3xl'],
-    }}
-  >
-    <View style={{ alignItems: 'center', gap: SPACING.lg }}>
+              {/* Availability Filter */}
+              <View>
+                <CustomText variant="h3" style={{ marginBottom: SPACING.md }}>
+                  Availability Status
+                </CustomText>
+                <View style={{ gap: SPACING.sm }}>
+                  {availabilityOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      onPress={() => onFilterChange('availability',
+                        filters.availability === option.value ? null : option.value
+                      )}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: SPACING.md,
+                        backgroundColor: colors.surface,
+                        borderRadius: RADIUS.md,
+                        borderWidth: 1,
+                        borderColor: filters.availability === option.value
+                          ? colors.primary
+                          : colors.border,
+                      }}
+                    >
+                      <View style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 2,
+                        borderColor: filters.availability === option.value
+                          ? colors.primary
+                          : colors.textSecondary,
+                        marginRight: SPACING.md,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {filters.availability === option.value && (
+                          <View style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: 5,
+                            backgroundColor: colors.primary,
+                          }} />
+                        )}
+                      </View>
+                      <CustomText style={{ flex: 1, color: colors.text }}>
+                        {option.label}
+                      </CustomText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Municipality Filter */}
+              <View>
+                <CustomText variant="h3" style={{ marginBottom: SPACING.md }}>
+                  Location
+                </CustomText>
+                <TextInput
+                  placeholder="Enter city or municipality..."
+                  placeholderTextColor={colors.textSecondary}
+                  value={filters.municipality || ''}
+                  onChangeText={(text) => onFilterChange('municipality', text)}
+                  style={{
+                    backgroundColor: colors.card,
+                    borderRadius: RADIUS.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    padding: SPACING.md,
+                    fontSize: 16,
+                    color: colors.text,
+                  }}
+                />
+              </View>
+
+              {/* Show Pending Registrations Toggle */}
+              <View>
+                <CustomText variant="h3" style={{ marginBottom: SPACING.md }}>
+                  Options
+                </CustomText>
+                <TouchableOpacity
+                  onPress={() => onFilterChange('showPending', !filters.showPending)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: SPACING.md,
+                    backgroundColor: colors.surface,
+                    borderRadius: RADIUS.md,
+                    borderWidth: 1,
+                    borderColor: filters.showPending ? colors.primary : colors.border,
+                  }}
+                >
+                  <View style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: filters.showPending ? colors.primary : colors.textSecondary,
+                    marginRight: SPACING.md,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    {filters.showPending && (
+                      <View style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: colors.primary,
+                      }} />
+                    )}
+                  </View>
+                  <CustomText style={{ flex: 1, color: colors.text }}>
+                    Show Pending Registrations
+                  </CustomText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={{
+            flexDirection: 'row',
+            gap: SPACING.md,
+            padding: SPACING.lg,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+          }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onPress={onReset}
+            >
+              Reset All
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onPress={() => {
+                onApply();
+                onClose();
+              }}
+            >
+              Apply Filters
+            </Button>
+          </View>
+        </SafeAreaView>
+      </Modal>
+    );
+  };
+
+  const StatsBar: React.FC<{ donors: (Donor | PendingDonorRegistration)[] }> = ({ donors }) => {
+    const regularDonors = donors.filter(d => !('type' in d)) as Donor[];
+    const pendingRegistrations = donors.filter(d => 'type' in d && d.type === 'registration') as PendingDonorRegistration[];
+
+    const availableDonors = regularDonors.filter(d => d.availabilityStatus === 'Available').length;
+    const totalRegularDonors = regularDonors.length;
+    const recentlyDonated = regularDonors.filter(d => d.availabilityStatus === 'Recently Donated').length;
+
+    const stats = [
+      { 
+        label: 'Total Donors', 
+        value: totalRegularDonors, 
+        color: colors.text,
+        bgColor: colors.surface,
+        icon: Users
+      },
+      { 
+        label: 'Available Now', 
+        value: availableDonors, 
+        color: colors.success,
+        bgColor: colors.success + '20',
+        icon: CheckCircle
+      },
+      { 
+        label: 'Recently Donated', 
+        value: recentlyDonated, 
+        color: colors.warning,
+        bgColor: colors.warning + '20',
+        icon: Clock
+      },
+      { 
+        label: 'Pending Reviews', 
+        value: pendingRegistrations.length, 
+        color: colors.warning,
+        bgColor: colors.warning + '20',
+        icon: Clock
+      },
+      {
+        label: 'Availability',
+        value: totalRegularDonors > 0 ? `${((availableDonors / totalRegularDonors) * 100).toFixed(0)}%` : '0%',
+        color: colors.primary,
+        bgColor: colors.primary + '20',
+        icon: CheckCircle
+      },
+    ];
+
+    return (
       <Animated.View
+        entering={FadeInDown.delay(200).duration(500)}
         style={{
-          width: 60,
-          height: 60,
-          borderRadius: 30,
-          backgroundColor: COLORS.primary[50],
-          alignItems: 'center',
-          justifyContent: 'center',
+          paddingHorizontal: SPACING.lg,
+          marginBottom: SPACING.lg,
         }}
       >
-        <RefreshCw
-          size={32}
-          color={COLORS.primary[500]}
-          style={{ opacity: 0.7 }}
-        />
-      </Animated.View>
-      <Text variant="body1" style={{ color: COLORS.neutral[500] }}>
-        Loading donors...
-      </Text>
-    </View>
-  </Animated.View>
-);
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: SPACING.md }}
+        >
+          {stats.map((stat, index) => (
+            <Animated.View
+              key={stat.label}
+              entering={FadeInDown.delay(300 + index * 100).duration(500)}
+              layout={Layout.springify()}
+            >
+              <Card variant="elevated" style={{ 
+                minWidth: SCREEN_WIDTH > 768 ? 180 : 140,
+                backgroundColor: stat.bgColor,
+                borderWidth: 1,
+                borderColor: stat.color + '20',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                {/* Gradient overlay effect */}
+                <View style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: 60,
+                  height: 60,
+                  backgroundColor: stat.color + '10',
+                  borderRadius: 30,
+                  marginTop: -20,
+                  marginRight: -20,
+                }} />
 
-// ============ MAIN SCREEN COMPONENT ============
-const DonorManagementScreen: React.FC = () => {
+                <View style={{ gap: SPACING.xs, position: 'relative', zIndex: 1 }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}>
+                    <CustomText variant="h2" style={{ 
+                      color: stat.color,
+                      fontWeight: '800',
+                      fontSize: 24
+                    }}>
+                      {stat.value}
+                    </CustomText>
+                    <View style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: stat.color + '20',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <stat.icon size={16} color={stat.color} />
+                    </View>
+                  </View>
+                  <CustomText variant="caption" style={{ 
+                    color: stat.color,
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                    marginTop: 4
+                  }}>
+                    {stat.label}
+                  </CustomText>
+                </View>
+              </Card>
+            </Animated.View>
+          ))}
+        </ScrollView>
+      </Animated.View>
+    );
+  };
+
+  const DonorCard: React.FC<{
+    donor: Donor | PendingDonorRegistration;
+    onViewDetails: (donor: Donor | PendingDonorRegistration) => void;
+    onToggleAvailability: (donor: Donor) => void;
+    onDelete: (donor: Donor) => void;
+    onEdit: (donor: Donor) => void;
+    index: number;
+  }> = ({ donor, onViewDetails, onToggleAvailability, onDelete, onEdit, index }) => {
+    // Check if this is a pending registration
+    const isPendingRegistration = 'type' in donor && donor.type === 'registration';
+
+    // Define status config for both regular donors and pending registrations
+    const statusConfig = {
+      'Available': { color: colors.success, bgColor: colors.success + '20', icon: CheckCircle },
+      'Temporarily Unavailable': { color: colors.warning, bgColor: colors.warning + '20', icon: XCircle },
+      'Recently Donated': { color: colors.textSecondary, bgColor: colors.surfaceVariant, icon: CheckCircle },
+      'pending': { color: colors.warning, bgColor: colors.warning + '20', icon: Clock },
+    };
+
+    // Determine status based on donor type
+    let status;
+    if (isPendingRegistration) {
+      status = statusConfig['pending'];
+    } else {
+      status = statusConfig[donor.availabilityStatus] || statusConfig['Available'];
+    }
+
+    // Extract data based on donor type
+    const name = isPendingRegistration ? donor.full_name : donor.name;
+    const bloodType = isPendingRegistration ? donor.blood_type : donor.bloodType;
+    const municipality = isPendingRegistration ? donor.municipality : donor.municipality;
+    const contactNumber = isPendingRegistration ? donor.contact_number : donor.contactNumber;
+    const availabilityStatus = isPendingRegistration ? 'Pending Review' : donor.availabilityStatus;
+    const lastDonationDate = isPendingRegistration ? undefined : donor.lastDonationDate;
+
+    // Determine if we can perform certain actions based on donor type
+    const canToggleAvailability = !isPendingRegistration;
+    const canEdit = !isPendingRegistration;
+    const canDelete = !isPendingRegistration;
+
+    return (
+      <Animated.View
+        entering={FadeInUp.delay(100 + index * 50).duration(500)}
+        layout={Layout.springify()}
+      >
+        <Card
+          onPress={() => onViewDetails(donor)}
+          variant="elevated"
+          style={{ marginBottom: SPACING.md }}
+        >
+          <View style={{ gap: SPACING.lg }}>
+            {/* Header */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: SPACING.md,
+            }}>
+              <View style={{ flex: 1, gap: SPACING.xs }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                  <CustomText variant="h3" style={{ color: colors.text, flex: 1 }}>
+                    {name}
+                  </CustomText>
+                  <Badge variant={isPendingRegistration ? "warning" : "primary"} size="sm">
+                    {bloodType}
+                  </Badge>
+                </View>
+                <CustomText variant="body2" style={{ color: colors.textSecondary }}>
+                  {municipality} • {contactNumber || 'No contact'}
+                </CustomText>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: SPACING.xs }}>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => onDelete(donor as Donor)}
+                    leftIcon={<Trash2 size={16} color={colors.error} />}
+                  />
+                )}
+                {isPendingRegistration && (
+                  <Badge variant="warning" size="sm">
+                    PENDING
+                  </Badge>
+                )}
+              </View>
+            </View>
+
+            {/* Status & Info */}
+            <View style={{
+              flexDirection: SCREEN_WIDTH > 768 ? 'row' : 'column',
+              justifyContent: 'space-between',
+              alignItems: SCREEN_WIDTH > 768 ? 'center' : 'flex-start',
+              gap: SPACING.md,
+            }}>
+              <View style={{ flexDirection: 'row', gap: SPACING.md, flexWrap: 'wrap' }}>
+                <TouchableOpacity 
+                  onPress={canToggleAvailability ? () => onToggleAvailability(donor as Donor) : undefined}
+                  disabled={!canToggleAvailability}
+                >
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: SPACING.md,
+                    paddingVertical: SPACING.xs,
+                    backgroundColor: status.bgColor,
+                    borderRadius: RADIUS.full,
+                    gap: SPACING.xs,
+                  }}>
+                    <View style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: status.color,
+                    }} />
+                    <CustomText style={{
+                      color: status.color,
+                      fontSize: 12,
+                      fontWeight: '600',
+                    }}>
+                      {availabilityStatus}
+                    </CustomText>
+                  </View>
+                </TouchableOpacity>
+
+                {lastDonationDate && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: SPACING.xs,
+                  }}>
+                    <CustomText variant="caption" style={{ color: colors.textSecondary }}>
+                      Last:
+                    </CustomText>
+                    <CustomText variant="caption" style={{ color: colors.text, fontWeight: '500' }}>
+                      {lastDonationDate}
+                    </CustomText>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                onPress={() => onViewDetails(donor)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: SPACING.xs,
+                }}
+              >
+                <CustomText style={{
+                  color: colors.primary,
+                  fontWeight: '600',
+                  fontSize: 14,
+                  opacity: 0.8
+                }}>
+                  Details
+                </CustomText>
+                <ChevronRight size={16} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Card>
+      </Animated.View>
+    );
+  };
+
+  const EmptyState: React.FC<{
+    message: string;
+    onAddDonor: () => void;
+  }> = ({ message, onAddDonor }) => (
+    <Animated.View
+      entering={FadeIn.duration(600)}
+      style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING['3xl'],
+        minHeight: 400,
+      }}
+    >
+      <View style={{
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: colors.surfaceVariant,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: SPACING.lg,
+      }}>
+        <Users size={48} color={colors.textSecondary} />
+      </View>
+      <CustomText variant="h3" style={{
+        color: colors.text,
+        marginBottom: SPACING.sm,
+        textAlign: 'center',
+      }}>
+        No donors found
+      </CustomText>
+      <CustomText variant="body1" style={{
+        color: colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: SPACING.lg,
+      }}>
+        {message}
+      </CustomText>
+      <Button
+        variant="primary"
+        size="lg"
+        onPress={onAddDonor}
+        leftIcon={<Plus size={20} color="#ffffff" />}
+      >
+        Add New Donor
+      </Button>
+    </Animated.View>
+  );
+
+  const LoadingIndicator: React.FC = () => (
+    <Animated.View
+      entering={FadeIn}
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 400,
+        padding: SPACING['3xl'],
+      }}
+    >
+      <View style={{ alignItems: 'center', gap: SPACING.lg }}>
+        <Animated.View
+          style={{
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: colors.primary + '20',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <RefreshCw
+            size={32}
+            color={colors.primary}
+            style={{ opacity: 0.7 }}
+          />
+        </Animated.View>
+        <CustomText variant="body1" style={{ color: colors.textSecondary }}>
+          Loading donors...
+        </CustomText>
+      </View>
+    </Animated.View>
+  );
+
   const [donors, setDonors] = useState<(Donor | PendingDonorRegistration)[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1481,9 +1431,9 @@ const DonorManagementScreen: React.FC = () => {
                 justifyContent: 'space-between',
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
-                  <Text variant="body2" style={{ color: COLORS.neutral[500] }}>
+                  <CustomText variant="body2" style={{ color: colors.textSecondary }}>
                     {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
-                  </Text>
+                  </CustomText>
                   <Badge variant="primary" size="sm">
                     {activeFilterCount}
                   </Badge>
@@ -1550,7 +1500,7 @@ const DonorManagementScreen: React.FC = () => {
                 width: 56,
                 height: 56,
                 borderRadius: 28,
-                backgroundColor: COLORS.primary[500],
+                backgroundColor: colors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
                 ...SHADOWS.lg,
