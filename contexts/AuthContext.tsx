@@ -9,12 +9,23 @@ import { USER_ROLES, UserRole, DEFAULT_ROLE } from '../constants/roles.constants
 
 // ==================== Types ====================
 
+interface DonorProfileData {
+  full_name: string;
+  age: number;
+  sex: string;
+  blood_type: string;
+  contact_number: string;
+  municipality: string;
+  availability: string;
+}
+
 interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   user: User | null;
   userRole: UserRole | null;
   accessToken: string | null;
+  donorProfile: DonorProfileData | null;
 }
 
 interface AuthContextValue extends AuthState {
@@ -45,6 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user: null,
     userRole: null,
     accessToken: null,
+    donorProfile: null,
   });
 
   // Load persisted auth state on mount
@@ -72,6 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           user,
           userRole: role,
           accessToken,
+          donorProfile: null,
         });
       } catch (error) {
         console.warn('User authentication failed, clearing auth state:', error);
@@ -169,23 +182,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       console.log('🔐 Final role:', role);
 
-      // For donor role, fetch and save donor profile
+      // For donor role, create basic donor profile from user data
+      let donorProfileData: DonorProfileData | null = null;
       if (role === USER_ROLES.DONOR) {
+        donorProfileData = {
+          full_name: user.name || '',
+          age: 0,
+          sex: '',
+          blood_type: '',
+          contact_number: user.contact_number,
+          municipality: '',
+          availability: 'Available',
+        };
+        
+        // Try to get more complete donor data from API
         try {
-          const donor = await donorApi.getDonor(user.id);
-          const donorProfile = {
-            full_name: donor.name,
-            age: donor.age,
-            sex: donor.sex,
-            blood_type: donor.bloodType,
-            contact_number: donor.contactNumber,
-            municipality: donor.municipality,
-            availability: donor.availabilityStatus,
-          };
-          await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfile));
-          console.log('🔐 Donor profile saved to AsyncStorage');
+          const donor = await donorApi.getDonorByContact(user.contact_number);
+          if (donor) {
+            donorProfileData = {
+              full_name: donor.name,
+              age: donor.age,
+              sex: donor.sex,
+              blood_type: donor.bloodType,
+              contact_number: donor.contactNumber,
+              municipality: donor.municipality,
+              availability: donor.availabilityStatus,
+            };
+            // Save to AsyncStorage
+            await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfileData));
+          }
         } catch (donorError) {
-          console.warn('⚠️ Could not fetch donor profile:', donorError);
+          console.warn('⚠️ Could not fetch donor profile from API, using basic info:', donorError);
+          // Still save basic info to AsyncStorage
+          await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfileData));
         }
       }
 
@@ -196,6 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user,
         userRole: role,
         accessToken: access_token,
+        donorProfile: donorProfileData,
       });
 
       // Navigate based on role - IMMEDIATELY, no delays
@@ -240,6 +270,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user: null,
         userRole: null,
         accessToken: null,
+        donorProfile: null,
       });
 
       // Navigate to welcome page
@@ -256,6 +287,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user: null,
         userRole: null,
         accessToken: null,
+        donorProfile: null,
       });
 
       router.replace('/login');

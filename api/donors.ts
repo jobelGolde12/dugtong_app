@@ -66,6 +66,14 @@ export const donorApi = {
     };
   },
 
+  getDonorByContact: async (contactNumber: string): Promise<Donor | null> => {
+    const response = await donorApi.getDonors({ searchQuery: contactNumber });
+    if (response.items && response.items.length > 0) {
+      return response.items[0];
+    }
+    return null;
+  },
+
   createDonor: async (data: Omit<Donor, "id" | "dateRegistered">): Promise<Donor> => {
     const response = await apiClient.post<Donor>("/donors", { data });
     return response;

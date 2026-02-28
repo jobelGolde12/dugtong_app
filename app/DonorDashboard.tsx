@@ -18,7 +18,7 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { useRoleAccess } from '../hooks/useRoleAccess';
+import { useAuth } from '../contexts/AuthContext';
 import { USER_ROLES } from '../constants/roles.constants';
 
 interface DonorProfile {
@@ -34,7 +34,7 @@ interface DonorProfile {
 export default function DonorDashboard() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { userRole } = useRoleAccess();
+  const { userRole, donorProfile } = useAuth();
   const [donorData, setDonorData] = useState<DonorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -45,10 +45,23 @@ export default function DonorDashboard() {
   const loadDonorData = useCallback(async () => {
     try {
       setIsRefreshing(true);
+      
+      // First use donorProfile from AuthContext if available
+      if (donorProfile) {
+        setDonorData(donorProfile);
+        setLoading(false);
+        setIsRefreshing(false);
+        return;
+      }
+      
+      // Fallback to AsyncStorage
       const savedData = await AsyncStorage.getItem('donorProfile');
       if (savedData) {
-        const donorProfile = JSON.parse(savedData);
-        setDonorData(donorProfile);
+        const donorProfileData = JSON.parse(savedData);
+        setDonorData(donorProfileData);
+        setLoading(false);
+        setIsRefreshing(false);
+        return;
       }
     } catch (error) {
       console.error('Error loading donor data:', error);
@@ -56,7 +69,7 @@ export default function DonorDashboard() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [donorProfile]);
 
   // Load data on mount
   useEffect(() => {
