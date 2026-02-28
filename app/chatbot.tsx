@@ -658,7 +658,7 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
   },
   contentContainer: {
     flex: 1,
-    justifyContent: 'space-between', // Ensures footer stays at bottom
+    justifyContent: 'space-between',
   },
   header: {
     flexDirection: 'row',
@@ -677,8 +677,8 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
   scrollContent: {
     padding: 20,
     alignItems: 'center',
-    paddingTop: 10, // Reduced top padding
-    paddingBottom: 100, // Add bottom padding for footer space when keyboard closed
+    paddingTop: 10,
+    paddingBottom: 80,
     minHeight: '100%',
   },
   botProfileContainer: {
@@ -802,8 +802,9 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
   },
   footer: {
     flexDirection: 'row',
-    padding: 15,
-    paddingBottom:40,
+    padding: 12,
+    paddingBottom: 10,
+    marginBottom: 90,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,

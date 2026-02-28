@@ -12,6 +12,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { useNotifications } from '../../../contexts/NotificationContext';
 import { Notification } from '../../../types/notification.types';
 
@@ -35,7 +36,9 @@ const NotificationModal: React.FC<{
   onClose: () => void;
   onMarkAsRead: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-}> = ({ visible, notification, onClose, onMarkAsRead, onDelete }) => {
+  colors: any;
+  styles: any;
+}> = ({ visible, notification, onClose, onMarkAsRead, onDelete, colors, styles }) => {
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -66,13 +69,13 @@ const NotificationModal: React.FC<{
     }
   };
 
-  const getIconColor = () => {
-    if (!notification) return '#6B7280';
+  const getTypeColors = () => {
+    if (!notification) return colors.textSecondary;
     switch (notification.type) {
-      case 'Emergency': return '#EF4444';
-      case 'Update': return '#3B82F6';
-      case 'System': return '#10B981';
-      default: return '#6B7280';
+      case 'Emergency': return colors.error;
+      case 'Update': return colors.primary;
+      case 'System': return colors.success;
+      default: return colors.textSecondary;
     }
   };
 
@@ -123,38 +126,38 @@ const NotificationModal: React.FC<{
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <View style={styles.modalIconContainer}>
-                <View style={[styles.modalIcon, { backgroundColor: `${getIconColor()}15` }]}>
+                <View style={[styles.modalIcon, { backgroundColor: getTypeColors() + '15' }]}>
                   <Ionicons
                     name={getIconName() as any}
                     size={24}
-                    color={getIconColor()}
+                    color={getTypeColors()}
                   />
                 </View>
                 <View style={styles.modalHeaderText}>
-                  <Text style={styles.modalTitle}>{notification.title}</Text>
-                  <Text style={styles.modalTime}>{formatDate(notification.created_at)}</Text>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>{notification.title}</Text>
+                  <Text style={[styles.modalTime, { color: colors.textSecondary }]}>{formatDate(notification.created_at)}</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             {/* Modal Body */}
             <View style={styles.modalBody}>
-              <Text style={styles.modalMessage}>{notification.message}</Text>
+              <Text style={[styles.modalMessage, { color: colors.text }]}>{notification.message}</Text>
 
               {/* Action Buttons */}
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={styles.modalActionButton}
+                  style={[styles.modalActionButton, { backgroundColor: colors.error + '15', borderColor: colors.error + '30' }]}
                   onPress={() => {
                     onDelete(notification.id);
                     onClose();
                   }}
                 >
-                  <Ionicons name="trash" size={20} color="#EF4444" />
-                  <Text style={[styles.modalActionText, { color: '#EF4444' }]}>Delete</Text>
+                  <Ionicons name="trash" size={20} color={colors.error} />
+                  <Text style={[styles.modalActionText, { color: colors.error }]}>Delete</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -169,7 +172,9 @@ const NotificationItem: React.FC<{
   notification: Notification;
   onPress: () => void;
   onMarkAsRead: (id: string) => Promise<void>;
-}> = ({ notification, onPress, onMarkAsRead }) => {
+  colors: any;
+  styles: any;
+}> = ({ notification, onPress, onMarkAsRead, colors, styles }) => {
   const handleActionPress = async () => {
     await onMarkAsRead(notification.id);
   };
@@ -183,40 +188,40 @@ const NotificationItem: React.FC<{
     }
   };
 
-  const getIconColor = () => {
+  const getTypeColors = () => {
     switch (notification.type) {
-      case 'Emergency': return '#EF4444';
-      case 'Update': return '#3B82F6';
-      case 'System': return '#10B981';
-      default: return '#6B7280';
+      case 'Emergency': return colors.error;
+      case 'Update': return colors.primary;
+      case 'System': return colors.success;
+      default: return colors.textSecondary;
     }
   };
 
   return (
     <TouchableOpacity
-      style={[styles.notificationItem, !notification.is_read && styles.notificationUnread]}
+      style={[styles.notificationItem, !notification.is_read && { backgroundColor: colors.primary + '08' }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.notificationIconContainer}>
-        <View style={[styles.notificationIcon, { backgroundColor: `${getIconColor()}15` }]}>
+        <View style={[styles.notificationIcon, { backgroundColor: getTypeColors() + '15' }]}>
           <Ionicons
             name={getIconName() as any}
             size={20}
-            color={getIconColor()}
+            color={getTypeColors()}
           />
         </View>
-        {!notification.is_read && <View style={styles.unreadDot} />}
+        {!notification.is_read && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
       </View>
 
       <View style={styles.notificationContent}>
-        <Text style={styles.notificationTitle} numberOfLines={1}>
+        <Text style={[styles.notificationTitle, { color: colors.text }]} numberOfLines={1}>
           {notification.title}
         </Text>
-        <Text style={styles.notificationMessage} numberOfLines={2}>
+        <Text style={[styles.notificationMessage, { color: colors.textSecondary }]} numberOfLines={2}>
           {notification.message}
         </Text>
-        <Text style={styles.notificationTime}>
+        <Text style={[styles.notificationTime, { color: colors.textSecondary }]}>
           {new Date(notification.created_at).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit'
@@ -232,7 +237,7 @@ const NotificationItem: React.FC<{
         <Ionicons
           name={notification.is_read ? 'ellipsis-horizontal' : 'checkmark-circle'}
           size={20}
-          color={notification.is_read ? '#9CA3AF' : '#3B82F6'}
+          color={notification.is_read ? colors.textSecondary : colors.primary}
         />
       </TouchableOpacity>
     </TouchableOpacity>
@@ -240,6 +245,8 @@ const NotificationItem: React.FC<{
 };
 
 const NotificationsScreen: React.FC = () => {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const {
     notifications,
     unreadCount,
@@ -369,19 +376,20 @@ const NotificationsScreen: React.FC = () => {
       key={id}
       style={[
         styles.filterChip,
-        activeFilter === id && styles.filterChipActive
+        { backgroundColor: colors.card, borderColor: colors.border },
+        activeFilter === id && { backgroundColor: colors.primary, borderColor: colors.primary }
       ]}
       onPress={() => setActiveFilter(id)}
     >
       <Ionicons
         name={icon as any}
         size={16}
-        color={activeFilter === id ? '#FFFFFF' : '#6B7280'}
+        color={activeFilter === id ? colors.textOnPrimary : colors.textSecondary}
         style={styles.filterIcon}
       />
       <Text style={[
         styles.filterChipText,
-        activeFilter === id && styles.filterChipTextActive
+        { color: activeFilter === id ? colors.textOnPrimary : colors.textSecondary }
       ]}>
         {label}
       </Text>
@@ -400,14 +408,16 @@ const NotificationsScreen: React.FC = () => {
       notification={item}
       onPress={() => handleNotificationPress(item)}
       onMarkAsRead={markAsRead}
+      colors={colors}
+      styles={styles}
     />
   );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="notifications-off" size={64} color="#D1D5DB" />
-      <Text style={styles.emptyStateTitle}>No notifications</Text>
-      <Text style={styles.emptyStateSubtitle}>
+      <Ionicons name="notifications-off" size={64} color={colors.textSecondary} />
+      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No notifications</Text>
+      <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
         {searchQuery ? 'No results found' : 'You\'re all caught up!'}
       </Text>
     </View>
@@ -421,6 +431,8 @@ const NotificationsScreen: React.FC = () => {
         onClose={() => setModalVisible(false)}
         onMarkAsRead={markAsRead}
         onDelete={deleteNotification}
+        colors={colors}
+        styles={styles}
       />
 
       {/* Animated Header */}
@@ -438,9 +450,9 @@ const NotificationsScreen: React.FC = () => {
       ]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Notifications</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
             {unreadCount > 0 && (
-              <Text style={styles.headerSubtitle}>
+              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
                 {unreadCount} unread {unreadCount === 1 ? 'notification' : 'notifications'}
               </Text>
             )}
@@ -453,7 +465,7 @@ const NotificationsScreen: React.FC = () => {
               <Ionicons
                 name={showSearch ? "close" : "search"}
                 size={22}
-                color="#374151"
+                color={colors.text}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -464,7 +476,7 @@ const NotificationsScreen: React.FC = () => {
               <Ionicons
                 name="checkmark-done"
                 size={22}
-                color={unreadCount === 0 ? '#D1D5DB' : '#374151'}
+                color={unreadCount === 0 ? colors.textSecondary : colors.text}
               />
             </TouchableOpacity>
           </View>
@@ -474,19 +486,19 @@ const NotificationsScreen: React.FC = () => {
       {/* Search Bar */}
       {showSearch && (
         <View style={styles.searchBarContainer}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+          <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search notifications..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus={true}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textSecondary}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -505,8 +517,8 @@ const NotificationsScreen: React.FC = () => {
       {/* Notifications List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <Ionicons name="notifications" size={48} color="#E5E7EB" />
-          <Text style={styles.loadingText}>Loading notifications...</Text>
+          <Ionicons name="notifications" size={48} color={colors.textSecondary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading notifications...</Text>
         </View>
       ) : (
         <FlatList
@@ -535,15 +547,15 @@ const NotificationsScreen: React.FC = () => {
       {/* Quick Actions FAB */}
       {unreadCount > 0 && !showSearch && (
         <TouchableOpacity
-          style={styles.fab}
+          style={[styles.fab, { backgroundColor: colors.primary, borderColor: colors.background }]}
           onPress={() => markAllAsRead()}
         >
           <View style={styles.fabContent}>
-            <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
-            <Text style={styles.fabText}>Mark all read</Text>
+            <Ionicons name="checkmark-done" size={20} color={colors.textOnPrimary} />
+            <Text style={[styles.fabText, { color: colors.textOnPrimary }]}>Mark all read</Text>
           </View>
-          <View style={styles.fabBadge}>
-            <Text style={styles.fabBadgeText}>{unreadCount}</Text>
+          <View style={[styles.fabBadge, { backgroundColor: colors.background, borderColor: colors.primary }]}>
+            <Text style={[styles.fabBadgeText, { color: colors.primary }]}>{unreadCount}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -551,13 +563,13 @@ const NotificationsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
@@ -569,12 +581,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
     marginTop: 2,
   },
   headerActions: {
@@ -585,7 +595,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceVariant,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -597,18 +607,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 44,
     paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     zIndex: 1000,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 44,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   searchIcon: {
     marginRight: 12,
@@ -616,7 +624,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
     paddingVertical: 10,
   },
   filterContainer: {
@@ -629,16 +636,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     height: 40,
     minWidth: 80,
-  },
-  filterChipActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
   },
   filterIcon: {
     marginRight: 6,
@@ -646,10 +647,6 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
-  },
-  filterChipTextActive: {
-    color: '#FFFFFF',
   },
   listContent: {
     paddingBottom: 100,
@@ -666,7 +663,6 @@ const styles = StyleSheet.create({
   groupTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginRight: 12,
@@ -674,16 +670,12 @@ const styles = StyleSheet.create({
   groupLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E7EB',
   },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingHorizontal: 16,
     paddingVertical: 12,
-  },
-  notificationUnread: {
-    backgroundColor: '#F0F9FF',
   },
   notificationIconContainer: {
     position: 'relative',
@@ -703,9 +695,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#3B82F6',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   notificationContent: {
     flex: 1,
@@ -714,25 +704,22 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   notificationMessage: {
     fontSize: 14,
-    color: '#6B7280',
     lineHeight: 18,
     marginBottom: 4,
   },
   notificationTime: {
     fontSize: 12,
-    color: '#9CA3AF',
   },
   notificationAction: {
     padding: 4,
   },
   separator: {
     height: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceVariant,
     marginHorizontal: 16,
   },
   loadingContainer: {
@@ -744,7 +731,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
   },
   emptyState: {
     flex: 1,
@@ -753,53 +739,14 @@ const styles = StyleSheet.create({
     marginTop: 100,
   },
   emptyStateTitle: {
-    marginTop: 16,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 24,
   },
   emptyStateSubtitle: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 16,
-    backgroundColor: '#3B82F6',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  fabContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
     fontSize: 16,
-    marginLeft: 8,
-  },
-  fabBadge: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 8,
-  },
-  fabBadgeText: {
-    color: '#3B82F6',
-    fontSize: 12,
-    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -807,20 +754,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 24,
-    paddingHorizontal: 24,
     paddingBottom: 40,
-    minHeight: 300,
-    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
   modalIconContainer: {
     flexDirection: 'row',
@@ -833,7 +778,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   modalHeaderText: {
     flex: 1,
@@ -841,42 +786,76 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
   },
   modalTime: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 13,
+    marginTop: 2,
   },
   modalCloseButton: {
-    padding: 4,
+    padding: 8,
   },
   modalBody: {
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   modalMessage: {
     fontSize: 16,
-    color: '#4B5563',
     lineHeight: 24,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
   },
   modalActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
   },
   modalActionText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 28,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  fabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fabText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  fabBadge: {
     marginLeft: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  fabBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 
