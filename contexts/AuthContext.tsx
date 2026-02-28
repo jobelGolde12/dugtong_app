@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getCurrentUser, login as loginApi, LoginRequest, logout as logoutApi, User } from '../api/auth';
+import { donorApi } from '../api/donors';
 import { clearTokens, getAccessToken } from '../api/client';
 import { USER_ROLES, UserRole, DEFAULT_ROLE } from '../constants/roles.constants';
 
@@ -166,6 +168,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       console.log('🔐 Final role:', role);
+
+      // For donor role, fetch and save donor profile
+      if (role === USER_ROLES.DONOR) {
+        try {
+          const donor = await donorApi.getDonor(user.id);
+          const donorProfile = {
+            full_name: donor.name,
+            age: donor.age,
+            sex: donor.sex,
+            blood_type: donor.bloodType,
+            contact_number: donor.contactNumber,
+            municipality: donor.municipality,
+            availability: donor.availabilityStatus,
+          };
+          await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfile));
+          console.log('🔐 Donor profile saved to AsyncStorage');
+        } catch (donorError) {
+          console.warn('⚠️ Could not fetch donor profile:', donorError);
+        }
+      }
 
       // Set state
       setState({

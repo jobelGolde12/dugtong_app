@@ -8,6 +8,7 @@ import {
   Text,
   Dimensions,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,9 +18,11 @@ import SettingsSection from './components/SettingsSection';
 import ProfileCard from './components/ProfileCard';
 import ThemeOption from './components/ThemeOption';
 import { useSettings } from '../hooks/useSettings';
+import { useAuth } from '../contexts/AuthContext';
 
 function SettingsScreen() {
   const { mode, setTheme, colors, isDark } = useTheme();
+  const { logout } = useAuth();
   const {
     profile,
     themeOptions,
@@ -29,6 +32,22 @@ function SettingsScreen() {
     isSaving,
     error,
   } = useSettings();
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          onPress: async () => {
+            await logout();
+          }
+        },
+      ]
+    );
+  }, [logout]);
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -104,6 +123,20 @@ function SettingsScreen() {
 
           {/* Additional Settings Sections Placeholder */}
           <View style={styles.spacer} />
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            accessibilityLabel="Logout"
+            accessibilityRole="button"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="log-out-outline" size={22} color="#dc3545" />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+
+          <View style={styles.bottomSpacer} />
         </ScrollView>
       </SafeAreaView>
     </RoleBasedDashboardLayout>
@@ -172,6 +205,25 @@ const createStyles = (colors: any) =>
     },
 
     spacer: {
+      height: 40,
+    },
+    logoutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      backgroundColor: '#dc3545' + '15',
+      borderRadius: 12,
+      marginTop: 8,
+    },
+    logoutText: {
+      color: '#dc3545',
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 10,
+    },
+    bottomSpacer: {
       height: 40,
     },
   });
