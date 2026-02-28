@@ -10,6 +10,8 @@ export interface Message {
   is_closed?: boolean;
   created_at: string;
   sender_name?: string;
+  sender_full_name?: string;
+  sender_contact_number?: string;
 }
 
 interface GetMessagesParams {
@@ -23,7 +25,7 @@ interface GetMessagesParams {
 export const messageApi = {
   getMessages: async (params?: GetMessagesParams): Promise<Message[]> => {
     const queryParams = new URLSearchParams();
-    
+
     if (params?.sender_id) queryParams.append("sender_id", params.sender_id);
     if (params?.recipient_id) queryParams.append("recipient_id", params.recipient_id);
     if (params?.is_read !== undefined) queryParams.append("is_read", String(params.is_read));
@@ -32,9 +34,16 @@ export const messageApi = {
 
     const queryString = queryParams.toString();
     const endpoint = `/messages${queryString ? `?${queryString}` : ""}`;
+
+    const response = await apiClient.get<{ messages?: Message[]; items?: any[] }>(endpoint);
+    // Handle both response formats: { messages: [...] } and { items: [...] }
+    const messages = response.messages || response.items || [];
     
-    const response = await apiClient.get<{ messages: Message[] }>(endpoint);
-    return response.messages || [];
+    // Map sender_full_name to sender_name for consistency
+    return messages.map(msg => ({
+      ...msg,
+      sender_name: msg.sender_name || msg.sender_full_name || `User ${msg.sender_id}`,
+    }));
   },
 
   sendMessage: async (
@@ -47,8 +56,32 @@ export const messageApi = {
   },
 
   markAsRead: async (id: string): Promise<Message> => {
-    const response = await apiClient.patch<{ message: Message }>(`/messages/${id}/read`, {});
-    return response.message;
+    try {
+      const response = await apiClient.patch<{ message?: Message; data?: Message }>(`/messages/${id}/read`, {});
+      const result = response.message || response.data || {} as Message;
+      // Map sender_full_name to sender_name for consistency
+      return {
+        ...result,
+        sender_name: result.sender_name || result.sender_full_name || `User ${result.sender_id}`,
+      };
+    } catch (error) {
+      console.error('Error in markAsRead:', error);
+      throw error;
+    }
+  },
+
+  closeMessage: async (id: string): Promise<Message> => {
+    try {
+      const response = await apiClient.patch<{ message?: Message; data?: Message }>(`/messages/${id}/close`, {});
+      const result = response.message || response.data || {} as Message;
+      return {
+        ...result,
+        sender_name: result.sender_name || result.sender_full_name || `User ${result.sender_id}`,
+      };
+    } catch (error) {
+      console.error('Error in closeMessage:', error);
+      throw error;
+    }
   },
 
   deleteMessage: async (id: string): Promise<void> => {
