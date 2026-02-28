@@ -30,6 +30,7 @@ export default function RoleBasedDashboardLayout({ children }: RoleBasedDashboar
   const { logout, userRole } = useAuth();
   const insets = useSafeAreaInsets();
 
+  const navHeight = BOTTOM_NAV_HEIGHT + insets.bottom;
   const headerTopPadding = Math.max(insets.top + 12, insets.top + 4);
 
   const handleLogout = useCallback(() => {
@@ -118,7 +119,7 @@ export default function RoleBasedDashboardLayout({ children }: RoleBasedDashboar
     }
   };
 
-  const styles = createStyles(colors, insets, headerTopPadding, isDark);
+  const styles = createStyles(colors, insets, headerTopPadding, isDark, navHeight);
 
   return (
     <View style={styles.container}>
@@ -157,7 +158,7 @@ export default function RoleBasedDashboardLayout({ children }: RoleBasedDashboar
   );
 }
 
-const createStyles = (colors: any, insets: any, headerTopPadding: number, isDark: boolean) =>
+const createStyles = (colors: any, insets: any, headerTopPadding: number, isDark: boolean, navHeight: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -202,21 +203,25 @@ const createStyles = (colors: any, insets: any, headerTopPadding: number, isDark
       right: 0,
       zIndex: 10,
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-around',
-      height: 80 + insets.bottom,
+      height: navHeight,
+      paddingTop: insets.bottom > 0 ? 12 : 8,
       backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
     },
     navItemContainer: {
       flex: 1,
       alignItems: 'center',
-      justifyContent: 'center',
-      height: 80,
+      justifyContent: 'flex-start',
+      height: BOTTOM_NAV_HEIGHT,
+      paddingTop: 4,
     },
     navItem: {
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 0,
+      paddingVertical: 4,
       paddingHorizontal: 4,
       borderRadius: 12,
       minWidth: 60,

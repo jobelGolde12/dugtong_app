@@ -849,13 +849,13 @@ const DonorManagementScreen: React.FC = () => {
               entering={FadeInDown.delay(300 + index * 100).duration(500)}
               layout={Layout.springify()}
             >
-              <Card variant="elevated" style={{ 
+              <Card variant="default" style={{
                 minWidth: SCREEN_WIDTH > 768 ? 180 : 140,
                 backgroundColor: stat.bgColor,
-                borderWidth: 1,
-                borderColor: stat.color + '20',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                shadowOpacity: 0,
+                elevation: 0,
               }}>
                 {/* Gradient overlay effect */}
                 <View style={{
