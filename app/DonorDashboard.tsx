@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -32,9 +32,8 @@ interface DonorProfile {
 }
 
 export default function DonorDashboard() {
-  const router = useRouter();
   const { colors } = useTheme();
-  const { userRole, donorProfile } = useAuth();
+  const { userRole, donorProfile, user, logout } = useAuth();
   const [donorData, setDonorData] = useState<DonorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -63,10 +62,13 @@ export default function DonorDashboard() {
         setIsRefreshing(false);
         return;
       }
+      
+      // If no profile found, set loading to false
+      setLoading(false);
     } catch (error) {
       console.error('Error loading donor data:', error);
-    } finally {
       setLoading(false);
+    } finally {
       setIsRefreshing(false);
     }
   }, [donorProfile]);
@@ -76,34 +78,57 @@ export default function DonorDashboard() {
     loadDonorData();
   }, [loadDonorData]);
 
-  const handleClearData = async () => {
-    Alert.alert(
-      'Clear Data',
-      'Are you sure you want to clear your donor data?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.removeItem('donorProfile');
-            setDonorData(null);
-          }
-        }
-      ]
-    );
-  };
-
   const handleSendMessage = async () => {
     if (!message.trim()) {
       Alert.alert('Error', 'Please enter a message.');
       return;
     }
+    
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in to send a message.');
+      return;
+    }
+
     setIsSending(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    Alert.alert('Success', 'Message sent to admin.');
-    setMessage('');
-    setIsSending(false);
+    
+    try {
+      // Get token directly
+      const { getAccessToken } = await import('../api/client');
+      const token = await getAccessToken();
+      
+      const response = await fetch('https://dugtung-next.vercel.app/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          data: {
+            sender_id: user.id,
+            subject: 'Donor Inquiry',
+            content: message.trim(),
+          }
+        }),
+      });
+      
+      const result = await response.json();
+      console.log('Message send result:', result);
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send message');
+      }
+      
+      Alert.alert('Success', 'Message sent to admin.');
+      setMessage('');
+      
+      Alert.alert('Success', 'Message sent to admin.');
+      setMessage('');
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', error.message || 'Failed to send message. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // Show loading while data loads
@@ -163,6 +188,7 @@ export default function DonorDashboard() {
             style={styles.container} 
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
@@ -176,9 +202,20 @@ export default function DonorDashboard() {
               <View style={styles.headerTop}>
                 <TouchableOpacity 
                   style={styles.backButton}
-                  onPress={async () => {
-                    await AsyncStorage.removeItem('donorProfile');
-                    router.replace('/');
+                  onPress={() => {
+                    Alert.alert(
+                      'Logout',
+                      'Are you sure you want to logout?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { 
+                          text: 'Logout', 
+                          onPress: async () => {
+                            await logout();
+                          }
+                        },
+                      ]
+                    );
                   }}
                 >
                   <Ionicons name="chevron-back" size={24} color="#64748B" />
@@ -290,8 +327,9 @@ export default function DonorDashboard() {
                   value={message}
                   onChangeText={setMessage}
                   editable={!isSending}
+                  pointerEvents="box-only"
                 />
-                <View style={styles.messageInputBorder} />
+                <View style={styles.messageInputBorder} pointerEvents="none" />
               </View>
 
               <TouchableOpacity 
@@ -310,25 +348,6 @@ export default function DonorDashboard() {
                     <Text style={styles.sendButtonText}>Send Message</Text>
                   </>
                 )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => router.push('/register')}
-              >
-                <Ionicons name="create-outline" size={20} color="#6C63FF" />
-                <Text style={styles.actionButtonText}>Edit Profile</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionButton, styles.dangerButton]}
-                onPress={handleClearData}
-              >
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                <Text style={[styles.actionButtonText, styles.dangerButtonText]}>Clear Data</Text>
               </TouchableOpacity>
             </View>
 
@@ -604,6 +623,7 @@ const styles = StyleSheet.create({
   messageInputContainer: {
     position: 'relative',
     marginBottom: 20,
+    zIndex: 1,
   },
   messageInput: {
     minHeight: 120,
@@ -614,6 +634,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderRadius: 16,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    zIndex: 2,
   },
   messageInputBorder: {
     position: 'absolute',
@@ -625,6 +646,7 @@ const styles = StyleSheet.create({
     borderColor: '#6C63FF',
     borderRadius: 16,
     opacity: 0,
+    pointerEvents: 'none',
   },
   sendButton: {
     backgroundColor: '#6C63FF',

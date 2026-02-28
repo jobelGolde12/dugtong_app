@@ -3,6 +3,7 @@ import { USER_ROLES, UserRole } from '../../constants/roles.constants';
 export const getNavigationItemsForRole = (userRole: UserRole | null) => {
   const baseItems = [
     { label: 'Find Donor', path: '/search', icon: 'search', iconOutline: 'search-outline', allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.HOSPITAL_STAFF, USER_ROLES.HEALTH_OFFICER] },
+    { label: 'Messages', path: '/messages', icon: 'mail', iconOutline: 'mail-outline', allowedRoles: [USER_ROLES.ADMIN] },
     { label: 'Reports', path: '/reports', icon: 'stats-chart', iconOutline: 'stats-chart-outline', allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.HEALTH_OFFICER] },
     { label: 'Donor Management', path: '/donor-management', icon: 'people', iconOutline: 'people-outline', allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.HOSPITAL_STAFF] },
     { label: 'Dugtong Bot', path: '/chatbot', icon: 'chatbubble', iconOutline: 'chatbubble-outline', allowedRoles: [USER_ROLES.ADMIN] },
@@ -20,6 +21,7 @@ export const getNavigationItemsForRole = (userRole: UserRole | null) => {
 export const canAccessRoute = (route: string, userRole: UserRole | null): boolean => {
   const routePermissions: Record<string, UserRole[]> = {
     '/search': [USER_ROLES.ADMIN, USER_ROLES.HOSPITAL_STAFF, USER_ROLES.HEALTH_OFFICER],
+    '/messages': [USER_ROLES.ADMIN],
     '/reports': [USER_ROLES.ADMIN, USER_ROLES.HEALTH_OFFICER],
     '/donor-management': [USER_ROLES.ADMIN, USER_ROLES.HOSPITAL_STAFF],
     '/chatbot': [USER_ROLES.ADMIN],

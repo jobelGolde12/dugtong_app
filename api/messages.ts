@@ -3,10 +3,13 @@ import { apiClient } from "../src/services/apiClient";
 export interface Message {
   id: string;
   sender_id: string;
-  recipient_id: string;
+  recipient_id?: string;
+  subject?: string;
   content: string;
   is_read: boolean;
+  is_closed?: boolean;
   created_at: string;
+  sender_name?: string;
 }
 
 interface GetMessagesParams {
@@ -31,14 +34,16 @@ export const messageApi = {
     const endpoint = `/messages${queryString ? `?${queryString}` : ""}`;
     
     const response = await apiClient.get<{ messages: Message[] }>(endpoint);
-    return response.messages;
+    return response.messages || [];
   },
 
   sendMessage: async (
-    data: Omit<Message, "id" | "created_at" | "is_read">
+    data: { sender_id: string; recipient_id?: string; subject?: string; content: string }
   ): Promise<Message> => {
-    const response = await apiClient.post<{ message: Message }>("/messages", data);
-    return response.message;
+    console.log('📤 Sending to /messages:', JSON.stringify({ data }));
+    const response = await apiClient.post<any>("/messages", { data });
+    console.log('📥 Message response:', response);
+    return response.message || response;
   },
 
   markAsRead: async (id: string): Promise<Message> => {

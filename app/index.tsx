@@ -9,7 +9,7 @@ import { USER_ROLES } from '../constants/roles.constants';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { isLoading, hasDonorProfile } = useAppLoading();
+  const { isLoading } = useAppLoading();
   const { isAuthenticated, userRole } = useAuth();
   const [hasNavigated, setHasNavigated] = useState(false);
 
@@ -30,14 +30,8 @@ export default function HomeScreen() {
         router.replace('/dashboard');
       }
     }
-    // Only use donor profile as fallback if NOT authenticated
-    else if (!isAuthenticated && hasDonorProfile) {
-      console.log('HomeScreen: Not authenticated, has donor profile');
-      setHasNavigated(true);
-      router.replace('/DonorDashboard');
-    }
-    // Otherwise stay on home
-  }, [isLoading, hasDonorProfile, isAuthenticated, userRole, router, hasNavigated]);
+    // Removed: donor profile automatic redirect - user must log in explicitly
+  }, [isLoading, isAuthenticated, userRole, router, hasNavigated]);
 
   // Show splash screen while app is loading
   if (isLoading) {

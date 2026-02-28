@@ -33,6 +33,9 @@ class ApiClient {
       const url = `${API_BASE_URL}${endpoint}`;
 
       console.log(`🌐 API Request: ${fetchOptions.method || 'GET'} ${url}`);
+      if (fetchOptions.body) {
+        console.log(`📤 Request Body:`, fetchOptions.body);
+      }
 
       const response = await fetch(url, {
         ...fetchOptions,

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Dugtong Bot** is an AI-powered chatbot integrated into the Dugtong blood donation mobile application. It serves as a helpful assistant for administrators to query and understand system data including donors, registrations, and notifications. The bot combines OpenRouter's free LLM models with a rule-based fallback system to provide reliable, context-aware responses.
+**Dugtong Bot** is an AI-powered chatbot integrated into the Dugtong blood donation mobile application. It serves as a helpful assistant for administrators to query and understand system data including donors, registrations, and notifications.
 
 ---
 
@@ -70,7 +70,9 @@ A JSON file defining bot behavior patterns:
       "id": 1,
       "title": "Summarize Analytics and Donors Data",
       "keywords": ["analytics", "summary", "data", "donors", "report"],
-      "response_templates": ["I can help you with analytics... {{data_summary}}"]
+      "response_templates": [
+        "I can help you with analytics... {{data_summary}}"
+      ]
     },
     {
       "id": 2,
@@ -84,6 +86,7 @@ A JSON file defining bot behavior patterns:
 ```
 
 **Rule Categories**:
+
 1. **Analytics/Data Summary** - Triggers live data fetching
 2. **Greetings** - Friendly hello responses
 3. **Acknowledgments** - Generic acknowledgment
@@ -174,31 +177,36 @@ User Input
 The bot implements a robust fallback system to ensure reliability:
 
 #### Layer 1: Multiple API Keys
+
 ```typescript
 const apiKeys = [
-  OPEN_ROUTER_API_KEY1,  // Primary
-  OPEN_ROUTER_API_KEY2,  // Secondary
-  OPEN_ROUTER_API_KEY3   // Tertiary
-]
+  OPEN_ROUTER_API_KEY1, // Primary
+  OPEN_ROUTER_API_KEY2, // Secondary
+  OPEN_ROUTER_API_KEY3, // Tertiary
+];
 ```
 
 #### Layer 2: Multiple Free Models
+
 ```typescript
 const FREE_MODELS = [
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'qwen/qwen-2-7b-instruct:free',
-  'microsoft/phi-3-mini-128k-instruct:free'
-]
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "qwen/qwen-2-7b-instruct:free",
+  "microsoft/phi-3-mini-128k-instruct:free",
+];
 ```
 
 #### Layer 3: Retry Logic
+
 - **Max Retries**: 2 attempts per model
 - **Delay Strategy**: Exponential backoff with jitter
   - `delay = baseDelay * 2^attempt + random(0-1000ms)`
 - **Retryable Errors**: 429 (Rate Limit), 502, 503
 
 #### Layer 4: Rule-Based Fallback
+
 When all API attempts fail:
+
 - Match input against keywords
 - Select random template from matching rule
 - Inject live data into template
@@ -231,7 +239,7 @@ generateDataSummary(): string {
   // - Available vs total donors
   // - Pending/approved registrations
   // - Unread notification count
-  
+
   return `
 Donors Summary:
 - Total Donors: 45
@@ -274,14 +282,14 @@ BEHAVIOR GUIDELINES:
 
 ### Key States
 
-| State | Type | Purpose |
-|-------|------|---------|
-| `message` | string | Current input text |
-| `messages` | MessageType[] | Chat history |
-| `showIntro` | boolean | Show/hide bot profile |
-| `isInputFocused` | boolean | Track keyboard state |
-| `cannotReceiveMessages` | boolean | Block input during processing |
-| `isTyping` | boolean | Show typing indicator |
+| State                   | Type          | Purpose                       |
+| ----------------------- | ------------- | ----------------------------- |
+| `message`               | string        | Current input text            |
+| `messages`              | MessageType[] | Chat history                  |
+| `showIntro`             | boolean       | Show/hide bot profile         |
+| `isInputFocused`        | boolean       | Track keyboard state          |
+| `cannotReceiveMessages` | boolean       | Block input during processing |
+| `isTyping`              | boolean       | Show typing indicator         |
 
 ### State Flow Diagram
 
@@ -355,13 +363,13 @@ BEHAVIOR GUIDELINES:
 
 ### API Error Scenarios
 
-| Error Code | Handling |
-|------------|----------|
-| 429 | Retry with exponential backoff |
-| 502/503 | Retry, then try next model |
-| 401/403 | Skip to next API key |
-| Network Error | Retry with jitter, fallback to rules |
-| JSON Parse Error | Retry once, then skip model |
+| Error Code       | Handling                             |
+| ---------------- | ------------------------------------ |
+| 429              | Retry with exponential backoff       |
+| 502/503          | Retry, then try next model           |
+| 401/403          | Skip to next API key                 |
+| Network Error    | Retry with jitter, fallback to rules |
+| JSON Parse Error | Retry once, then skip model          |
 
 ### Graceful Degradation
 
@@ -451,6 +459,7 @@ EXPO_PUBLIC_OPEN_ROUTER_API_KEY3=your_tertiary_key
 **User**: "How many donors are available?"
 
 **Process**:
+
 1. Fetch donors data
 2. Count `availability_status === 'Available'`
 3. Include in system prompt
@@ -463,6 +472,7 @@ EXPO_PUBLIC_OPEN_ROUTER_API_KEY3=your_tertiary_key
 **User**: "Hello"
 
 **Process**:
+
 1. Match "hello" keyword in Rule 2
 2. Select random greeting template
 
@@ -473,6 +483,7 @@ EXPO_PUBLIC_OPEN_ROUTER_API_KEY3=your_tertiary_key
 **User**: "Show analytics"
 
 **Process**:
+
 1. All 3 API keys fail
 2. All 3 models fail
 3. Fallback to rule-based response
@@ -501,10 +512,10 @@ EXPO_PUBLIC_OPEN_ROUTER_API_KEY3=your_tertiary_key
 
 ```typescript
 const requestBody = {
-  model: 'meta-llama/llama-3.2-3b-instruct:free',
+  model: "meta-llama/llama-3.2-3b-instruct:free",
   messages: [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userInput }
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userInput },
   ],
   max_tokens: 150,
   temperature: 0.7,
@@ -517,7 +528,7 @@ const requestBody = {
 type MessageType = {
   id: string;
   text: string;
-  sender: 'user' | 'bot';
+  sender: "user" | "bot";
 };
 ```
 
@@ -582,7 +593,3 @@ Potential improvements:
 4. Data might be empty (valid scenario)
 
 ---
-
-## Summary
-
-Dugtong Bot is a robust, AI-powered assistant that provides administrators with natural language access to system data. Its multi-layer fallback system ensures reliability even when external APIs fail, while its live data integration keeps responses accurate and contextual. The bot exemplifies a practical implementation of conversational AI in a mobile health application.

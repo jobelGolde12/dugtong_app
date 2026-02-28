@@ -290,7 +290,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         donorProfile: null,
       });
 
-      router.replace('/login');
+      router.replace('/');
     }
   }, []);
 
