@@ -1,308 +1,268 @@
-import { Calendar, Droplet, Mail, MapPin, Phone, X } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Calendar, Mail, MapPin, Phone, X } from 'lucide-react-native';
 import React from 'react';
-import { Dimensions, Modal, ScrollView, StyleSheet, Text as RNText, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
-import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../../constants/design-system';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { Donor } from '../../../types/donor.types';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const DonorDetailsModal: React.FC<{
+interface DonorDetailsModalProps {
   visible: boolean;
   donor: Donor | null;
   onClose: () => void;
-}> = ({ visible, donor, onClose }) => {
+}
+
+const DonorDetailsModal: React.FC<DonorDetailsModalProps> = ({ visible, donor, onClose }) => {
+  const { colors } = useTheme();
+
   if (!donor) return null;
 
-  const handleOverlayPress = (event: any) => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
-  };
+  const isAvailable = donor.availabilityStatus === 'Available';
 
   return (
     <Modal
-      transparent
       visible={visible}
-      animationType="none"
+      transparent
+      animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay} onTouchEnd={handleOverlayPress}>
-        <Animated.View
-          entering={FadeIn.duration(200)}
-          exiting={FadeOut.duration(200)}
-          style={styles.overlayBackground}
-        >
-          <Animated.View
-            entering={SlideInDown.springify().damping(15).stiffness(100)}
-            exiting={SlideOutDown.duration(150)}
-            style={styles.modalContainer}
-          >
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.avatarContainer}>
-                <Droplet size={40} color={COLORS.primary[500]} />
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+          {/* Header with Avatar */}
+          <View style={styles.header}>
+            <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="person" size={40} color={colors.primary} />
+            </View>
+            <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.surfaceVariant }]}>
+              <X size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Name and Blood Type */}
+          <View style={styles.infoSection}>
+            <Text style={[styles.name, { color: colors.text }]}>{donor.name}</Text>
+            <View style={styles.bloodTypeRow}>
+              <View style={[styles.bloodTypeBadge, { backgroundColor: colors.primary + '20' }]}>
+                <Text style={[styles.bloodTypeText, { color: colors.primary }]}>{donor.bloodType}</Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <X size={24} color={COLORS.neutral[400]} />
-              </TouchableOpacity>
+              <Text style={[styles.donorId, { color: colors.textSecondary }]}>ID: {donor.id}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Contact Information */}
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <InfoRow
+              icon={<MapPin size={20} color={colors.primary} />}
+              label="Location"
+              value={donor.municipality}
+              colors={colors}
+            />
+            <InfoRow
+              icon={<Phone size={20} color={colors.primary} />}
+              label="Contact Number"
+              value={donor.contactNumber || 'Not provided'}
+              colors={colors}
+            />
+            <InfoRow
+              icon={<Calendar size={20} color={colors.primary} />}
+              label="Last Donation"
+              value={donor.lastDonationDate || 'Never'}
+              colors={colors}
+            />
+            {donor.notes && (
+              <InfoRow
+                icon={<Mail size={20} color={colors.primary} />}
+                label="Notes"
+                value={donor.notes}
+                colors={colors}
+                isMultiline
+              />
+            )}
+
+            {/* Availability Status */}
+            <View style={styles.statusSection}>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Availability Status</Text>
+              <View style={[
+                styles.statusBadge,
+                { backgroundColor: isAvailable ? colors.success + '20' : colors.warning + '20' }
+              ]}>
+                <View style={[
+                  styles.statusDot,
+                  { backgroundColor: isAvailable ? colors.success : colors.warning }
+                ]} />
+                <Text style={[
+                  styles.statusText,
+                  { color: isAvailable ? colors.success : colors.warning }
+                ]}>
+                  {donor.availabilityStatus}
+                </Text>
+              </View>
             </View>
 
-            {/* Content */}
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-              <View style={styles.nameRow}>
-                <ModalText variant="h2" style={styles.name}>{donor.name}</ModalText>
-              </View>
-              <View style={styles.bloodTypeRow}>
-                <Badge variant="primary">{donor.bloodType}</Badge>
-                <ModalText variant="body2" style={styles.donorId}>ID: {donor.id}</ModalText>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.infoGroup}>
-                <InfoRow
-                  icon={<MapPin size={20} color={COLORS.primary[500]} />}
-                  label="Location"
-                  value={`${donor.municipality}`}
-                />
-                <InfoRow
-                  icon={<Phone size={20} color={COLORS.primary[500]} />}
-                  label="Contact"
-                  value={donor.contactNumber || 'N/A'}
-                />
-                <InfoRow
-                  icon={<Calendar size={20} color={COLORS.primary[500]} />}
-                  label="Last Donation"
-                  value={donor.lastDonationDate || 'Never'}
-                />
-                <InfoRow
-                  icon={<Mail size={20} color={COLORS.primary[500]} />}
-                  label="Email / Notes"
-                  value={donor.notes || 'Not provided'}
-                />
-              </View>
-
-              {donor.notes && (
-                <View style={styles.notesContainer}>
-                  <ModalText variant="caption" style={styles.notesLabel}>Additional Notes</ModalText>
-                  <ModalText variant="body2" style={styles.notesText}>{donor.notes}</ModalText>
-                </View>
-              )}
-
-              <View style={styles.statusSection}>
-                <ModalText variant="caption" style={styles.statusLabel}>Availability Status</ModalText>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: donor.availabilityStatus === 'Available' ? COLORS.success[50] : COLORS.warning[50] }
-                ]}>
-                  <View style={[
-                    styles.statusDot,
-                    { backgroundColor: donor.availabilityStatus === 'Available' ? COLORS.success[500] : COLORS.warning[500] }
-                  ]} />
-                  <ModalText style={[
-                    styles.statusText,
-                    { color: donor.availabilityStatus === 'Available' ? COLORS.success[600] : COLORS.warning[600] }
-                  ]}>
-                    {donor.availabilityStatus}
-                  </ModalText>
-                </View>
-              </View>
-
-              <View style={styles.bottomSpacer} />
-            </ScrollView>
-          </Animated.View>
-        </Animated.View>
+            <View style={{ height: 20 }} />
+          </ScrollView>
+        </View>
       </View>
     </Modal>
   );
 };
 
-// Re-defining simple components for self-containment in this snippet, matching DonorManagementScreen
-const ModalText: React.FC<{ children: React.ReactNode; style?: any; variant?: 'h2' | 'body2' | 'caption' }> = ({ children, style, variant }) => (
-  <RNText style={[{ color: COLORS.neutral[900] }, variant === 'h2' && TYPOGRAPHY.h2, variant === 'body2' && TYPOGRAPHY.body2, variant === 'caption' && TYPOGRAPHY.caption, style]}>
-    {children}
-  </RNText>
-);
+interface InfoRowProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  colors: any;
+  isMultiline?: boolean;
+}
 
-const Badge: React.FC<{ children: React.ReactNode; variant?: 'neutral' | 'primary' }> = ({ children, variant = 'neutral' }) => {
-  const bgColor = variant === 'primary' ? COLORS.primary[50] : COLORS.neutral[100];
-  const textColor = variant === 'primary' ? COLORS.primary[600] : COLORS.neutral[700];
-  return (
-    <View style={{ backgroundColor: bgColor, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 }}>
-      <RNText style={{ color: textColor, fontWeight: '700', fontSize: 16 }}>{children}</RNText>
-    </View>
-  );
-};
-
-const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
+const InfoRow: React.FC<InfoRowProps> = ({ icon, label, value, colors, isMultiline = false }) => (
   <View style={styles.infoRow}>
-    <View style={styles.iconWrapper}>{icon}</View>
+    <View style={[styles.iconWrapper, { backgroundColor: colors.primary + '20' }]}>
+      {icon}
+    </View>
     <View style={styles.infoTextContainer}>
-      <ModalText variant="caption" style={styles.infoLabel}>{label}</ModalText>
-      <ModalText variant="body2" style={styles.infoValue}>{value}</ModalText>
+      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.infoValue, { color: colors.text }]} numberOfLines={isMultiline ? 3 : 1}>
+        {value}
+      </Text>
     </View>
   </View>
 );
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
+    padding: 20,
   },
-  overlayBackground: {
-    flex: 1,
+  modalContent: {
+    borderRadius: 20,
     width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: SCREEN_WIDTH * 0.9,
-    maxHeight: '80%',
-    backgroundColor: COLORS.surface.light,
-    borderRadius: 24,
-    overflow: 'hidden',
-    ...SHADOWS.xl,
+    maxWidth: 400,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 10,
   },
   header: {
     alignItems: 'center',
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.lg,
-    backgroundColor: COLORS.primary[50],
+    paddingTop: 24,
+    paddingBottom: 16,
+    position: 'relative',
   },
   avatarContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.surface.light,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
-    ...SHADOWS.md,
   },
   closeButton: {
     position: 'absolute',
-    top: SPACING.md,
-    right: SPACING.md,
-    padding: SPACING.xs,
-    backgroundColor: COLORS.neutral[100],
+    top: 12,
+    right: 12,
+    padding: 8,
     borderRadius: 20,
   },
-  content: {
-    padding: SPACING.lg,
-  },
-  nameRow: {
+  infoSection: {
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    paddingHorizontal: 24,
   },
   name: {
     fontSize: 24,
     fontWeight: '700',
-    color: COLORS.neutral[900],
     textAlign: 'center',
+    marginBottom: 8,
   },
   bloodTypeRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
+    gap: 12,
+  },
+  bloodTypeBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  bloodTypeText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   donorId: {
-    color: COLORS.neutral[500],
-    fontSize: 12,
+    fontSize: 13,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.neutral[200],
-    marginBottom: SPACING.lg,
+    marginVertical: 16,
+    marginHorizontal: 24,
   },
-  infoGroup: {
-    gap: SPACING.lg,
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: SPACING.md,
+    gap: 12,
+    marginBottom: 20,
   },
   iconWrapper: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary[50],
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   infoTextContainer: {
     flex: 1,
-    paddingTop: 2,
+    paddingTop: 4,
   },
   infoLabel: {
-    color: COLORS.neutral[500],
     fontSize: 12,
-    marginBottom: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  infoValue: {
-    color: COLORS.neutral[800],
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  notesContainer: {
-    marginTop: SPACING.xl,
-    padding: SPACING.lg,
-    backgroundColor: COLORS.neutral[50],
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.neutral[200],
-  },
-  notesLabel: {
-    color: COLORS.neutral[500],
-    marginBottom: SPACING.sm,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  notesText: {
-    color: COLORS.neutral[700],
+  infoValue: {
+    fontSize: 15,
+    fontWeight: '500',
     lineHeight: 22,
   },
   statusSection: {
-    marginTop: SPACING.xl,
+    marginTop: 8,
     alignItems: 'center',
   },
-  statusLabel: {
-    color: COLORS.neutral[500],
-    marginBottom: SPACING.sm,
+  sectionLabel: {
+    fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginBottom: 12,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
-    gap: SPACING.sm,
+    gap: 8,
   },
   statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   statusText: {
     fontSize: 14,
     fontWeight: '600',
   },
-  bottomSpacer: {
-    height: SPACING.xl,
-  },
 });
 
 export default DonorDetailsModal;
-

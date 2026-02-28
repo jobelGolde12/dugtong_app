@@ -920,6 +920,14 @@ const DonorManagementScreen: React.FC = () => {
     onEdit: (donor: Donor) => void;
     index: number;
   }> = ({ donor, onViewDetails, onToggleAvailability, onDelete, onEdit, index }) => {
+    // Check if this donor is being deleted
+    const isDeleting = deletingIds.has('id' in donor ? donor.id : '');
+    
+    const deleteStyle = useAnimatedStyle(() => ({
+      opacity: isDeleting ? 0.5 : 1,
+      transform: [{ scale: isDeleting ? 0.95 : 1 }],
+    }));
+    
     // Check if this is a pending registration
     const isPendingRegistration = 'type' in donor && donor.type === 'registration';
 
@@ -956,6 +964,7 @@ const DonorManagementScreen: React.FC = () => {
       <Animated.View
         entering={FadeInUp.delay(100 + index * 50).duration(500)}
         layout={Layout.springify()}
+        style={deleteStyle}
       >
         <Card
           onPress={() => onViewDetails(donor)}
@@ -1177,6 +1186,7 @@ const DonorManagementScreen: React.FC = () => {
   });
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedDonor, setSelectedDonor] = useState<Donor | PendingDonorRegistration | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const debounceTimer = useRef<any>(null);
 
@@ -1351,15 +1361,36 @@ const DonorManagementScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Optimistic delete
+              // Add to deleting set to trigger animation
+              setDeletingIds(prev => new Set(prev).add(donor.id));
+              
+              // Wait for animation to complete
+              await new Promise(resolve => setTimeout(resolve, 300));
+              
+              // Remove from UI
               setDonors(prev => prev.filter(d => {
                 if ('id' in d) {
                   return d.id !== donor.id;
                 }
                 return true;
               }));
+              
+              // API call
               await donorApi.deleteDonor(donor.id);
+              
+              // Remove from deleting set
+              setDeletingIds(prev => {
+                const next = new Set(prev);
+                next.delete(donor.id);
+                return next;
+              });
             } catch (error: any) {
+              // Remove from deleting set on error
+              setDeletingIds(prev => {
+                const next = new Set(prev);
+                next.delete(donor.id);
+                return next;
+              });
               fetchDonors(); // Re-fetch to restore if failed
               Alert.alert('Error', error.message || 'Failed to delete donor');
             }
