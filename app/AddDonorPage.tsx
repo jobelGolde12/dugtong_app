@@ -1,8 +1,10 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import {
   Alert,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -43,6 +45,9 @@ interface FormData {
   sex: string;
   bloodType: string;
   contactNumber: string;
+  email: string;
+  avatarBase64: string;
+  avatarMimeType: string;
   municipality: string;
   availabilityStatus: string;
 }
@@ -53,6 +58,7 @@ interface Errors {
   sex?: string;
   bloodType?: string;
   contactNumber?: string;
+  email?: string;
   municipality?: string;
   availabilityStatus?: string;
 }
@@ -73,6 +79,9 @@ export default function AddDonorPage() {
     sex: '',
     bloodType: '',
     contactNumber: '',
+    email: '',
+    avatarBase64: '',
+    avatarMimeType: '',
     municipality: '',
     availabilityStatus: 'Available'
   });
@@ -99,6 +108,31 @@ export default function AddDonorPage() {
     }
   };
 
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to select an avatar.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      setFormData(prev => ({
+        ...prev,
+        avatarBase64: result.assets[0].base64 || '',
+        avatarMimeType: result.assets[0].mimeType || 'image/jpeg',
+      }));
+    }
+  };
+
   const validateField = (field: string, value: string): string => {
     let error = '';
     
@@ -116,6 +150,12 @@ export default function AddDonorPage() {
         
       case 'sex':
         if (!value) error = 'Sex is required';
+        break;
+        
+      case 'email':
+        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          error = 'Please enter a valid email address';
+        }
         break;
         
       case 'bloodType':
@@ -194,13 +234,16 @@ export default function AddDonorPage() {
         sex: formData.sex,
         bloodType: formData.bloodType,
         contactNumber: normalizedContactNumber,
+        email: formData.email.trim() || undefined,
+        avatar_data: formData.avatarBase64 || undefined,
+        avatar_mime_type: formData.avatarMimeType || undefined,
         municipality: formData.municipality,
         availabilityStatus: formData.availabilityStatus,
       });
 
       Alert.alert(
         'Success',
-        'Successfully addedd...',
+        'Successfully added donor!',
         [
           {
             text: 'OK',
@@ -389,6 +432,51 @@ export default function AddDonorPage() {
                   ) : (
                     <Text style={styles.helperText}>Philippine format required</Text>
                   )}
+                </View>
+
+                {/* Email (Optional) */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Email (Optional)</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      focusedField === 'email' && styles.inputFocused,
+                      errors.email && styles.inputError
+                    ]}
+                    value={formData.email}
+                    onChangeText={(value) => handleInputChange('email', value)}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => handleBlur('email')}
+                    placeholder="donor@example.com"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+                </View>
+
+                {/* Avatar (Optional) */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Profile Photo (Optional)</Text>
+                  <TouchableOpacity
+                    style={styles.avatarPickerButton}
+                    onPress={pickImage}
+                  >
+                    {formData.avatarBase64 ? (
+                      <View style={styles.avatarPreviewContainer}>
+                        <Image
+                          source={{ uri: `data:${formData.avatarMimeType};base64,${formData.avatarBase64}` }}
+                          style={styles.avatarPreview}
+                        />
+                        <Text style={[styles.avatarPickerText, { color: colors.text }]}>Tap to change photo</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.avatarPlaceholder}>
+                        <Text style={styles.avatarPlaceholderIcon}>📷</Text>
+                        <Text style={[styles.avatarPickerText, { color: colors.textSecondary }]}>Tap to select photo</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
                 </View>
 
                 {/* Municipality */}
@@ -718,6 +806,37 @@ const createStyles = (colors: any) => StyleSheet.create({
   modalItemText: {
     fontSize: 16,
     color: colors.text,
+    fontWeight: '500',
+  },
+  avatarPickerButton: {
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: colors.surfaceVariant,
+  },
+  avatarPreviewContainer: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarPreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: colors.primary,
+  },
+  avatarPlaceholder: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  avatarPlaceholderIcon: {
+    fontSize: 48,
+  },
+  avatarPickerText: {
+    fontSize: 14,
     fontWeight: '500',
   },
 });

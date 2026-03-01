@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, Mail, MapPin, Phone, X } from 'lucide-react-native';
 import React from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { Donor } from '../../../types/donor.types';
 
@@ -17,6 +17,9 @@ const DonorDetailsModal: React.FC<DonorDetailsModalProps> = ({ visible, donor, o
   if (!donor) return null;
 
   const isAvailable = donor.availabilityStatus === 'Available';
+  
+  // Check if donor has avatar data
+  const hasAvatar = donor.avatar_data && donor.avatar_mime_type;
 
   return (
     <Modal
@@ -29,8 +32,17 @@ const DonorDetailsModal: React.FC<DonorDetailsModalProps> = ({ visible, donor, o
         <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
           {/* Header with Avatar */}
           <View style={styles.header}>
-            <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="person" size={40} color={colors.primary} />
+            <View style={[styles.avatarContainer, { backgroundColor: hasAvatar ? 'transparent' : colors.primary + '20' }]}>
+              {hasAvatar ? (
+                <Image 
+                  source={{ uri: `data:${donor.avatar_mime_type};base64,${donor.avatar_data}` }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={[styles.avatarInitial, { color: colors.primary }]}>
+                  {donor.name.charAt(0).toUpperCase()}
+                </Text>
+              )}
             </View>
             <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.surfaceVariant }]}>
               <X size={20} color={colors.textSecondary} />
@@ -40,6 +52,12 @@ const DonorDetailsModal: React.FC<DonorDetailsModalProps> = ({ visible, donor, o
           {/* Name and Blood Type */}
           <View style={styles.infoSection}>
             <Text style={[styles.name, { color: colors.text }]}>{donor.name}</Text>
+            {donor.email && (
+              <View style={styles.emailRow}>
+                <Mail size={14} color={colors.textSecondary} />
+                <Text style={[styles.emailText, { color: colors.textSecondary }]}>{donor.email}</Text>
+              </View>
+            )}
             <View style={styles.bloodTypeRow}>
               <View style={[styles.bloodTypeBadge, { backgroundColor: colors.primary + '20' }]}>
                 <Text style={[styles.bloodTypeText, { color: colors.primary }]}>{donor.bloodType}</Text>
@@ -161,6 +179,17 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+  },
+  avatarInitial: {
+    fontSize: 36,
+    fontWeight: '700',
   },
   closeButton: {
     position: 'absolute',
@@ -178,6 +207,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 8,
+  },
+  emailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  emailText: {
+    fontSize: 14,
+    fontStyle: 'italic',
   },
   bloodTypeRow: {
     flexDirection: 'row',
