@@ -5,7 +5,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  SlidersHorizontal,
   Trash2,
   Users,
   X,
@@ -32,7 +31,6 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   FadeOut,
-  Layout,
   SlideInDown,
   SlideOutDown,
   useAnimatedStyle,
@@ -44,6 +42,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { donorApi } from '../../../api/donors';
 import { Donor } from '../../../types/donor.types';
+import { MUNICIPALITIES } from '../../../constants/filters.constants';
 import ErrorToast from '../../components/ErrorToast';
 import DonorDetailsModal from './DonorDetailsModal';
 
@@ -58,6 +57,9 @@ interface DonorFilter {
   searchQuery: string;
   showPending: boolean; // Add filter for showing pending registrations
 }
+
+const BLOOD_TYPE_OPTIONS = ['All', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+const AVAILABILITY_OPTIONS = ['All', 'Available', 'Temporarily Unavailable', 'Recently Donated'];
 
 
 const SPACING = {
@@ -473,8 +475,7 @@ const DonorManagementScreen: React.FC = () => {
   const SearchBar: React.FC<{
     value: string;
     onChangeText: (text: string) => void;
-    onFilterPress: () => void;
-  }> = ({ value, onChangeText, onFilterPress }) => {
+  }> = ({ value, onChangeText }) => {
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef<TextInput>(null);
     const searchWidth = useSharedValue(SCREEN_WIDTH * 0.9);
@@ -559,45 +560,38 @@ const DonorManagementScreen: React.FC = () => {
             >
               <X size={18} color={colors.textSecondary} />
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={onFilterPress}
-              style={{
-                padding: SPACING.xs,
-                marginRight: SPACING.xs,
-              }}
-            >
-              <SlidersHorizontal size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       </Animated.View>
     );
   };
 
-  const FilterModal: React.FC<{
+  const SelectionModal: React.FC<{
     visible: boolean;
+    title: string;
+    options: string[];
+    selectedValue: string | null;
+    onSelect: (value: string) => void;
     onClose: () => void;
-    filters: DonorFilter;
-    onFilterChange: (filterName: keyof DonorFilter, value: any) => void;
-    onApply: () => void;
-    onReset: () => void;
-  }> = ({ visible, onClose, filters, onFilterChange, onApply, onReset }) => {
-    const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
-    const availabilityOptions = [
-      { label: 'Available', value: 'Available' },
-      { label: 'Temporarily Unavailable', value: 'Temporarily Unavailable' },
-      { label: 'Recently Donated', value: 'Recently Donated' },
-    ];
-
-    return (
-      <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={onClose}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
+  }> = ({ visible, title, options, selectedValue, onSelect, onClose }) => (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={{
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'flex-end',
+      }}>
+        <View style={{
+          backgroundColor: colors.surface,
+          borderTopLeftRadius: RADIUS.xl,
+          borderTopRightRadius: RADIUS.xl,
+          maxHeight: SCREEN_HEIGHT * 0.7,
+          paddingBottom: SPACING.lg,
+        }}>
           <View style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
@@ -607,185 +601,48 @@ const DonorManagementScreen: React.FC = () => {
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
           }}>
-            <CustomText variant="h2">Filters</CustomText>
-            <TouchableOpacity onPress={onClose} style={{ padding: SPACING.xs }}>
-              <X size={24} color={colors.textSecondary} />
+            <CustomText variant="h3">{title}</CustomText>
+            <TouchableOpacity onPress={onClose}>
+              <X size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-
-          <ScrollView style={{ flex: 1, padding: SPACING.lg }}>
-            <View style={{ gap: SPACING.xl }}>
-              {/* Blood Type Filter */}
-              <View>
-                <CustomText variant="h3" style={{ marginBottom: SPACING.md }}>
-                  Blood Type
-                </CustomText>
-                <View style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  gap: SPACING.sm,
-                }}>
-                  {bloodTypes.map((type) => (
-                    <Chip
-                      key={type}
-                      label={type}
-                      selected={filters.bloodType === type}
-                      onPress={() => onFilterChange('bloodType',
-                        filters.bloodType === type ? null : type
-                      )}
-                    />
-                  ))}
-                </View>
-              </View>
-
-              {/* Availability Filter */}
-              <View>
-                <CustomText variant="h3" style={{ marginBottom: SPACING.md }}>
-                  Availability Status
-                </CustomText>
-                <View style={{ gap: SPACING.sm }}>
-                  {availabilityOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      onPress={() => onFilterChange('availability',
-                        filters.availability === option.value ? null : option.value
-                      )}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        padding: SPACING.md,
-                        backgroundColor: colors.surface,
-                        borderRadius: RADIUS.md,
-                        borderWidth: 1,
-                        borderColor: filters.availability === option.value
-                          ? colors.primary
-                          : colors.border,
-                      }}
-                    >
-                      <View style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        borderWidth: 2,
-                        borderColor: filters.availability === option.value
-                          ? colors.primary
-                          : colors.textSecondary,
-                        marginRight: SPACING.md,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        {filters.availability === option.value && (
-                          <View style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: 5,
-                            backgroundColor: colors.primary,
-                          }} />
-                        )}
-                      </View>
-                      <CustomText style={{ flex: 1, color: colors.text }}>
-                        {option.label}
-                      </CustomText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Municipality Filter */}
-              <View>
-                <CustomText variant="h3" style={{ marginBottom: SPACING.md }}>
-                  Location
-                </CustomText>
-                <TextInput
-                  placeholder="Enter city or municipality..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={filters.municipality || ''}
-                  onChangeText={(text) => onFilterChange('municipality', text)}
-                  style={{
-                    backgroundColor: colors.card,
-                    borderRadius: RADIUS.md,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    padding: SPACING.md,
-                    fontSize: 16,
-                    color: colors.text,
-                  }}
-                />
-              </View>
-
-              {/* Show Pending Registrations Toggle */}
-              <View>
-                <CustomText variant="h3" style={{ marginBottom: SPACING.md }}>
-                  Options
-                </CustomText>
-                <TouchableOpacity
-                  onPress={() => onFilterChange('showPending', !filters.showPending)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    padding: SPACING.md,
-                    backgroundColor: colors.surface,
-                    borderRadius: RADIUS.md,
-                    borderWidth: 1,
-                    borderColor: filters.showPending ? colors.primary : colors.border,
-                  }}
-                >
-                  <View style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    borderWidth: 2,
-                    borderColor: filters.showPending ? colors.primary : colors.textSecondary,
-                    marginRight: SPACING.md,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    {filters.showPending && (
-                      <View style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: colors.primary,
-                      }} />
-                    )}
-                  </View>
-                  <CustomText style={{ flex: 1, color: colors.text }}>
-                    Show Pending Registrations
-                  </CustomText>
-                </TouchableOpacity>
-              </View>
+          <ScrollView style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md }}>
+            <View style={{ gap: SPACING.sm }}>
+              {options.map((option) => {
+                const normalized = option === 'All' ? null : option;
+                const selected =
+                  normalized === null ? !selectedValue : selectedValue === normalized;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => {
+                      onSelect(option);
+                      onClose();
+                    }}
+                    style={{
+                      paddingVertical: SPACING.md,
+                      paddingHorizontal: SPACING.md,
+                      borderRadius: RADIUS.md,
+                      borderWidth: 1,
+                      borderColor: selected ? colors.primary : colors.border,
+                      backgroundColor: selected ? colors.primary + '14' : colors.surface,
+                    }}
+                  >
+                    <CustomText style={{
+                      color: selected ? colors.primary : colors.text,
+                      fontWeight: selected ? '600' : '400',
+                    }}>
+                      {option}
+                    </CustomText>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </ScrollView>
-
-          <View style={{
-            flexDirection: 'row',
-            gap: SPACING.md,
-            padding: SPACING.lg,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-          }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onPress={onReset}
-            >
-              Reset All
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onPress={() => {
-                onApply();
-                onClose();
-              }}
-            >
-              Apply Filters
-            </Button>
-          </View>
-        </SafeAreaView>
-      </Modal>
-    );
-  };
+        </View>
+      </View>
+    </Modal>
+  );
 
   const StatsBar: React.FC<{ donors: (Donor | PendingDonorRegistration)[] }> = ({ donors }) => {
     const regularDonors = donors.filter(d => !('type' in d)) as Donor[];
@@ -850,7 +707,6 @@ const DonorManagementScreen: React.FC = () => {
             <Animated.View
               key={stat.label}
               entering={FadeInDown.delay(300 + index * 100).duration(500)}
-              layout={Layout.springify()}
             >
               <Card variant="default" style={{
                 minWidth: SCREEN_WIDTH > 768 ? 180 : 140,
@@ -969,7 +825,6 @@ const DonorManagementScreen: React.FC = () => {
     return (
       <Animated.View
         entering={FadeInUp.delay(100 + index * 50).duration(500)}
-        layout={Layout.springify()}
         style={deleteStyle}
       >
         <Card
@@ -1215,76 +1070,128 @@ const DonorManagementScreen: React.FC = () => {
     searchQuery: '',
     showPending: true, // Show pending registrations by default
   });
-  const [modalFilters, setModalFilters] = useState<DonorFilter>({
+  const [showBloodTypeModal, setShowBloodTypeModal] = useState(false);
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [showMunicipalityModal, setShowMunicipalityModal] = useState(false);
+  const [selectedDonor, setSelectedDonor] = useState<Donor | PendingDonorRegistration | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  const debounceTimer = useRef<any>(null);
+  const latestFetchRequestId = useRef(0);
+  const lastFetchKeyRef = useRef('');
+  const previousFiltersRef = useRef<DonorFilter>({
     bloodType: null,
     municipality: null,
     availability: null,
     searchQuery: '',
     showPending: true,
   });
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [selectedDonor, setSelectedDonor] = useState<Donor | PendingDonorRegistration | null>(null);
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
-  const debounceTimer = useRef<any>(null);
+  const fetchDonors = useCallback(async (force = false) => {
+    const fetchKey = JSON.stringify({
+      bloodType: filters.bloodType || null,
+      municipality: (filters.municipality || '').trim().toLowerCase() || null,
+      availability: filters.availability || null,
+      searchQuery: (filters.searchQuery || '').trim().toLowerCase(),
+      showPending: filters.showPending,
+    });
 
-  const fetchDonors = useCallback(async () => {
+    if (!force && fetchKey === lastFetchKeyRef.current) {
+      return;
+    }
+    lastFetchKeyRef.current = fetchKey;
+
+    const requestId = ++latestFetchRequestId.current;
     setLoading(true);
     setError(null);
     try {
       console.log('🔍 Fetching donors with filters:', filters);
-      
-      // Fetch donors
+
+      // Fetch donors using applied filters (real backend data), then apply safety checks locally.
       const donorResult = await donorApi.getDonors({
         bloodType: filters.bloodType || null,
         municipality: filters.municipality || null,
-        availability: filters.availability,
-        searchQuery: filters.searchQuery,
+        availability: filters.availability || null,
+        searchQuery: filters.searchQuery || '',
+        page: 1,
+        page_size: 1000,
       });
 
-      console.log('📊 Donor result:', donorResult);
+      const donorItems: Donor[] =
+        donorResult && donorResult.items && Array.isArray(donorResult.items)
+          ? donorResult.items
+          : Array.isArray(donorResult)
+            ? donorResult
+            : [];
 
-      // Get donors array
-      let combinedResults: Donor[] = [];
-      
-      if (donorResult && donorResult.items && Array.isArray(donorResult.items)) {
-        combinedResults = [...donorResult.items];
-      } else if (Array.isArray(donorResult)) {
-        combinedResults = [...donorResult];
-      }
+      const normalize = (value: any): string => String(value || '').trim().toLowerCase();
+      const normalizeAvailability = (value: any): 'available' | 'temp_unavailable' | 'recently_donated' | 'other' => {
+        const v = normalize(value);
+        if (v === 'available') return 'available';
+        if (v === 'temporarily unavailable' || v === 'temporarily_unavailable' || v === 'unavailable') return 'temp_unavailable';
+        if (v === 'recently donated' || v === 'recently_donated') return 'recently_donated';
+        return 'other';
+      };
 
-      // Fetch pending registrations if showPending is true
+      const searchQuery = normalize(filters.searchQuery);
+      const matchesSearch = (parts: Array<string | undefined | null>) => {
+        if (!searchQuery) return true;
+        return parts
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(searchQuery);
+      };
+
+      // Safety filter to guard against backend field-normalization mismatches.
+      const filteredDonors = donorItems.filter((donor) => {
+        const matchesBloodType = !filters.bloodType || donor.bloodType === filters.bloodType;
+        const matchesMunicipality =
+          !filters.municipality || normalize(donor.municipality).includes(normalize(filters.municipality));
+
+        const status = normalizeAvailability(donor.availabilityStatus);
+        const matchesAvailability =
+          !filters.availability ||
+          (filters.availability === 'Available' && status === 'available') ||
+          (filters.availability === 'Temporarily Unavailable' && status === 'temp_unavailable') ||
+          (filters.availability === 'Recently Donated' && status === 'recently_donated');
+
+        const matchesQuery = matchesSearch([
+          donor.name,
+          donor.contactNumber,
+          donor.municipality,
+          donor.bloodType,
+          donor.email,
+        ]);
+
+        return matchesBloodType && matchesMunicipality && matchesAvailability && matchesQuery;
+      });
+
+      let combinedResults: (Donor | PendingDonorRegistration)[] = [...filteredDonors];
+
+      // Pending registrations are shown only when enabled and when no availability filter is active.
       if (filters.showPending && !filters.availability) {
-        console.log('🔍 Fetching pending registrations...');
         const { getDonorRegistrations } = await import('../../../api/donor-registrations');
-        const registrations = await getDonorRegistrations({ status: 'pending' });
-        console.log('📊 Registrations result:', registrations);
-        
+        const registrations = await getDonorRegistrations({
+          status: 'pending',
+          municipality: filters.municipality || undefined,
+          blood_type: filters.bloodType || undefined,
+        });
+
         if (registrations && Array.isArray(registrations)) {
-          const normalizedSearch = (filters.searchQuery || '').trim().toLowerCase();
-          // Map registrations to match Donor type
           const mappedRegistrations = registrations
             .filter((reg: any) => {
-              if (filters.bloodType && reg.blood_type !== filters.bloodType) return false;
-              if (
-                filters.municipality &&
-                !String(reg.municipality || '').toLowerCase().includes(String(filters.municipality).toLowerCase())
-              ) {
-                return false;
-              }
-              if (normalizedSearch) {
-                const haystack = [
-                  reg.full_name,
-                  reg.contact_number,
-                  reg.municipality,
-                  reg.blood_type,
-                ]
-                  .filter(Boolean)
-                  .join(' ')
-                  .toLowerCase();
-                return haystack.includes(normalizedSearch);
-              }
-              return true;
+              const matchesBloodType = !filters.bloodType || reg.blood_type === filters.bloodType;
+              const matchesMunicipality =
+                !filters.municipality || normalize(reg.municipality) === normalize(filters.municipality);
+              const matchesQuery = matchesSearch([
+                reg.full_name,
+                reg.contact_number,
+                reg.municipality,
+                reg.blood_type,
+                reg.email,
+              ]);
+              return matchesBloodType && matchesMunicipality && matchesQuery;
             })
             .map((reg: any) => ({
               id: String(reg.id),
@@ -1307,59 +1214,66 @@ const DonorManagementScreen: React.FC = () => {
               created_at: reg.created_at,
               dateRegistered: reg.created_at,
             }));
-          
           combinedResults = [...combinedResults, ...mappedRegistrations];
-          console.log('✅ Added registrations, total:', combinedResults.length);
         }
       }
 
-      console.log('✅ Combined results:', combinedResults.length);
-      setDonors(combinedResults);
+      // De-duplicate final list in case backend returns overlaps.
+      const seen = new Set<string>();
+      const dedupedResults = combinedResults.filter((item: any) => {
+        const type = item?.type === 'registration' ? 'registration' : 'donor';
+        const key = `${type}-${String(item?.id || '')}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      console.log('✅ Combined filtered results:', dedupedResults.length);
+      // Ignore stale responses to prevent UI "jump back" glitches.
+      if (requestId === latestFetchRequestId.current) {
+        setDonors(dedupedResults as (Donor | PendingDonorRegistration)[]);
+      }
     } catch (err: any) {
       console.error('❌ Error fetching donors:', err);
-      setError(err.message || 'Failed to fetch donors');
+      if (requestId === latestFetchRequestId.current) {
+        setError(err.message || 'Failed to fetch donors');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestFetchRequestId.current) {
+        setLoading(false);
+      }
     }
   }, [filters]);
 
-  // Debounce search
+  // Debounce only text search; apply other filter changes immediately
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    const previousFilters = previousFiltersRef.current;
+    const onlySearchChanged =
+      previousFilters.bloodType === filters.bloodType &&
+      previousFilters.municipality === filters.municipality &&
+      previousFilters.availability === filters.availability &&
+      previousFilters.showPending === filters.showPending &&
+      previousFilters.searchQuery !== filters.searchQuery;
+
+    const delay = onlySearchChanged ? 300 : 0;
     debounceTimer.current = setTimeout(() => {
       fetchDonors();
-    }, 500);
+    }, delay);
+
+    previousFiltersRef.current = filters;
+
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [filters]);
+  }, [filters, fetchDonors]);
 
   const handleFilterChange = useCallback((filterName: keyof DonorFilter, value: any) => {
     setFilters(prev => ({
       ...prev,
       [filterName]: value
     }));
-  }, []);
-
-  const handleOpenFilterModal = useCallback(() => {
-    setModalFilters(filters);
-    setFilterModalVisible(true);
-  }, [filters]);
-
-  const applyModalFilters = useCallback(() => {
-    setFilters(modalFilters);
-  }, [modalFilters]);
-
-  const resetModalFilters = useCallback(() => {
-    const resetFilters: DonorFilter = {
-      bloodType: null,
-      municipality: null,
-      availability: null,
-      searchQuery: '',
-      showPending: true,
-    };
-    setModalFilters(resetFilters);
-    setFilters(resetFilters);
   }, []);
 
   const handleClearFilters = useCallback(() => {
@@ -1397,7 +1311,7 @@ const DonorManagementScreen: React.FC = () => {
                     try {
                       await donorApi.approveRegistration(String(reg.id));
                       Alert.alert('Success', `${reg.full_name}'s registration has been approved.`);
-                      fetchDonors();
+                      fetchDonors(true);
                     } catch (error: any) {
                       Alert.alert('Error', error.message || 'Failed to approve registration.');
                     }
@@ -1419,7 +1333,7 @@ const DonorManagementScreen: React.FC = () => {
                     try {
                       await donorApi.rejectRegistration(String(reg.id));
                       Alert.alert('Rejected', `${reg.full_name}'s registration has been rejected.`);
-                      fetchDonors();
+                      fetchDonors(true);
                     } catch (error: any) {
                       Alert.alert('Error', error.message || 'Failed to reject registration.');
                     }
@@ -1507,7 +1421,7 @@ const DonorManagementScreen: React.FC = () => {
                 next.delete(donor.id);
                 return next;
               });
-              fetchDonors(); // Re-fetch to restore if failed
+              fetchDonors(true); // Re-fetch to restore if failed
               Alert.alert('Error', error.message || 'Failed to delete donor');
             }
           }
@@ -1532,7 +1446,6 @@ const DonorManagementScreen: React.FC = () => {
     filters.bloodType,
     filters.availability,
     filters.municipality,
-    !filters.showPending ? 'hidePending' : null, // Count as active if not showing pending registrations
   ].filter(value => Boolean(value)).length;
 
   return (
@@ -1556,8 +1469,33 @@ const DonorManagementScreen: React.FC = () => {
           <SearchBar
             value={filters.searchQuery}
             onChangeText={(text) => handleFilterChange('searchQuery', text)}
-            onFilterPress={handleOpenFilterModal}
           />
+
+          <Animated.View
+            entering={FadeInDown.delay(120)}
+            style={{
+              paddingHorizontal: SPACING.lg,
+              marginBottom: SPACING.md,
+            }}
+          >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: SPACING.sm }}>
+              <Chip
+                label={filters.bloodType || 'Blood Type'}
+                selected={Boolean(filters.bloodType)}
+                onPress={() => setShowBloodTypeModal(true)}
+              />
+              <Chip
+                label={filters.municipality || 'Location'}
+                selected={Boolean(filters.municipality)}
+                onPress={() => setShowMunicipalityModal(true)}
+              />
+              <Chip
+                label={filters.availability || 'Availability'}
+                selected={Boolean(filters.availability)}
+                onPress={() => setShowAvailabilityModal(true)}
+              />
+            </ScrollView>
+          </Animated.View>
 
           {activeFilterCount > 0 && (
             <Animated.View
@@ -1597,24 +1535,39 @@ const DonorManagementScreen: React.FC = () => {
             gap: SPACING.md,
             minHeight: SCREEN_HEIGHT * 0.5,
           }}>
-            {loading ? (
+            {loading && donors.length === 0 ? (
               <LoadingIndicator />
             ) : donors.length > 0 ? (
-              donors.map((donor, index) => {
-                // Generate a unique key by combining the type and ID
-                const key = 'type' in donor ? `${donor.type}-${donor.id}` : `donor-${donor.id}`;
-                return (
-                  <DonorCard
-                    key={key}
-                    donor={donor}
-                    onViewDetails={handleViewDetails}
-                    onToggleAvailability={handleToggleAvailability}
-                    onDelete={handleDeleteDonor}
-                    onEdit={handleEdit}
-                    index={index}
-                  />
-                );
-              })
+              <>
+                {loading && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: SPACING.sm,
+                    paddingVertical: SPACING.xs,
+                  }}>
+                    <RefreshCw size={14} color={colors.textSecondary} />
+                    <CustomText variant="caption" style={{ color: colors.textSecondary }}>
+                      Updating results...
+                    </CustomText>
+                  </View>
+                )}
+                {donors.map((donor, index) => {
+                  // Generate a unique key by combining the type and ID
+                  const key = 'type' in donor ? `${donor.type}-${donor.id}` : `donor-${donor.id}`;
+                  return (
+                    <DonorCard
+                      key={key}
+                      donor={donor}
+                      onViewDetails={handleViewDetails}
+                      onToggleAvailability={handleToggleAvailability}
+                      onDelete={handleDeleteDonor}
+                      onEdit={handleEdit}
+                      index={index}
+                    />
+                  );
+                })}
+              </>
             ) : (
               <EmptyState
                 message="No donors or pending registrations match your current filters. Try adjusting your search criteria or add new donors."
@@ -1654,18 +1607,31 @@ const DonorManagementScreen: React.FC = () => {
           </Animated.View>
         )}
 
-        <FilterModal
-          visible={filterModalVisible}
-          onClose={() => setFilterModalVisible(false)}
-          filters={modalFilters}
-          onFilterChange={(filterName, value) => {
-            setModalFilters(prev => ({
-              ...prev,
-              [filterName]: value,
-            }));
-          }}
-          onApply={applyModalFilters}
-          onReset={resetModalFilters}
+        <SelectionModal
+          visible={showBloodTypeModal}
+          title="Select Blood Type"
+          options={BLOOD_TYPE_OPTIONS}
+          selectedValue={filters.bloodType}
+          onSelect={(value) => setFilters(prev => ({ ...prev, bloodType: value === 'All' ? null : value }))}
+          onClose={() => setShowBloodTypeModal(false)}
+        />
+
+        <SelectionModal
+          visible={showMunicipalityModal}
+          title="Select Municipality"
+          options={['All', ...MUNICIPALITIES]}
+          selectedValue={filters.municipality}
+          onSelect={(value) => setFilters(prev => ({ ...prev, municipality: value === 'All' ? null : value }))}
+          onClose={() => setShowMunicipalityModal(false)}
+        />
+
+        <SelectionModal
+          visible={showAvailabilityModal}
+          title="Select Availability"
+          options={AVAILABILITY_OPTIONS}
+          selectedValue={filters.availability}
+          onSelect={(value) => setFilters(prev => ({ ...prev, availability: value === 'All' ? null : value }))}
+          onClose={() => setShowAvailabilityModal(false)}
         />
 
         <DonorDetailsModal

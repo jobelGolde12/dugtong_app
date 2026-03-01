@@ -552,15 +552,6 @@ export default function FindDonorScreen() {
                   {donors?.length || 0} {(donors?.length || 0) === 1 ? 'donor' : 'donors'} found
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.sortButton}
-                onPress={() => setShowStatusModal(true)}
-              >
-                <Ionicons name="filter" size={18} color={colors.textSecondary} />
-                <Text style={[styles.sortText, { color: colors.textSecondary }]}>
-                  Filter
-                </Text>
-              </TouchableOpacity>
             </View>
 
             {/* Loading State */}
@@ -725,19 +716,6 @@ const styles = StyleSheet.create({
   resultCount: {
     fontSize: 13,
     fontWeight: '400',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  sortText: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginLeft: 6,
   },
   loadingContainer: {
     flex: 1,

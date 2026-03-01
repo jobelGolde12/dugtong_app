@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {
   Alert,
   Animated,
@@ -92,6 +93,8 @@ export default function AddDonorPage() {
   const [errors, setErrors] = useState<Errors>({});
   const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
   const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedLastDonationDate, setSelectedLastDonationDate] = useState<Date>(new Date());
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const fadeAnim = useState(new Animated.Value(0))[0];
   const [isLoading, setIsLoading] = useState(false); // Moved here
@@ -225,6 +228,36 @@ export default function AddDonorPage() {
       return formatted;
     }
     return text;
+  };
+
+  const formatDateToYMD = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const openDatePicker = () => {
+    setFocusedField('lastDonationDate');
+    if (formData.lastDonationDate) {
+      const existingDate = new Date(`${formData.lastDonationDate}T00:00:00`);
+      if (!isNaN(existingDate.getTime())) {
+        setSelectedLastDonationDate(existingDate);
+      }
+    }
+    setShowDatePicker(true);
+  };
+
+  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      setFocusedField(null);
+    }
+
+    if (event.type === 'set' && date) {
+      setSelectedLastDonationDate(date);
+      handleInputChange('lastDonationDate', formatDateToYMD(date));
+    }
   };
 
   const handleSubmit = async () => {
@@ -546,24 +579,53 @@ export default function AddDonorPage() {
                 {/* Last Donation Date */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Last Donation Date (Optional)</Text>
-                  <TextInput
+                  <TouchableOpacity
                     style={[
-                      styles.input,
-                      focusedField === 'lastDonationDate' && styles.inputFocused,
-                      errors.lastDonationDate && styles.inputError
+                      styles.dropdown,
+                      focusedField === 'lastDonationDate' && styles.dropdownFocused,
+                      errors.lastDonationDate && styles.dropdownError
                     ]}
-                    value={formData.lastDonationDate}
-                    onChangeText={(value) => handleInputChange('lastDonationDate', value)}
-                    onFocus={() => setFocusedField('lastDonationDate')}
-                    onBlur={() => handleBlur('lastDonationDate')}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor={colors.textSecondary}
-                    autoCapitalize="none"
-                  />
+                    onPress={openDatePicker}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownText,
+                        !formData.lastDonationDate && styles.dropdownPlaceholder
+                      ]}
+                    >
+                      {formData.lastDonationDate || 'Select Date'}
+                    </Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+
+                  {showDatePicker && (
+                    <View style={styles.datePickerContainer}>
+                      <DateTimePicker
+                        value={selectedLastDonationDate}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={handleDateChange}
+                        maximumDate={new Date()}
+                      />
+                      {Platform.OS === 'ios' && (
+                        <TouchableOpacity
+                          style={styles.datePickerDoneButton}
+                          onPress={() => {
+                            setShowDatePicker(false);
+                            setFocusedField(null);
+                            handleBlur('lastDonationDate');
+                          }}
+                        >
+                          <Text style={styles.datePickerDoneText}>Done</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
                   {errors.lastDonationDate ? (
                     <Text style={styles.errorText}>{errors.lastDonationDate}</Text>
                   ) : (
-                    <Text style={styles.helperText}>Example: 2026-02-14</Text>
+                    <Text style={styles.helperText}>Tap to select date</Text>
                   )}
                 </View>
 
@@ -756,6 +818,25 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     marginLeft: 8,
+  },
+  datePickerContainer: {
+    marginTop: 10,
+    backgroundColor: colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  datePickerDoneButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  datePickerDoneText: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '600',
   },
   submitButton: {
     backgroundColor: colors.primary,

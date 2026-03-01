@@ -2,7 +2,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Donor } from '@/types/donor.types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { Alert, Animated, Clipboard, Linking, Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Clipboard, Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { checkPhonePermission, openAppSettings, requestPhonePermission } from '../../lib/utils/permissions';
 import { getPermissionRequestCount, incrementPermissionRequestCount } from '../../lib/utils/storage';
 import PermissionRequestModal from './permissions/PermissionRequestModal';
@@ -136,6 +136,11 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   const bloodTypeColor = getBloodTypeColor(donor.bloodType);
   const statusColor = donor.availabilityStatus === 'Available' ? '#10B981' : '#EF4444';
   const isAvailable = donor.availabilityStatus === 'Available';
+  const avatarUri = donor.avatar_data
+    ? donor.avatar_data.startsWith('data:')
+      ? donor.avatar_data
+      : `data:${donor.avatar_mime_type || 'image/jpeg'};base64,${donor.avatar_data}`
+    : null;
 
   const makeCall = () => {
     const cleanNumber = donor.contactNumber.replace(/[^0-9+]/g, '');
@@ -289,15 +294,23 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
                   borderRadius: isSmallDevice ? 22 : 25,
                 }
               ]}>
-                <Text style={[
-                  styles.avatarText,
-                  {
-                    fontSize: isSmallDevice ? 18 : 20,
-                    color: colors.primary
-                  }
-                ]}>
-                  {donor.name ? donor.name.charAt(0).toUpperCase() : '?'}
-                </Text>
+                {avatarUri ? (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={[
+                    styles.avatarText,
+                    {
+                      fontSize: isSmallDevice ? 18 : 20,
+                      color: colors.primary
+                    }
+                  ]}>
+                    {donor.name ? donor.name.charAt(0).toUpperCase() : '?'}
+                  </Text>
+                )}
               </View>
 
               {/* Status indicator dot on avatar */}
@@ -349,6 +362,23 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
                   }
                 ]} numberOfLines={1}>
                   {donor.municipality}
+                </Text>
+              </View>
+
+              <View style={styles.emailRow}>
+                <Ionicons
+                  name="mail-outline"
+                  size={isSmallDevice ? 13 : 14}
+                  color={colors.textSecondary}
+                />
+                <Text style={[
+                  styles.emailText,
+                  {
+                    color: colors.textSecondary,
+                    fontSize: isSmallDevice ? 12 : 13
+                  }
+                ]} numberOfLines={1}>
+                  {donor.email || 'No email provided'}
                 </Text>
               </View>
             </View>
@@ -487,6 +517,10 @@ const styles = StyleSheet.create({
   avatarText: {
     fontWeight: '700',
   },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
   statusIndicator: {
     position: 'absolute',
     bottom: 0,
@@ -525,7 +559,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  emailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   locationText: {
+    fontWeight: '400',
+    flex: 1,
+    minWidth: 0,
+  },
+  emailText: {
     fontWeight: '400',
     flex: 1,
     minWidth: 0,
