@@ -33,7 +33,7 @@ import AvailabilityChart from '../../components/charts/AvailabilityChart';
 
 interface FilterState {
   bloodType: string | null;
-  municipality: string | null;
+  availability: string | null;
   dateRange: { start: string; end: string } | null;
   searchQuery: string;
 }
@@ -138,7 +138,7 @@ const ReportsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     bloodType: null,
-    municipality: null,
+    availability: null,
     dateRange: null,
     searchQuery: '',
   });
@@ -147,10 +147,9 @@ const ReportsScreen: React.FC = () => {
   // Mock data for availability options
   const availabilityOptions: AvailabilityOption[] = [
     { label: 'All', value: 'all' },
-    { label: 'Available Now', value: 'available' },
+    { label: 'Available', value: 'available' },
     { label: 'Unavailable', value: 'unavailable' },
-    { label: 'On Vacation', value: 'vacation' },
-    { label: 'Recently Donated', value: 'recent' },
+    { label: 'Recently Donated', value: 'recently_donated' },
   ];
 
   // Mock data for blood types
@@ -382,7 +381,7 @@ const ReportsScreen: React.FC = () => {
   const handleClearFilters = (): void => {
     setFilters({
       bloodType: null,
-      municipality: null,
+      availability: null,
       dateRange: null,
       searchQuery: '',
     });
@@ -512,14 +511,14 @@ const ReportsScreen: React.FC = () => {
               label="Blood Type"
               value={filters.bloodType}
               options={bloodTypeOptions}
-              onSelect={(value) => handleFilterChange('bloodType', value)}
+              onSelect={(value) => handleFilterChange('bloodType', value === 'all' ? null : value)}
               placeholder="All Types"
             />
             <FilterSelect
               label="Availability"
-              value={filters.municipality}
+              value={filters.availability}
               options={availabilityOptions}
-              onSelect={(value) => handleFilterChange('municipality', value)}
+              onSelect={(value) => handleFilterChange('availability', value === 'all' ? null : value)}
               placeholder="All Status"
             />
           </View>
@@ -604,7 +603,7 @@ const ReportsScreen: React.FC = () => {
         </View>
 
          {/* Clear Filters Button */}
-         {(filters.bloodType || filters.municipality || filters.searchQuery) && (
+         {(filters.bloodType || filters.availability || filters.searchQuery) && (
            <TouchableOpacity 
              style={[styles.clearFiltersButton, { backgroundColor: colors.primary }]}
              onPress={handleClearFilters}

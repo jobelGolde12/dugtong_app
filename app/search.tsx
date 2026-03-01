@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +20,7 @@ import {
   View
 } from 'react-native';
 import { donorApi } from '../api/donors';
+import { MUNICIPALITIES as SORSOGON_MUNICIPALITIES } from '../constants/filters.constants';
 import { useTheme } from '../contexts/ThemeContext';
 import { Donor } from '../types/donor.types';
 import RoleBasedDashboardLayout from './components/RoleBasedDashboardLayout';
@@ -33,7 +35,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_SMALL_DEVICE = SCREEN_WIDTH < 375;
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const MUNICIPALITIES = ['Manila', 'Quezon City', 'Cebu City', 'Davao City', 'Makati', 'Taguig', 'Pasig', 'Mandaluyong', 'Sorsogon City'];
+const MUNICIPALITIES = SORSOGON_MUNICIPALITIES;
 const STATUS_OPTIONS = ['All', 'Available', 'Unavailable'];
 
 interface FilterModalProps {
@@ -212,13 +214,28 @@ export default function FindDonorScreen() {
     setIsLoading(true);
     setError(null);
     try {
+      const normalizedLocationQuery = searchQuery.trim().toLowerCase();
       const result = await donorApi.getDonors({
         bloodType: filters.bloodType || null,
         municipality: filters.municipality || null,
-        availability: filters.status === 'All' ? null : filters.status === 'Available',
-        searchQuery: searchQuery,
+        availability:
+          filters.status === 'All'
+            ? null
+            : filters.status === 'Unavailable'
+              ? 'Temporarily Unavailable'
+              : filters.status,
+        // Search in this screen is location-based, so do local municipality matching below.
+        searchQuery: '',
       });
-      setDonors(result.items);
+
+      const locationFilteredDonors =
+        normalizedLocationQuery.length > 0
+          ? result.items.filter((donor) =>
+              (donor.municipality || '').toLowerCase().includes(normalizedLocationQuery)
+            )
+          : result.items;
+
+      setDonors(locationFilteredDonors);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch donors');
       console.error('Error fetching donors:', err);
@@ -339,10 +356,11 @@ export default function FindDonorScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             refreshControl={
-              <ScrollView
-                refreshControl={
-                  <Animated.View />
-                }
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
               />
             }
           >
@@ -396,7 +414,7 @@ export default function FindDonorScreen() {
               <TextInput
                 ref={searchInputRef}
                 style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Search donors..."
+                placeholder="Search location (e.g., Bulan)..."
                 placeholderTextColor={colors.textSecondary}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -518,13 +536,16 @@ export default function FindDonorScreen() {
             <View style={styles.resultsHeader}>
               <View>
                 <Text style={[styles.resultsTitle, { color: colors.text }]}>
-                  Available Donors
+                  {filters.status === 'All' ? 'Donors' : `${filters.status} Donors`}
                 </Text>
                 <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
                   {donors?.length || 0} {(donors?.length || 0) === 1 ? 'donor' : 'donors'} found
                 </Text>
               </View>
-              <TouchableOpacity style={styles.sortButton}>
+              <TouchableOpacity
+                style={styles.sortButton}
+                onPress={() => setShowStatusModal(true)}
+              >
                 <Ionicons name="filter" size={18} color={colors.textSecondary} />
                 <Text style={[styles.sortText, { color: colors.textSecondary }]}>
                   Filter
@@ -803,4 +824,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-

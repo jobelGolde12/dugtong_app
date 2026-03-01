@@ -1215,6 +1215,13 @@ const DonorManagementScreen: React.FC = () => {
     searchQuery: '',
     showPending: true, // Show pending registrations by default
   });
+  const [modalFilters, setModalFilters] = useState<DonorFilter>({
+    bloodType: null,
+    municipality: null,
+    availability: null,
+    searchQuery: '',
+    showPending: true,
+  });
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedDonor, setSelectedDonor] = useState<Donor | PendingDonorRegistration | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -1247,34 +1254,59 @@ const DonorManagementScreen: React.FC = () => {
       }
 
       // Fetch pending registrations if showPending is true
-      if (filters.showPending) {
+      if (filters.showPending && !filters.availability) {
         console.log('🔍 Fetching pending registrations...');
         const { getDonorRegistrations } = await import('../../../api/donor-registrations');
         const registrations = await getDonorRegistrations({ status: 'pending' });
         console.log('📊 Registrations result:', registrations);
         
         if (registrations && Array.isArray(registrations)) {
+          const normalizedSearch = (filters.searchQuery || '').trim().toLowerCase();
           // Map registrations to match Donor type
-          const mappedRegistrations = registrations.map((reg: any) => ({
-            id: String(reg.id),
-            full_name: reg.full_name,
-            name: reg.full_name,
-            age: reg.age,
-            sex: reg.sex,
-            blood_type: reg.blood_type,
-            bloodType: reg.blood_type,
-            contact_number: reg.contact_number,
-            contactNumber: reg.contact_number,
-            email: reg.email,
-            avatar_data: reg.avatar_data,
-            avatar_mime_type: reg.avatar_mime_type,
-            municipality: reg.municipality,
-            availability_status: 'pending',
-            availabilityStatus: 'Pending Review',
-            status: reg.status,
-            created_at: reg.created_at,
-            dateRegistered: reg.created_at,
-          }));
+          const mappedRegistrations = registrations
+            .filter((reg: any) => {
+              if (filters.bloodType && reg.blood_type !== filters.bloodType) return false;
+              if (
+                filters.municipality &&
+                !String(reg.municipality || '').toLowerCase().includes(String(filters.municipality).toLowerCase())
+              ) {
+                return false;
+              }
+              if (normalizedSearch) {
+                const haystack = [
+                  reg.full_name,
+                  reg.contact_number,
+                  reg.municipality,
+                  reg.blood_type,
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+                  .toLowerCase();
+                return haystack.includes(normalizedSearch);
+              }
+              return true;
+            })
+            .map((reg: any) => ({
+              id: String(reg.id),
+              type: 'registration',
+              full_name: reg.full_name,
+              name: reg.full_name,
+              age: reg.age,
+              sex: reg.sex,
+              blood_type: reg.blood_type,
+              bloodType: reg.blood_type,
+              contact_number: reg.contact_number,
+              contactNumber: reg.contact_number,
+              email: reg.email,
+              avatar_data: reg.avatar_data,
+              avatar_mime_type: reg.avatar_mime_type,
+              municipality: reg.municipality,
+              availability_status: 'pending',
+              availabilityStatus: 'Pending Review',
+              status: reg.status,
+              created_at: reg.created_at,
+              dateRegistered: reg.created_at,
+            }));
           
           combinedResults = [...combinedResults, ...mappedRegistrations];
           console.log('✅ Added registrations, total:', combinedResults.length);
@@ -1307,6 +1339,27 @@ const DonorManagementScreen: React.FC = () => {
       ...prev,
       [filterName]: value
     }));
+  }, []);
+
+  const handleOpenFilterModal = useCallback(() => {
+    setModalFilters(filters);
+    setFilterModalVisible(true);
+  }, [filters]);
+
+  const applyModalFilters = useCallback(() => {
+    setFilters(modalFilters);
+  }, [modalFilters]);
+
+  const resetModalFilters = useCallback(() => {
+    const resetFilters: DonorFilter = {
+      bloodType: null,
+      municipality: null,
+      availability: null,
+      searchQuery: '',
+      showPending: true,
+    };
+    setModalFilters(resetFilters);
+    setFilters(resetFilters);
   }, []);
 
   const handleClearFilters = useCallback(() => {
@@ -1503,7 +1556,7 @@ const DonorManagementScreen: React.FC = () => {
           <SearchBar
             value={filters.searchQuery}
             onChangeText={(text) => handleFilterChange('searchQuery', text)}
-            onFilterPress={() => setFilterModalVisible(true)}
+            onFilterPress={handleOpenFilterModal}
           />
 
           {activeFilterCount > 0 && (
@@ -1604,10 +1657,15 @@ const DonorManagementScreen: React.FC = () => {
         <FilterModal
           visible={filterModalVisible}
           onClose={() => setFilterModalVisible(false)}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onApply={() => { }}
-          onReset={handleClearFilters}
+          filters={modalFilters}
+          onFilterChange={(filterName, value) => {
+            setModalFilters(prev => ({
+              ...prev,
+              [filterName]: value,
+            }));
+          }}
+          onApply={applyModalFilters}
+          onReset={resetModalFilters}
         />
 
         <DonorDetailsModal
@@ -1621,4 +1679,3 @@ const DonorManagementScreen: React.FC = () => {
 };
 
 export default DonorManagementScreen;
-

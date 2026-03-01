@@ -50,6 +50,7 @@ interface FormData {
   avatarMimeType: string;
   municipality: string;
   availabilityStatus: string;
+  lastDonationDate: string;
 }
 
 interface Errors {
@@ -61,6 +62,7 @@ interface Errors {
   email?: string;
   municipality?: string;
   availabilityStatus?: string;
+  lastDonationDate?: string;
 }
 
 interface DropdownModalProps {
@@ -83,7 +85,8 @@ export default function AddDonorPage() {
     avatarBase64: '',
     avatarMimeType: '',
     municipality: '',
-    availabilityStatus: 'Available'
+    availabilityStatus: 'Available',
+    lastDonationDate: ''
   });
 
   const [errors, setErrors] = useState<Errors>({});
@@ -176,6 +179,12 @@ export default function AddDonorPage() {
       case 'availabilityStatus':
         if (!value) error = 'Availability Status is required';
         break;
+
+      case 'lastDonationDate':
+        if (value.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+          error = 'Use YYYY-MM-DD format';
+        }
+        break;
     }
 
     return error;
@@ -239,6 +248,7 @@ export default function AddDonorPage() {
         avatar_mime_type: formData.avatarMimeType || undefined,
         municipality: formData.municipality,
         availabilityStatus: formData.availabilityStatus,
+        lastDonationDate: formData.lastDonationDate.trim() || undefined,
       });
 
       Alert.alert(
@@ -531,6 +541,30 @@ export default function AddDonorPage() {
                     ))}
                   </View>
                   {errors.availabilityStatus ? <Text style={styles.errorText}>{errors.availabilityStatus}</Text> : null}
+                </View>
+
+                {/* Last Donation Date */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Last Donation Date (Optional)</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      focusedField === 'lastDonationDate' && styles.inputFocused,
+                      errors.lastDonationDate && styles.inputError
+                    ]}
+                    value={formData.lastDonationDate}
+                    onChangeText={(value) => handleInputChange('lastDonationDate', value)}
+                    onFocus={() => setFocusedField('lastDonationDate')}
+                    onBlur={() => handleBlur('lastDonationDate')}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={colors.textSecondary}
+                    autoCapitalize="none"
+                  />
+                  {errors.lastDonationDate ? (
+                    <Text style={styles.errorText}>{errors.lastDonationDate}</Text>
+                  ) : (
+                    <Text style={styles.helperText}>Example: 2026-02-14</Text>
+                  )}
                 </View>
 
                 {/* Submit Button */}

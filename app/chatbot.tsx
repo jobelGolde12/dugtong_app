@@ -12,11 +12,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import {
-  Easing,
-  withSequence,
-  withTiming
-} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDonorRegistrations } from '../api/donor-registrations';
 import { donorApi } from '../api/donors';
@@ -39,6 +34,35 @@ type MessageType = {
   sender: 'user' | 'bot';
 };
 
+const ADMIN_QUICK_PROMPTS = [
+  'Summarize analytics',
+  'How many donors do we have?',
+  'Show blood type distribution',
+  'How many pending registrations?',
+  'How many unread notifications?'
+] as const;
+
+const getDefaultWelcomeMessage = (): string => {
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  return `${greeting}, Admin. I am Dugtong Bot, your blood donation management assistant.
+
+I can help you with:
+- Analytics and system summaries
+- Donor counts and availability
+- Blood type distribution
+- Registration status
+- Notifications overview
+
+Try sending one of these:
+- "Summarize analytics"
+- "How many donors do we have?"
+- "Show blood type distribution"
+- "How many pending registrations?"
+- "How many unread notifications?"`;
+};
+
 // OpenRouter free models in fallback order
 const FREE_MODELS = [
   'meta-llama/llama-3.2-3b-instruct:free',
@@ -46,18 +70,16 @@ const FREE_MODELS = [
   'microsoft/phi-3-mini-128k-instruct:free'
 ] as const;
 
-type OpenRouterError = {
-  error?: {
-    message?: string;
-    code?: number;
-  };
-};
-
 export default function ChatbotScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { userRole, isAdmin, isLoading: authLoading } = useRoleAccess();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<MessageType[]>([
+    {
+      id: 'default-welcome',
+      text: getDefaultWelcomeMessage(),
+      sender: 'bot',
+    }
   ]);
   const [showIntro, setShowIntro] = useState(true);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -100,11 +122,11 @@ export default function ChatbotScreen() {
           municipality: null, 
           availability: null, 
           searchQuery: '', 
-          page: 1, 
-          page_size: 100 
+          page: 0,
+          page_size: 1000
         }).catch(error => {
           console.error('Error fetching donors:', error);
-          return { items: [], total: 0, page: 1, page_size: 100 };
+          return { items: [], total: 0, page: 0, page_size: 1000 };
         }),
         
         // Donor registrations endpoint with error handling
@@ -129,11 +151,37 @@ export default function ChatbotScreen() {
       console.error('Critical error fetching live data:', error);
       // Return default empty data structure to prevent crashes
       return {
-        donors: { items: [], total: 0, page: 1, page_size: 100 },
+        donors: { items: [], total: 0, page: 0, page_size: 1000 },
         registrations: [],
         notifications: []
       };
     }
+  };
+
+  const normalizeAvailabilityStatus = (value: any): string => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized === 'available') return 'available';
+    if (
+      normalized === 'temporarily unavailable' ||
+      normalized === 'temporarily_unavailable' ||
+      normalized === 'unavailable'
+    ) {
+      return 'unavailable';
+    }
+    if (normalized === 'recently donated' || normalized === 'recently_donated') {
+      return 'recently_donated';
+    }
+    return 'unknown';
+  };
+
+  const getNormalizedDonorList = (donors: any): any[] => {
+    const items = Array.isArray(donors?.items) ? donors.items : [];
+    const map = new Map<string, any>();
+    items.forEach((donor: any) => {
+      const id = donor?.id ? String(donor.id) : `${donor?.name || donor?.full_name || 'unknown'}-${donor?.contactNumber || donor?.contact_number || ''}`;
+      map.set(id, donor);
+    });
+    return Array.from(map.values());
   };
 
   const generateDataSummary = async (): Promise<string> => {
@@ -151,14 +199,18 @@ export default function ChatbotScreen() {
 
     try {
       const bloodTypeCounts: Record<string, number> = {};
-      if (donors.items && Array.isArray(donors.items)) {
-        donors.items.forEach((donor: any) => {
-          const bloodType = donor?.bloodType || donor?.blood_type || 'Unknown';
-          bloodTypeCounts[bloodType] = (bloodTypeCounts[bloodType] || 0) + 1;
-        });
-      }
+      const donorList = getNormalizedDonorList(donors);
+      donorList.forEach((donor: any) => {
+        const bloodType = donor?.bloodType || donor?.blood_type || 'Unknown';
+        bloodTypeCounts[bloodType] = (bloodTypeCounts[bloodType] || 0) + 1;
+      });
 
-      const availableDonors = donors.items?.filter((d: any) => d?.availability_status === 'Available').length || 0;
+      const availableDonors = donorList.filter((d: any) =>
+        normalizeAvailabilityStatus(d?.availabilityStatus || d?.availability_status) === 'available'
+      ).length;
+      const unavailableDonors = donorList.filter((d: any) =>
+        normalizeAvailabilityStatus(d?.availabilityStatus || d?.availability_status) === 'unavailable'
+      ).length;
       const pendingRegistrations = registrations.filter((r: any) => r?.status === 'pending').length || 0;
       const approvedRegistrations = registrations.filter((r: any) => r?.status === 'approved').length || 0;
 
@@ -169,8 +221,9 @@ export default function ChatbotScreen() {
 
       return `
 Donors Summary:
-- Total Donors: ${donors.total || 0}
+- Total Donors: ${donorList.length || 0}
 - Available Donors: ${availableDonors}
+- Unavailable Donors: ${unavailableDonors}
 - Blood Type Distribution: ${Object.entries(bloodTypeCounts).map(([type, count]) => `${type}: ${count}`).join(', ')}
 
 Registrations Summary:
@@ -209,6 +262,60 @@ Notifications Summary:
       processedTemplate = processedTemplate.replace(new RegExp(`{{${key}}}`, 'g'), data[key]);
     });
     return processedTemplate;
+  };
+
+  const buildInstantDataResponse = (input: string, data: any): string | null => {
+    const lowerInput = input.toLowerCase();
+    const donorList = getNormalizedDonorList(data?.donors);
+    const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
+    const notifications = Array.isArray(data?.notifications) ? data.notifications : [];
+
+    const availableDonors = donorList.filter((d: any) =>
+      normalizeAvailabilityStatus(d?.availabilityStatus || d?.availability_status) === 'available'
+    ).length;
+    const unavailableDonors = donorList.filter((d: any) =>
+      normalizeAvailabilityStatus(d?.availabilityStatus || d?.availability_status) === 'unavailable'
+    ).length;
+    const pendingRegistrations = registrations.filter((r: any) => r?.status === 'pending').length;
+    const unreadNotifications = notifications.filter((n: any) => !n?.is_read).length;
+
+    if (lowerInput.includes('unread') && lowerInput.includes('notification')) {
+      return `There are currently ${unreadNotifications} unread notifications.`;
+    }
+
+    if (lowerInput.includes('pending') && lowerInput.includes('registration')) {
+      return `There are currently ${pendingRegistrations} pending donor registrations.`;
+    }
+
+    if (lowerInput.includes('available') && lowerInput.includes('donor')) {
+      return `Currently, ${availableDonors} donors are marked as available.`;
+    }
+
+    if (lowerInput.includes('unavailable') && lowerInput.includes('donor')) {
+      return `Currently, ${unavailableDonors} donors are marked as unavailable.`;
+    }
+
+    if (
+      (lowerInput.includes('how many') || lowerInput.includes('total')) &&
+      lowerInput.includes('donor')
+    ) {
+      return `There are ${donorList.length} total donors in the system.`;
+    }
+
+    if (lowerInput.includes('blood type') && (lowerInput.includes('distribution') || lowerInput.includes('summary'))) {
+      const bloodTypeCounts: Record<string, number> = {};
+      donorList.forEach((donor: any) => {
+        const type = donor?.bloodType || donor?.blood_type || 'Unknown';
+        bloodTypeCounts[type] = (bloodTypeCounts[type] || 0) + 1;
+      });
+      const distribution = Object.entries(bloodTypeCounts)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(', ');
+      return `Blood type distribution: ${distribution || 'No donor data available.'}`;
+    }
+
+    return null;
   };
 
   // OpenRouter API integration with model fallback mechanism
@@ -264,6 +371,8 @@ BEHAVIOR GUIDELINES:
 - If data is unavailable, inform the user gracefully`;
 
     let lastError: Error | null = null;
+    let hasApiKeyFailure = false;
+    let hasNonAuthFailure = false;
 
     // Try each API key
     for (let keyIndex = 0; keyIndex < apiKeys.length; keyIndex++) {
@@ -319,6 +428,7 @@ BEHAVIOR GUIDELINES:
               console.error('Response data:', JSON.stringify(data, null, 2));
 
               if (errorCode === 429 || errorCode === 502 || errorCode === 503) {
+                hasNonAuthFailure = true;
                 if (attempt < maxRetries) {
                   const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
                   console.log(`⏳ Retryable error ${errorCode}, waiting ${delay}ms...`);
@@ -328,8 +438,10 @@ BEHAVIOR GUIDELINES:
               } else if (errorCode === 401 || errorCode === 403) {
                 console.log(`🔑 Authentication failed with key ${keyIndex + 1}, trying next`);
                 lastError = new Error(`API key authentication failed`);
+                hasApiKeyFailure = true;
                 break;
               } else {
+                hasNonAuthFailure = true;
                 if (attempt < maxRetries) {
                   const delay = baseDelay * Math.pow(2, attempt);
                   console.log(`⏳ Provider error ${errorCode}, retrying in ${delay}ms...`);
@@ -349,6 +461,7 @@ BEHAVIOR GUIDELINES:
 
           } catch (error) {
             lastError = error as Error;
+            hasNonAuthFailure = true;
             console.error(`❌ Network/request error on attempt ${attempt + 1}:`, error);
 
             if (attempt < maxRetries) {
@@ -368,7 +481,14 @@ BEHAVIOR GUIDELINES:
       console.log(`❌ All models failed with key ${keyIndex + 1}, trying next key...`);
     }
 
-    console.log('ℹ️ OpenRouter API unavailable, using local rule-based responses');
+    if (hasApiKeyFailure && !hasNonAuthFailure) {
+      console.log('ℹ️ API key authentication failed, using local rule-based responses');
+      setIsTyping(false);
+      setCannotReceiveMessages(false);
+      return await getHumanLikeResponse(input);
+    }
+
+    console.error('OpenRouter request failed. Falling back to local response:', lastError);
     setIsTyping(false);
     setCannotReceiveMessages(false);
     return await getHumanLikeResponse(input);
@@ -380,6 +500,12 @@ BEHAVIOR GUIDELINES:
     setIsTyping(true);
     
     const lowerInput = input.toLowerCase();
+    const liveData = await fetchLiveData();
+    const instantResponse = buildInstantDataResponse(input, liveData);
+    if (instantResponse) {
+      setIsTyping(false);
+      return instantResponse;
+    }
 
     // Check for analytics/donor data summary requests (Rule 1)
     if (matchesKeywords(input, chatbotRules.rules[0].keywords)) {
@@ -446,11 +572,12 @@ BEHAVIOR GUIDELINES:
 
 
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (presetInput?: string) => {
     // NEW: Prevent sending when chatbot cannot receive messages
-    if (cannotReceiveMessages || !message.trim()) return;
+    if (cannotReceiveMessages) return;
 
-    const userInput = message.trim();
+    const userInput = (presetInput ?? message).trim();
+    if (!userInput) return;
 
     // Add user message
     const userMessage: MessageType = {
@@ -615,6 +742,25 @@ BEHAVIOR GUIDELINES:
                 </RNAnimated.View>
               )}
 
+              {showIntro && (
+                <View style={styles.quickPromptsContainer}>
+                  <Text style={styles.quickPromptsTitle}>Admin quick chats</Text>
+                  <View style={styles.quickPromptList}>
+                    {ADMIN_QUICK_PROMPTS.map((prompt) => (
+                      <TouchableOpacity
+                        key={prompt}
+                        style={styles.quickPromptButton}
+                        onPress={() => handleSendMessage(prompt)}
+                        activeOpacity={0.85}
+                        disabled={cannotReceiveMessages}
+                      >
+                        <Text style={styles.quickPromptText}>{prompt}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
 
 
               {/* Chat Messages */}
@@ -716,6 +862,33 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
     fontSize: 18,
     fontWeight: '500',
     color: colors.text,
+  },
+  quickPromptsContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  quickPromptsTitle: {
+    fontSize: 14,
+    color: colors.secondaryText,
+    marginBottom: 10,
+    textAlign: 'left',
+  },
+  quickPromptList: {
+    width: '100%',
+    gap: 8,
+  },
+  quickPromptButton: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  quickPromptText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
   },
   talkSection: {
     alignItems: 'center',

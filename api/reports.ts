@@ -1,4 +1,5 @@
 import { apiClient } from "../src/services/apiClient";
+import { donorApi } from "./donors";
 import type {
   ReportSummary,
   BloodTypeDistribution,
@@ -17,12 +18,37 @@ export interface ReportData {
 
 export const reportsApi = {
   getSummary: async (): Promise<ReportSummary> => {
-    const data = await apiClient.get<any>("/reports/summary");
+    const [summaryData, donorsData] = await Promise.all([
+      apiClient.get<any>("/reports/summary").catch(() => ({})),
+      donorApi.getDonors({
+        bloodType: null,
+        municipality: null,
+        availability: null,
+        searchQuery: "",
+        page: 0,
+        page_size: 1000,
+      }).catch(() => ({ items: [], total: 0, page: 0, page_size: 1000 })),
+    ]);
+
+    const normalizeAvailability = (status: any): string => String(status || "").trim().toLowerCase();
+    const donorMap = new Map<string, any>();
+    (donorsData.items || []).forEach((donor: any) => {
+      if (donor?.id) donorMap.set(String(donor.id), donor);
+    });
+
+    const donorList = Array.from(donorMap.values());
+    const computedTotalDonors = donorList.length;
+    const computedAvailableDonors = donorList.filter((donor: any) =>
+      normalizeAvailability(donor?.availabilityStatus || donor?.availability_status) === "available"
+    ).length;
+
+    const shouldUseComputedCounts = donorList.length > 0;
+
     return {
-      totalDonors: data.totalDonors || 0,
-      availableDonors: data.availableDonors || 0,
-      requestsThisMonth: data.bloodRequestsThisMonth || 0,
-      successfulDonations: data.totalDonations || 0
+      totalDonors: shouldUseComputedCounts ? computedTotalDonors : (summaryData.totalDonors || 0),
+      availableDonors: shouldUseComputedCounts ? computedAvailableDonors : (summaryData.availableDonors || 0),
+      requestsThisMonth: summaryData.bloodRequestsThisMonth || 0,
+      successfulDonations: summaryData.totalDonations || 0
     };
   },
 

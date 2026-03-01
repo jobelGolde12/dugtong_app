@@ -29,10 +29,33 @@ export const donorApi = {
     filter: DonorFilter & { page?: number; page_size?: number },
   ): Promise<GetDonorsResponse> => {
     const params = new URLSearchParams();
+
+    const normalizeAvailabilityFilter = (value: DonorFilter["availability"]): string | null => {
+      if (value === null || value === undefined || value === "") return null;
+      if (typeof value === "boolean") {
+        return value ? "Available" : "Temporarily Unavailable";
+      }
+
+      const normalized = String(value).trim().toLowerCase();
+      if (normalized === "available") return "Available";
+      if (
+        normalized === "unavailable" ||
+        normalized === "temporarily unavailable" ||
+        normalized === "temporarily_unavailable"
+      ) {
+        return "Temporarily Unavailable";
+      }
+      if (normalized === "recently donated" || normalized === "recently_donated") {
+        return "Recently Donated";
+      }
+
+      return String(value);
+    };
     
     if (filter.bloodType) params.append("bloodType", filter.bloodType);
     if (filter.municipality) params.append("municipality", filter.municipality);
-    if (filter.availability) params.append("availability", String(filter.availability));
+    const availability = normalizeAvailabilityFilter(filter.availability);
+    if (availability) params.append("availability", availability);
     if (filter.searchQuery) params.append("search", filter.searchQuery);
     if (filter.page !== undefined) params.append("page", String(filter.page));
     if (filter.page_size !== undefined) params.append("page_size", String(filter.page_size));
