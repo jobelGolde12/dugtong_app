@@ -25,9 +25,9 @@ export const reportsApi = {
         municipality: null,
         availability: null,
         searchQuery: "",
-        page: 0,
+        page: 1,
         page_size: 1000,
-      }).catch(() => ({ items: [], total: 0, page: 0, page_size: 1000 })),
+      }).catch(() => ({ items: [], total: 0, page: 1, page_size: 1000 })),
     ]);
 
     const normalizeAvailability = (status: any): string => String(status || "").trim().toLowerCase();

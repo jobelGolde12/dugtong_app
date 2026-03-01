@@ -122,11 +122,11 @@ export default function ChatbotScreen() {
           municipality: null, 
           availability: null, 
           searchQuery: '', 
-          page: 0,
+          page: 1,
           page_size: 1000
         }).catch(error => {
           console.error('Error fetching donors:', error);
-          return { items: [], total: 0, page: 0, page_size: 1000 };
+          return { items: [], total: 0, page: 1, page_size: 1000 };
         }),
         
         // Donor registrations endpoint with error handling
@@ -151,7 +151,7 @@ export default function ChatbotScreen() {
       console.error('Critical error fetching live data:', error);
       // Return default empty data structure to prevent crashes
       return {
-        donors: { items: [], total: 0, page: 0, page_size: 1000 },
+        donors: { items: [], total: 0, page: 1, page_size: 1000 },
         registrations: [],
         notifications: []
       };

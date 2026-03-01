@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -180,7 +180,7 @@ export default function FindDonorScreen() {
     status: 'All',
   });
 
-  const [donors, setDonors] = useState<Donor[]>([]);
+  const [allDonors, setAllDonors] = useState<Donor[]>([]);
   const [showBloodTypeModal, setShowBloodTypeModal] = useState(false);
   const [showMunicipalityModal, setShowMunicipalityModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -191,7 +191,6 @@ export default function FindDonorScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const headerScale = useRef(new Animated.Value(0.95)).current;
-  const debounceTimer = useRef<any>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -214,28 +213,15 @@ export default function FindDonorScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      const normalizedLocationQuery = searchQuery.trim().toLowerCase();
       const result = await donorApi.getDonors({
-        bloodType: filters.bloodType || null,
-        municipality: filters.municipality || null,
-        availability:
-          filters.status === 'All'
-            ? null
-            : filters.status === 'Unavailable'
-              ? 'Temporarily Unavailable'
-              : filters.status,
-        // Search in this screen is location-based, so do local municipality matching below.
+        bloodType: null,
+        municipality: null,
+        availability: null,
         searchQuery: '',
+        page: 1,
+        page_size: 1000,
       });
-
-      const locationFilteredDonors =
-        normalizedLocationQuery.length > 0
-          ? result.items.filter((donor) =>
-              (donor.municipality || '').toLowerCase().includes(normalizedLocationQuery)
-            )
-          : result.items;
-
-      setDonors(locationFilteredDonors);
+      setAllDonors(Array.isArray(result.items) ? result.items : []);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch donors');
       console.error('Error fetching donors:', err);
@@ -243,26 +229,50 @@ export default function FindDonorScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [filters, searchQuery]);
+  }, []);
 
-  // Debounced search
   useEffect(() => {
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
+    fetchDonors();
+  }, [fetchDonors]);
 
-    // Immediate fetch if empty (clear filters) or filters changed
-    // Otherwise debounce
-    debounceTimer.current = setTimeout(() => {
-      fetchDonors();
-    }, 500);
+  const donors = useMemo(() => {
+    const normalize = (value: string) => value.trim().toLowerCase();
+    const locationQuery = normalize(searchQuery);
 
-    return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
+    const isAvailable = (status: string) => {
+      const normalizedStatus = normalize(status || '');
+      return normalizedStatus === 'available';
     };
-  }, [filters, searchQuery]);
+
+    return allDonors.filter((donor) => {
+      const donorBloodType = donor.bloodType || '';
+      const donorMunicipality = donor.municipality || '';
+      const donorAvailability = donor.availabilityStatus || '';
+
+      const matchesBloodType =
+        !filters.bloodType || donorBloodType === filters.bloodType;
+
+      const matchesMunicipality =
+        !filters.municipality || normalize(donorMunicipality) === normalize(filters.municipality);
+
+      const matchesAvailability =
+        filters.status === 'All'
+          ? true
+          : filters.status === 'Available'
+            ? isAvailable(donorAvailability)
+            : !isAvailable(donorAvailability);
+
+      const matchesLocationSearch =
+        !locationQuery || normalize(donorMunicipality).includes(locationQuery);
+
+      return (
+        matchesBloodType &&
+        matchesMunicipality &&
+        matchesAvailability &&
+        matchesLocationSearch
+      );
+    });
+  }, [allDonors, filters, searchQuery]);
 
 
   const handleDonorPress = useCallback((donor: Donor) => {
