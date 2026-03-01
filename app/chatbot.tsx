@@ -812,7 +812,7 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
     flexDirection: 'row',
     padding: 12,
     paddingBottom: 10,
-    marginBottom: 90,
+    marginBottom: 110,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,

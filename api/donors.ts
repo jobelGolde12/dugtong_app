@@ -81,7 +81,19 @@ export const donorApi = {
   },
 
   createDonor: async (data: Omit<Donor, "id" | "dateRegistered">): Promise<Donor> => {
-    const response = await apiClient.post<Donor>("/donors", { data });
+    const payload = {
+      full_name: data.name,
+      age: data.age,
+      sex: data.sex,
+      blood_type: data.bloodType,
+      contact_number: data.contactNumber,
+      municipality: data.municipality,
+      availability_status: data.availabilityStatus,
+      last_donation_date: data.lastDonationDate || null,
+      notes: data.notes || null,
+      created_at: new Date().toISOString(),
+    };
+    const response = await apiClient.post<Donor>("/donors", { data: payload });
     return response;
   },
 
