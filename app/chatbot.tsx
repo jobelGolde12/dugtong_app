@@ -232,11 +232,14 @@ Notifications Summary:
     // Validate API keys
     if (apiKeys.length === 0) {
       console.error('❌ No OpenRouter API keys are set');
+      console.error('Please set EXPO_PUBLIC_OPEN_ROUTER_API_KEY1, EXPO_PUBLIC_OPEN_ROUTER_API_KEY2, or EXPO_PUBLIC_OPEN_ROUTER_API_KEY3 in your .env file');
       setIsTyping(false);
       setCannotReceiveMessages(false);
       const response = await getHumanLikeResponse(input);
       return response;
     }
+
+    console.log(`✅ Found ${apiKeys.length} API key(s) configured`);
 
     // Build system prompt from chatbot-rules.json
     const rulesDescription = chatbotRules.rules.map(rule =>
@@ -314,6 +317,7 @@ BEHAVIOR GUIDELINES:
             if (!response.ok) {
               const errorCode = response.status;
               console.error(`❌ API Error ${errorCode}:`, data.error?.message || 'Unknown error');
+              console.error('Response data:', JSON.stringify(data, null, 2));
 
               if (errorCode === 429 || errorCode === 502 || errorCode === 503) {
                 if (attempt < maxRetries) {
@@ -323,7 +327,8 @@ BEHAVIOR GUIDELINES:
                   continue;
                 }
               } else if (errorCode === 401 || errorCode === 403) {
-                console.error(`🔑 Authentication error ${errorCode}, trying next model`);
+                console.error(`🔑 Authentication error ${errorCode}: Invalid or expired API key`);
+                lastError = new Error(`API key authentication failed: ${data.error?.message || 'Invalid credentials'}`);
                 break;
               } else {
                 if (attempt < maxRetries) {
@@ -368,6 +373,7 @@ BEHAVIOR GUIDELINES:
     if (lastError) {
       console.error('Last error:', lastError.message || lastError);
     }
+    console.log('ℹ️ Using local rule-based responses instead');
     setIsTyping(false);
     setCannotReceiveMessages(false);
     return await getHumanLikeResponse(input);
@@ -390,7 +396,6 @@ BEHAVIOR GUIDELINES:
         donor_summary: dataSummary
       });
       
-      // NEW: Hide typing indicator after generating response
       setIsTyping(false);
       return response;
     }
@@ -398,36 +403,39 @@ BEHAVIOR GUIDELINES:
     // Check for greeting keywords (Rule 2)
     if (matchesKeywords(input, chatbotRules.rules[1].keywords)) {
       const response = getRandomResponseTemplate(chatbotRules.rules[1]);
-      // NEW: Hide typing indicator after generating response
       setIsTyping(false);
       return response;
     }
 
-    // Check for thank you keywords
-    if (matchesKeywords(input, chatbotRules.rules[4].keywords)) {
-      const response = getRandomResponseTemplate(chatbotRules.rules[4]);
-      // NEW: Hide typing indicator after generating response
-      setIsTyping(false);
-      return response;
-    }
-
-    // Check for question/help keywords (Rule 4)
-    if (lowerInput.includes('?') || matchesKeywords(input, chatbotRules.rules[3].keywords)) {
+    // Check for capabilities/what can you do (Rule 4)
+    if (matchesKeywords(input, chatbotRules.rules[3].keywords)) {
       const response = getRandomResponseTemplate(chatbotRules.rules[3]);
-      // NEW: Hide typing indicator after generating response
       setIsTyping(false);
       return response;
     }
 
-    // Default to acknowledgment (Rule 3) or fallback (Rule 6) responses
+    // Check for thank you keywords (Rule 6)
+    if (matchesKeywords(input, chatbotRules.rules[5].keywords)) {
+      const response = getRandomResponseTemplate(chatbotRules.rules[5]);
+      setIsTyping(false);
+      return response;
+    }
+
+    // Check for question/help keywords (Rule 5)
+    if (lowerInput.includes('?') || matchesKeywords(input, chatbotRules.rules[4].keywords)) {
+      const response = getRandomResponseTemplate(chatbotRules.rules[4]);
+      setIsTyping(false);
+      return response;
+    }
+
+    // Default to acknowledgment (Rule 3) or fallback (Rule 7) responses
     let response;
     if (Math.random() > 0.5) {
       response = getRandomResponseTemplate(chatbotRules.rules[2]);
     } else {
-      response = getRandomResponseTemplate(chatbotRules.rules[5]);
+      response = getRandomResponseTemplate(chatbotRules.rules[6]);
     }
     
-    // NEW: Hide typing indicator after generating response
     setIsTyping(false);
     return response;
   };

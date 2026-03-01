@@ -47,6 +47,24 @@
     },
     {
       "id": 4,
+      "title": "Capabilities and Features",
+      "description": "Explain what the chatbot can do",
+      "keywords": [
+        "what can you do",
+        "what do you do",
+        "capabilities",
+        "features",
+        "help me",
+        "what are you",
+        "who are you",
+        "your purpose"
+      ],
+      "response_templates": [
+        "I'm Dugtong Bot, your blood donation assistant! I can help you with:\n\n📊 View analytics and donor statistics\n🩸 Check blood type distribution\n👥 See donor registrations (pending/approved)\n🔔 Review notifications and alerts\n📈 Get real-time system data\n\nJust ask me about donors, registrations, or any data you need!"
+      ]
+    },
+    {
+      "id": 5,
       "title": "Helpful Responses",
       "description": "Responses when users ask questions or need help",
       "keywords": [
@@ -68,7 +86,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 6,
       "title": "Thank You Responses",
       "description": "How to respond when users say thank you",
       "keywords": ["thank", "thanks", "appreciate"],
@@ -79,7 +97,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 7,
       "title": "Fallback Responses",
       "description": "Responses when the chatbot doesn't understand",
       "keywords": [],
