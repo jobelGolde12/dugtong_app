@@ -17,12 +17,14 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { reportsApi } from '../../../api/reports';
+import { donorApi } from '../../../api/donors';
 import type {
   AvailabilityTrend,
   BloodTypeDistribution,
   MonthlyDonationData,
   ReportSummary
 } from '../../../types/report.types';
+import type { Donor } from '../../../types/donor.types';
 import LoadingIndicator from '../../components/dashboard/LoadingIndicator';
 import StatsGrid from '../../components/dashboard/StatsGrid';
 import BloodTypeChart from '../../components/charts/BloodTypeChart';
@@ -130,10 +132,10 @@ const ReportsScreen: React.FC = () => {
   const router = useRouter();
   const { colors } = useTheme();
   const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
-  const [bloodTypeData, setBloodTypeData] = useState<BloodTypeDistribution[]>([]);
   const [monthlyDonations, setMonthlyDonations] = useState<MonthlyDonationData[]>([]);
   const [availabilityTrend, setAvailabilityTrend] = useState<AvailabilityTrend[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [donors, setDonors] = useState<Donor[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
@@ -168,18 +170,6 @@ const ReportsScreen: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
-
-  const exportData = useMemo<ExportReportData | null>(() => {
-    if (!reportSummary) {
-      return null;
-    }
-    return {
-      summary: reportSummary,
-      bloodTypes: bloodTypeData,
-      monthlyDonations,
-      availabilityTrend,
-    };
-  }, [availabilityTrend, bloodTypeData, monthlyDonations, reportSummary]);
 
   const formatDateForFilename = (date: Date): string => {
     return date.toISOString().slice(0, 10);
@@ -352,17 +342,24 @@ const ReportsScreen: React.FC = () => {
       setLoading(true);
 
       // Load all report data
-      const [summary, bloodTypes, donations, availability] = await Promise.all([
+      const [summary, donations, availability, donorResult] = await Promise.all([
         reportsApi.getSummary(),
-        reportsApi.getBloodTypeDistribution(),
         reportsApi.getMonthlyDonations(),
         reportsApi.getAvailabilityTrend(),
+        donorApi.getDonors({
+          bloodType: null,
+          municipality: null,
+          availability: null,
+          searchQuery: '',
+          page: 1,
+          page_size: 1000,
+        }),
       ]);
 
       setReportSummary(summary);
-      setBloodTypeData(bloodTypes);
       setMonthlyDonations(donations);
       setAvailabilityTrend(availability);
+      setDonors(Array.isArray(donorResult.items) ? donorResult.items : []);
     } catch (error) {
       Alert.alert('Error', 'Failed to load report data');
       console.error('Load reports error:', error);
@@ -386,6 +383,76 @@ const ReportsScreen: React.FC = () => {
       searchQuery: '',
     });
   };
+
+  const filteredDonors = useMemo(() => {
+    const normalize = (value: any): string => String(value || '').trim().toLowerCase();
+    const search = normalize(filters.searchQuery);
+
+    return donors.filter((donor) => {
+      const donorAvailability = normalize(donor.availabilityStatus);
+      const matchesBloodType = !filters.bloodType || donor.bloodType === filters.bloodType;
+      const matchesAvailability =
+        !filters.availability ||
+        (filters.availability === 'available' && donorAvailability === 'available') ||
+        (
+          filters.availability === 'unavailable' &&
+          (donorAvailability === 'temporarily unavailable' || donorAvailability === 'temporarily_unavailable' || donorAvailability === 'unavailable')
+        ) ||
+        (filters.availability === 'recently_donated' && donorAvailability === 'recently donated');
+      const matchesSearch =
+        !search ||
+        [
+          donor.name,
+          donor.bloodType,
+          donor.municipality,
+          donor.contactNumber,
+          donor.email,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(search);
+
+      return matchesBloodType && matchesAvailability && matchesSearch;
+    });
+  }, [donors, filters]);
+
+  const filteredSummary = useMemo<ReportSummary>(() => {
+    const availableDonors = filteredDonors.filter(
+      (donor) => String(donor.availabilityStatus || '').toLowerCase() === 'available'
+    ).length;
+
+    return {
+      totalDonors: filteredDonors.length,
+      availableDonors,
+      requestsThisMonth: reportSummary?.requestsThisMonth || 0,
+      successfulDonations: reportSummary?.successfulDonations || 0,
+    };
+  }, [filteredDonors, reportSummary]);
+
+  const filteredBloodTypeData = useMemo<BloodTypeDistribution[]>(() => {
+    const counts: Record<string, number> = {};
+    filteredDonors.forEach((donor) => {
+      const type = donor.bloodType || 'Unknown';
+      counts[type] = (counts[type] || 0) + 1;
+    });
+
+    return Object.entries(counts)
+      .map(([bloodType, count]) => ({ bloodType, count }))
+      .sort((a, b) => a.bloodType.localeCompare(b.bloodType));
+  }, [filteredDonors]);
+
+  const exportData = useMemo<ExportReportData | null>(() => {
+    if (!reportSummary) {
+      return null;
+    }
+    return {
+      summary: filteredSummary,
+      bloodTypes: filteredBloodTypeData,
+      monthlyDonations,
+      availabilityTrend,
+    };
+  }, [availabilityTrend, filteredBloodTypeData, filteredSummary, monthlyDonations, reportSummary]);
 
   const handleExportReport = async (): Promise<void> => {
     if (!exportData) {
@@ -525,17 +592,17 @@ const ReportsScreen: React.FC = () => {
 
           {/* Stats Grid */}
           <StatsGrid
-            totalDonors={reportSummary.totalDonors}
-            availableDonors={reportSummary.availableDonors}
-            requestsThisMonth={reportSummary.requestsThisMonth}
-            successfulDonations={reportSummary.successfulDonations}
+            totalDonors={filteredSummary.totalDonors}
+            availableDonors={filteredSummary.availableDonors}
+            requestsThisMonth={filteredSummary.requestsThisMonth}
+            successfulDonations={filteredSummary.successfulDonations}
           />
 
            {/* Charts Section */}
            <View style={styles.chartsSection}>
              <Text style={[styles.sectionTitle, { color: colors.text }]}>Analytics Overview</Text>
             
-            <BloodTypeChart data={bloodTypeData} />
+            <BloodTypeChart data={filteredBloodTypeData} />
             
             <MonthlyDonationsChart data={monthlyDonations} />
             
