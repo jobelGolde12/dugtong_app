@@ -572,11 +572,14 @@ BEHAVIOR GUIDELINES:
 
 
 
-  const handleSendMessage = async (presetInput?: string) => {
+  const handleSendMessage = async (presetInput?: string | unknown) => {
     // NEW: Prevent sending when chatbot cannot receive messages
     if (cannotReceiveMessages) return;
 
-    const userInput = (presetInput ?? message).trim();
+    const userInput =
+      typeof presetInput === 'string'
+        ? presetInput.trim()
+        : String(message || '').trim();
     if (!userInput) return;
 
     // Add user message
@@ -781,7 +784,7 @@ BEHAVIOR GUIDELINES:
                 value={message}
                 onChangeText={setMessage}
                 placeholderTextColor="#999"
-                onSubmitEditing={handleSendMessage}
+                onSubmitEditing={() => handleSendMessage()}
                 returnKeyType="send"
                 blurOnSubmit={false}
                 editable={!cannotReceiveMessages}
@@ -792,7 +795,7 @@ BEHAVIOR GUIDELINES:
               />
               <TouchableOpacity 
                 style={[styles.sendButton, cannotReceiveMessages && styles.disabledSendButton]}
-                onPress={handleSendMessage}
+                onPress={() => handleSendMessage()}
                 activeOpacity={0.8}
                 disabled={cannotReceiveMessages}
               >
@@ -989,7 +992,7 @@ const createStyles = (colors: any, cannotReceiveMessages: boolean) => StyleSheet
     flexDirection: 'row',
     padding: 12,
     paddingBottom: 10,
-    marginBottom: 110,
+    marginBottom: 75,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
