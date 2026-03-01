@@ -25,6 +25,7 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -122,6 +123,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // ============ MAIN SCREEN COMPONENT ============
 const DonorManagementScreen: React.FC = () => {
   const { colors } = useTheme();
+  const router = useRouter();
   
   // ============ REUSABLE COMPONENTS ============
   const Container: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -1409,12 +1411,8 @@ const DonorManagementScreen: React.FC = () => {
   }, []);
 
   const handleAddDonor = useCallback(() => {
-    Alert.alert(
-      'Add New Donor',
-      'Add new donor functionality would open a form here.',
-      [{ text: 'OK', style: 'default' }]
-    );
-  }, []);
+    router.push('/AddDonorPage');
+  }, [router]);
 
   const activeFilterCount = [
     filters.bloodType,
@@ -1519,7 +1517,7 @@ const DonorManagementScreen: React.FC = () => {
             exiting={SlideOutDown}
             style={{
               position: 'absolute',
-              bottom: SPACING.xl,
+              bottom: 100,
               right: SPACING.xl,
               ...SHADOWS.xl,
             }}
