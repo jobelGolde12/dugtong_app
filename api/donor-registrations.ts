@@ -7,6 +7,9 @@ export interface DonorRegistrationResponse {
   sex: string;
   blood_type: string;
   contact_number: string;
+  email?: string;
+  avatar_data?: string;
+  avatar_mime_type?: string;
   municipality: string;
   availability_status: string;
   last_donation_date?: string;

@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
+  Image,
   Keyboard,
   Modal,
   Platform,
@@ -954,6 +955,9 @@ const DonorManagementScreen: React.FC = () => {
     const bloodType = isPendingRegistration ? donor.blood_type : donor.bloodType;
     const municipality = isPendingRegistration ? donor.municipality : donor.municipality;
     const contactNumber = isPendingRegistration ? donor.contact_number : donor.contactNumber;
+    const email = isPendingRegistration ? donor.email : donor.email;
+    const avatarData = isPendingRegistration ? donor.avatar_data : donor.avatar_data;
+    const avatarMimeType = isPendingRegistration ? donor.avatar_mime_type : donor.avatar_mime_type;
     const availabilityStatus = isPendingRegistration ? 'Pending Review' : donor.availabilityStatus;
     const lastDonationDate = isPendingRegistration ? undefined : donor.lastDonationDate;
 
@@ -981,6 +985,28 @@ const DonorManagementScreen: React.FC = () => {
               alignItems: 'flex-start',
               gap: SPACING.md,
             }}>
+              {/* Avatar */}
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: colors.surfaceVariant,
+                justifyContent: 'center',
+                alignItems: 'center',
+                overflow: 'hidden',
+              }}>
+                {avatarData && avatarMimeType ? (
+                  <Image 
+                    source={{ uri: `data:${avatarMimeType};base64,${avatarData}` }} 
+                    style={{ width: 48, height: 48 }}
+                  />
+                ) : (
+                  <CustomText style={{ fontSize: 20, fontWeight: '600', color: colors.primary }}>
+                    {name.charAt(0).toUpperCase()}
+                  </CustomText>
+                )}
+              </View>
+
               <View style={{ flex: 1, gap: SPACING.xs }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
                   <CustomText variant="h3" style={{ color: colors.text, flex: 1 }}>
@@ -992,6 +1018,9 @@ const DonorManagementScreen: React.FC = () => {
                 </View>
                 <CustomText variant="body2" style={{ color: colors.textSecondary }}>
                   {municipality} • {contactNumber || 'No contact'}
+                </CustomText>
+                <CustomText variant="caption" style={{ color: colors.textSecondary, fontStyle: 'italic' }}>
+                  📧 {email || 'N/A'}
                 </CustomText>
               </View>
 
@@ -1207,8 +1236,6 @@ const DonorManagementScreen: React.FC = () => {
       });
 
       console.log('📊 Donor result:', donorResult);
-      console.log('📊 Items:', donorResult?.items);
-      console.log('📊 Items length:', donorResult?.items?.length);
 
       // Get donors array
       let combinedResults: Donor[] = [];
@@ -1216,8 +1243,42 @@ const DonorManagementScreen: React.FC = () => {
       if (donorResult && donorResult.items && Array.isArray(donorResult.items)) {
         combinedResults = [...donorResult.items];
       } else if (Array.isArray(donorResult)) {
-        // Fallback if response is direct array
         combinedResults = [...donorResult];
+      }
+
+      // Fetch pending registrations if showPending is true
+      if (filters.showPending) {
+        console.log('🔍 Fetching pending registrations...');
+        const { getDonorRegistrations } = await import('../../../api/donor-registrations');
+        const registrations = await getDonorRegistrations({ status: 'pending' });
+        console.log('📊 Registrations result:', registrations);
+        
+        if (registrations && Array.isArray(registrations)) {
+          // Map registrations to match Donor type
+          const mappedRegistrations = registrations.map((reg: any) => ({
+            id: String(reg.id),
+            full_name: reg.full_name,
+            name: reg.full_name,
+            age: reg.age,
+            sex: reg.sex,
+            blood_type: reg.blood_type,
+            bloodType: reg.blood_type,
+            contact_number: reg.contact_number,
+            contactNumber: reg.contact_number,
+            email: reg.email,
+            avatar_data: reg.avatar_data,
+            avatar_mime_type: reg.avatar_mime_type,
+            municipality: reg.municipality,
+            availability_status: 'pending',
+            availabilityStatus: 'Pending Review',
+            status: reg.status,
+            created_at: reg.created_at,
+            dateRegistered: reg.created_at,
+          }));
+          
+          combinedResults = [...combinedResults, ...mappedRegistrations];
+          console.log('✅ Added registrations, total:', combinedResults.length);
+        }
       }
 
       console.log('✅ Combined results:', combinedResults.length);

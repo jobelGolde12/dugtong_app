@@ -5,6 +5,9 @@ export interface Donor {
   sex: string;
   bloodType: string;
   contactNumber: string;
+  email?: string;
+  avatar_data?: string;
+  avatar_mime_type?: string;
   municipality: string;
   availabilityStatus: 'Available' | 'Temporarily Unavailable';
   lastDonationDate?: string;

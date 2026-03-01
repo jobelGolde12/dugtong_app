@@ -8,6 +8,22 @@ interface GetDonorsResponse {
   page_size: number;
 }
 
+export interface PendingDonorRegistration {
+  id: string;
+  full_name: string;
+  age: number;
+  sex: string;
+  blood_type: string;
+  contact_number: string;
+  email?: string;
+  avatar_data?: string;
+  avatar_mime_type?: string;
+  municipality: string;
+  availability_status?: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
 export const donorApi = {
   getDonors: async (
     filter: DonorFilter & { page?: number; page_size?: number },
@@ -35,6 +51,9 @@ export const donorApi = {
         sex: donor.sex,
         bloodType: donor.blood_type || donor.bloodType,
         contactNumber: donor.contact_number || donor.contactNumber,
+        email: donor.email,
+        avatar_data: donor.avatar_data,
+        avatar_mime_type: donor.avatar_mime_type,
         municipality: donor.municipality,
         availabilityStatus: donor.availability_status || donor.availabilityStatus,
         lastDonationDate: donor.last_donation_date || donor.lastDonationDate,
@@ -58,6 +77,9 @@ export const donorApi = {
       sex: donor.sex,
       bloodType: donor.blood_type || donor.bloodType,
       contactNumber: donor.contact_number || donor.contactNumber,
+      email: donor.email,
+      avatar_data: donor.avatar_data,
+      avatar_mime_type: donor.avatar_mime_type,
       municipality: donor.municipality,
       availabilityStatus: donor.availability_status || donor.availabilityStatus,
       lastDonationDate: donor.last_donation_date || donor.lastDonationDate,
@@ -67,17 +89,68 @@ export const donorApi = {
   },
 
   getDonorByContact: async (contactNumber: string): Promise<Donor | null> => {
-    const response = await donorApi.getDonors({});
-    // Filter client-side since backend search might not work
-    const cleanNumber = contactNumber.replace(/\D/g, '');
-    if (response.items && response.items.length > 0) {
-      const matched = response.items.find((donor: any) => {
-        const donorNumber = (donor.contactNumber || donor.contact_number || '').replace(/\D/g, '');
-        return donorNumber === cleanNumber;
-      });
-      return matched || null;
+    try {
+      console.log('🔍 getDonorByContact called with:', contactNumber);
+      
+      // First try to get from donors table
+      const response = await donorApi.getDonors({});
+      console.log('🔍 Donors response:', response);
+      
+      const cleanNumber = contactNumber.replace(/\D/g, '');
+      console.log('🔍 Clean number:', cleanNumber);
+      
+      if (response.items && response.items.length > 0) {
+        const matched = response.items.find((donor: any) => {
+          const donorNumber = (donor.contactNumber || donor.contact_number || '').replace(/\D/g, '');
+          return donorNumber === cleanNumber;
+        });
+        
+        if (matched) {
+          console.log('✅ Found in donors table:', matched);
+          return matched;
+        }
+      }
+      
+      // If not found in donors, try donor_registrations
+      console.log('🔍 Donor not found in donors table, checking registrations...');
+      const registrationsResponse = await apiClient.get<any>('/donor-registrations');
+      console.log('🔍 Registrations response:', registrationsResponse);
+      
+      if (registrationsResponse.items && registrationsResponse.items.length > 0) {
+        const matchedReg = registrationsResponse.items.find((reg: any) => {
+          const regNumber = (reg.contact_number || '').replace(/\D/g, '');
+          return regNumber === cleanNumber;
+        });
+        
+        if (matchedReg) {
+          console.log('✅ Found in registrations:', matchedReg);
+          // Map registration to Donor format
+          const mappedDonor = {
+            id: String(matchedReg.id),
+            name: matchedReg.full_name,
+            age: matchedReg.age,
+            sex: matchedReg.sex,
+            bloodType: matchedReg.blood_type,
+            contactNumber: matchedReg.contact_number,
+            email: matchedReg.email,
+            avatar_data: matchedReg.avatar_data,
+            avatar_mime_type: matchedReg.avatar_mime_type,
+            municipality: matchedReg.municipality,
+            availabilityStatus: matchedReg.availability || matchedReg.availability_status || 'Available',
+            dateRegistered: matchedReg.created_at,
+            notes: '',
+          };
+          console.log('✅ Mapped donor:', mappedDonor);
+          return mappedDonor;
+        }
+      }
+      
+      console.log('❌ Donor not found in any table');
+      return null;
+    } catch (error) {
+      console.error('❌ Error in getDonorByContact:', error);
+      return null;
     }
-    return null;
   },
 
   createDonor: async (data: Omit<Donor, "id" | "dateRegistered">): Promise<Donor> => {
@@ -87,6 +160,9 @@ export const donorApi = {
       sex: data.sex,
       blood_type: data.bloodType,
       contact_number: data.contactNumber,
+      email: data.email || null,
+      avatar_data: data.avatar_data || null,
+      avatar_mime_type: data.avatar_mime_type || null,
       municipality: data.municipality,
       availability_status: data.availabilityStatus,
       last_donation_date: data.lastDonationDate || null,

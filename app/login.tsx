@@ -45,6 +45,9 @@ export default function LoginScreen() {
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [focusedField, setFocusedField] = useState<InputField | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
+  const modalScale = useRef(new Animated.Value(0)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
   
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -216,7 +219,7 @@ export default function LoginScreen() {
       
       if (!result.success) {
         console.error('❌ Login failed:', result.error);
-        alert(`Login Failed\n\n${result.error || 'Unknown error occurred'}`);
+        showErrorAlert();
         setIsLoading(false);
         return;
       }
@@ -225,13 +228,44 @@ export default function LoginScreen() {
       // Navigation will be handled by AuthContext
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      const errorMsg = error?.message || 'Network request failed. Please check your connection and try again.';
-      alert(`Login Error\n\n${errorMsg}`);
+      showErrorAlert();
       setIsLoading(false);
     }
   };
 
 
+
+  const showErrorAlert = () => {
+    setShowErrorModal(true);
+    Animated.parallel([
+      Animated.spring(modalScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const hideErrorAlert = () => {
+    Animated.parallel([
+      Animated.timing(modalScale, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShowErrorModal(false));
+  };
 
   const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
@@ -249,6 +283,44 @@ export default function LoginScreen() {
           style={styles.background}
           resizeMode="cover"
         >
+          {/* Error Modal */}
+          {showErrorModal && (
+            <Animated.View 
+              style={[
+                styles.modalOverlay,
+                { opacity: modalOpacity }
+              ]}
+            >
+              <TouchableWithoutFeedback onPress={hideErrorAlert}>
+                <View style={styles.modalBackdrop} />
+              </TouchableWithoutFeedback>
+              <Animated.View 
+                style={[
+                  styles.modalContent,
+                  {
+                    transform: [{ scale: modalScale }],
+                    opacity: modalOpacity
+                  }
+                ]}
+              >
+                <View style={styles.modalIconContainer}>
+                  <Feather name="alert-circle" size={48} color="#FF6B6B" />
+                </View>
+                <Text style={styles.modalTitle}>Invalid Credentials</Text>
+                <Text style={styles.modalMessage}>
+                  The name or contact number you entered doesn't match our records. Please try again.
+                </Text>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={hideErrorAlert}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.modalButtonText}>Try Again</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </Animated.View>
+          )}
+
           {/* Loading Overlay */}
           {isLoading && (
             <Animated.View 
@@ -699,5 +771,81 @@ const styles = StyleSheet.create({
   registerButtonTextHighlight: {
     color: '#1E90FF',
     fontWeight: '700',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  modalContent: {
+    backgroundColor: 'rgba(20, 20, 40, 0.98)',
+    borderRadius: 24,
+    padding: 32,
+    marginHorizontal: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  modalButton: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    minWidth: 140,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
 });

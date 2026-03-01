@@ -6,6 +6,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -29,6 +30,9 @@ interface DonorProfile {
   contact_number: string;
   municipality: string;
   availability: string;
+  email?: string;
+  avatar_data?: string;
+  avatar_mime_type?: string;
 }
 
 export default function DonorDashboard() {
@@ -45,8 +49,13 @@ export default function DonorDashboard() {
     try {
       setIsRefreshing(true);
       
+      console.log('📊 Loading donor data...');
+      console.log('📊 donorProfile from context:', donorProfile);
+      console.log('📊 user from context:', user);
+      
       // First use donorProfile from AuthContext if available
       if (donorProfile) {
+        console.log('📊 Using donorProfile from context:', donorProfile);
         setDonorData(donorProfile);
         setLoading(false);
         setIsRefreshing(false);
@@ -55,8 +64,10 @@ export default function DonorDashboard() {
       
       // Fallback to AsyncStorage
       const savedData = await AsyncStorage.getItem('donorProfile');
+      console.log('📊 Saved data from AsyncStorage:', savedData);
       if (savedData) {
         const donorProfileData = JSON.parse(savedData);
+        console.log('📊 Parsed donor profile:', donorProfileData);
         setDonorData(donorProfileData);
         setLoading(false);
         setIsRefreshing(false);
@@ -233,6 +244,48 @@ export default function DonorDashboard() {
                   />
                 </TouchableOpacity>
               </View>
+              
+              {/* Avatar and Name Section */}
+              <View style={styles.profileSection}>
+                <View style={styles.avatarContainer}>
+                  {(() => {
+                    console.log('🖼️ Rendering avatar. donorData:', {
+                      has_avatar_data: !!donorData.avatar_data,
+                      has_mime_type: !!donorData.avatar_mime_type,
+                      avatar_data_length: donorData.avatar_data?.length,
+                      mime_type: donorData.avatar_mime_type,
+                      email: donorData.email
+                    });
+                    
+                    if (donorData.avatar_data && donorData.avatar_mime_type) {
+                      return (
+                        <Image 
+                          source={{ uri: `data:${donorData.avatar_mime_type};base64,${donorData.avatar_data}` }}
+                          style={styles.avatar}
+                        />
+                      );
+                    } else {
+                      return (
+                        <View style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarInitial}>
+                            {donorData.full_name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                      );
+                    }
+                  })()}
+                </View>
+                <View style={styles.profileInfo}>
+                  <Text style={styles.profileName}>{donorData.full_name}</Text>
+                  {donorData.email && (
+                    <View style={styles.emailContainer}>
+                      <Ionicons name="mail-outline" size={14} color="#64748B" />
+                      <Text style={styles.profileEmail}>{donorData.email}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              
               <View style={styles.headerContent}>
                 <Text style={styles.title}>Donor Dashboard</Text>
                 <Text style={styles.subtitle}>Your information is reviewed by administrators</Text>
@@ -720,6 +773,56 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     lineHeight: 18,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  avatarContainer: {
+    marginRight: 16,
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: '#6C63FF',
+  },
+  avatarPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#6C63FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#E0E7FF',
+  },
+  avatarInitial: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  emailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  profileEmail: {
+    fontSize: 14,
+    color: '#64748B',
+    fontStyle: 'italic',
   },
 });
 

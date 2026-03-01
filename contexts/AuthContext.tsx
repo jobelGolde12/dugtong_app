@@ -17,6 +17,9 @@ interface DonorProfileData {
   contact_number: string;
   municipality: string;
   availability: string;
+  email?: string;
+  avatar_data?: string;
+  avatar_mime_type?: string;
 }
 
 interface AuthState {
@@ -199,7 +202,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           console.log('🔐 Fetching donor profile for contact:', user.contact_number);
           const donor = await donorApi.getDonorByContact(user.contact_number);
-          console.log('🔐 Donor API result:', donor);
+          console.log('🔐 Donor API result:', JSON.stringify(donor, null, 2));
           
           if (donor) {
             donorProfileData = {
@@ -210,7 +213,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               contact_number: donor.contactNumber,
               municipality: donor.municipality,
               availability: donor.availabilityStatus,
+              email: donor.email,
+              avatar_data: donor.avatar_data,
+              avatar_mime_type: donor.avatar_mime_type,
             };
+            console.log('🔐 Mapped donor profile data:', JSON.stringify(donorProfileData, null, 2));
           } else {
             console.log('🔐 No donor found from API, trying direct database access...');
           }

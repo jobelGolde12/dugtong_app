@@ -1,8 +1,10 @@
 import { Link, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import {
   Alert,
   Animated,
+  Image,
   ImageBackground,
   KeyboardAvoidingView,
   LayoutChangeEvent,
@@ -49,6 +51,9 @@ interface FormData {
   sex: string;
   bloodType: string;
   contactNumber: string;
+  email: string;
+  avatarBase64: string;
+  avatarMimeType: string;
   municipality: string;
   availabilityStatus: string;
 }
@@ -61,6 +66,8 @@ interface Errors {
   sex?: string;
   bloodType?: string;
   contactNumber?: string;
+  email?: string;
+  avatar?: string;
   municipality?: string;
   availabilityStatus?: string;
 }
@@ -88,6 +95,9 @@ export default function RegisterScreen() {
     sex: '',
     bloodType: '',
     contactNumber: '',
+    email: '',
+    avatarBase64: '',
+    avatarMimeType: '',
     municipality: '',
     availabilityStatus: 'Available'
   });
@@ -135,6 +145,31 @@ export default function RegisterScreen() {
     }).start();
   }, [fadeAnim]);
 
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to select an avatar.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      setFormData(prev => ({
+        ...prev,
+        avatarBase64: result.assets[0].base64 || '',
+        avatarMimeType: result.assets[0].mimeType || 'image/jpeg',
+      }));
+    }
+  };
+
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field as keyof Errors]) {
@@ -178,6 +213,12 @@ export default function RegisterScreen() {
         if (!value.trim()) error = 'Contact Number is required';
         else if (!/^09\d{9}$/.test(value.replace(/[^0-9]/g, ''))) {
           error = 'Must follow Philippine format (09XXXXXXXXX)';
+        }
+        break;
+        
+      case 'email':
+        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          error = 'Please enter a valid email address';
         }
         break;
         
@@ -256,7 +297,10 @@ export default function RegisterScreen() {
         blood_type: formData.bloodType,
         municipality: formData.municipality,
         availability_status: availability,
-        sex: formData.sex, // Add sex field
+        sex: formData.sex,
+        email: formData.email.trim() || undefined,
+        avatar_data: formData.avatarBase64 || undefined,
+        avatar_mime_type: formData.avatarMimeType || undefined,
       };
 
       console.log('📝 Submitting donor registration:', registrationData);
@@ -265,7 +309,7 @@ export default function RegisterScreen() {
 
       console.log('✅ Registration successful:', response);
 
-      // Save donor profile to AsyncStorage with correct field names
+      // Save donor profile to AsyncStorage with correct field names INCLUDING email and avatar
       const donorProfile = {
         full_name: registrationData.full_name,
         contact_number: registrationData.contact_number,
@@ -274,7 +318,11 @@ export default function RegisterScreen() {
         blood_type: registrationData.blood_type,
         municipality: registrationData.municipality,
         availability: registrationData.availability_status,
+        email: registrationData.email,
+        avatar_data: registrationData.avatar_data,
+        avatar_mime_type: registrationData.avatar_mime_type,
       };
+      console.log('💾 Saving to AsyncStorage:', donorProfile);
       await AsyncStorage.setItem('donorProfile', JSON.stringify(donorProfile));
       
       Alert.alert(
@@ -522,6 +570,51 @@ export default function RegisterScreen() {
                   ) : (
                     <Text style={styles.helperText}>Philippine format required</Text>
                   )}
+                </View>
+
+                {/* Email (Optional) */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Email (Optional)</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      focusedField === 'email' && styles.inputFocused,
+                      errors.email && styles.inputError
+                    ]}
+                    value={formData.email}
+                    onChangeText={(value) => handleInputChange('email', value)}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => handleBlur('email')}
+                    placeholder="your.email@example.com"
+                    placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+                </View>
+
+                {/* Avatar (Optional) */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Profile Photo (Optional)</Text>
+                  <TouchableOpacity
+                    style={styles.avatarPickerButton}
+                    onPress={pickImage}
+                  >
+                    {formData.avatarBase64 ? (
+                      <View style={styles.avatarPreviewContainer}>
+                        <Image
+                          source={{ uri: `data:${formData.avatarMimeType};base64,${formData.avatarBase64}` }}
+                          style={styles.avatarPreview}
+                        />
+                        <Text style={styles.avatarPickerText}>Tap to change photo</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.avatarPlaceholder}>
+                        <Text style={styles.avatarPlaceholderIcon}>📷</Text>
+                        <Text style={styles.avatarPickerText}>Tap to select photo</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
                 </View>
 
                 {/* Municipality */}
@@ -892,5 +985,37 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
     textAlign: 'center',
+  },
+  avatarPickerButton: {
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderStyle: 'dashed',
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  avatarPreviewContainer: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarPreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  avatarPlaceholder: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  avatarPlaceholderIcon: {
+    fontSize: 48,
+  },
+  avatarPickerText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
