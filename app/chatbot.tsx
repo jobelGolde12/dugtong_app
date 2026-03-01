@@ -231,8 +231,7 @@ Notifications Summary:
 
     // Validate API keys
     if (apiKeys.length === 0) {
-      console.error('❌ No OpenRouter API keys are set');
-      console.error('Please set EXPO_PUBLIC_OPEN_ROUTER_API_KEY1, EXPO_PUBLIC_OPEN_ROUTER_API_KEY2, or EXPO_PUBLIC_OPEN_ROUTER_API_KEY3 in your .env file');
+      console.log('ℹ️ No OpenRouter API keys configured, using local responses');
       setIsTyping(false);
       setCannotReceiveMessages(false);
       const response = await getHumanLikeResponse(input);
@@ -327,8 +326,8 @@ BEHAVIOR GUIDELINES:
                   continue;
                 }
               } else if (errorCode === 401 || errorCode === 403) {
-                console.error(`🔑 Authentication error ${errorCode}: Invalid or expired API key`);
-                lastError = new Error(`API key authentication failed: ${data.error?.message || 'Invalid credentials'}`);
+                console.log(`🔑 Authentication failed with key ${keyIndex + 1}, trying next`);
+                lastError = new Error(`API key authentication failed`);
                 break;
               } else {
                 if (attempt < maxRetries) {
@@ -369,11 +368,7 @@ BEHAVIOR GUIDELINES:
       console.log(`❌ All models failed with key ${keyIndex + 1}, trying next key...`);
     }
 
-    console.error('❌ All OpenRouter API keys and models failed, falling back to rule-based responses');
-    if (lastError) {
-      console.error('Last error:', lastError.message || lastError);
-    }
-    console.log('ℹ️ Using local rule-based responses instead');
+    console.log('ℹ️ OpenRouter API unavailable, using local rule-based responses');
     setIsTyping(false);
     setCannotReceiveMessages(false);
     return await getHumanLikeResponse(input);
@@ -407,6 +402,13 @@ BEHAVIOR GUIDELINES:
       return response;
     }
 
+    // Check for acknowledgment keywords (Rule 3)
+    if (matchesKeywords(input, chatbotRules.rules[2].keywords)) {
+      const response = getRandomResponseTemplate(chatbotRules.rules[2]);
+      setIsTyping(false);
+      return response;
+    }
+
     // Check for capabilities/what can you do (Rule 4)
     if (matchesKeywords(input, chatbotRules.rules[3].keywords)) {
       const response = getRandomResponseTemplate(chatbotRules.rules[3]);
@@ -421,6 +423,13 @@ BEHAVIOR GUIDELINES:
       return response;
     }
 
+    // Check for farewell keywords (Rule 7)
+    if (matchesKeywords(input, chatbotRules.rules[6].keywords)) {
+      const response = getRandomResponseTemplate(chatbotRules.rules[6]);
+      setIsTyping(false);
+      return response;
+    }
+
     // Check for question/help keywords (Rule 5)
     if (lowerInput.includes('?') || matchesKeywords(input, chatbotRules.rules[4].keywords)) {
       const response = getRandomResponseTemplate(chatbotRules.rules[4]);
@@ -428,13 +437,8 @@ BEHAVIOR GUIDELINES:
       return response;
     }
 
-    // Default to acknowledgment (Rule 3) or fallback (Rule 7) responses
-    let response;
-    if (Math.random() > 0.5) {
-      response = getRandomResponseTemplate(chatbotRules.rules[2]);
-    } else {
-      response = getRandomResponseTemplate(chatbotRules.rules[6]);
-    }
+    // Default to fallback (Rule 8) responses
+    const response = getRandomResponseTemplate(chatbotRules.rules[7]);
     
     setIsTyping(false);
     return response;

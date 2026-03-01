@@ -11,44 +11,58 @@
         "donors",
         "report",
         "statistics",
-        "metrics"
+        "metrics",
+        "show me",
+        "give me",
+        "how many",
+        "total",
+        "count",
+        "blood type",
+        "registrations",
+        "notifications"
       ],
       "response_templates": [
-        "I can help you with analytics and donor data summaries. Here's what I found: {{data_summary}}",
-        "Based on the analytics data, {{data_summary}}",
-        "Here's a summary of donor information: {{donor_summary}}"
+        "Here's a comprehensive summary of the current system data:\n\n{{data_summary}}\n\nWould you like more details on any specific area?",
+        "I've gathered the latest analytics for you:\n\n{{data_summary}}\n\nLet me know if you need a deeper dive into any section!",
+        "Current system overview:\n\n{{donor_summary}}\n\nFeel free to ask about specific metrics or trends!"
       ]
     },
     {
       "id": 2,
       "title": "Greeting Protocol",
-      "description": "How the chatbot should greet users",
-      "keywords": ["hello", "hi", "hey", "greetings"],
+      "description": "How the chatbot should greet users with time-appropriate and warm responses",
+      "keywords": ["hello", "hi", "hey", "greetings", "good morning", "good afternoon", "good evening", "good day", "howdy", "sup", "yo"],
       "response_templates": [
-        "Hey there! How can I assist you today?",
-        "Hi! I'm here to help. What do you need?",
-        "Hello! What can I do for you?",
-        "Good to hear from you! How can I help?",
-        "Hi there! What brings you here today?"
+        "Hello! How can I help you today?",
+        "Hi there! How can I help you today?",
+        "Hey! How can I help you today?",
+        "Good day! How can I help you today?",
+        "Greetings! How can I help you today?",
+        "Hello there! How can I help you today?",
+        "Hi! How can I help you today?",
+        "Good to see you! How can I help you today?"
       ]
     },
     {
       "id": 3,
       "title": "Acknowledgment Responses",
-      "description": "Standard responses to acknowledge user input",
-      "keywords": [],
+      "description": "Standard responses to acknowledge user input with engagement",
+      "keywords": ["ok", "okay", "alright", "sure", "yes", "yeah", "yep", "right", "correct", "exactly", "i see", "understood"],
       "response_templates": [
-        "That makes sense. Tell me more!",
-        "I understand. What else can I help with?",
-        "Thanks for sharing that with me.",
-        "Got it! Is there anything else?",
-        "I see. How else can I assist you?"
+        "I understand what you're saying. Could you provide more details so I can assist you better?",
+        "That's interesting. Tell me more about what you need, and I'll do my best to help.",
+        "Got it. Is there specific data or information you'd like me to look up for you?",
+        "I see where you're coming from. How can I support you with the blood donation system today?",
+        "Thanks for sharing that. Let me know if you need any reports, statistics, or donor information.",
+        "Understood. What specific information can I help you find?",
+        "I'm following you. Would you like me to pull up any donor data or analytics?",
+        "Makes sense. I can help with donor statistics, registrations, or system reports. What do you need?"
       ]
     },
     {
       "id": 4,
       "title": "Capabilities and Features",
-      "description": "Explain what the chatbot can do",
+      "description": "Explain what the chatbot can do in detail",
       "keywords": [
         "what can you do",
         "what do you do",
@@ -57,10 +71,13 @@
         "help me",
         "what are you",
         "who are you",
-        "your purpose"
+        "your purpose",
+        "what is this",
+        "tell me about yourself",
+        "introduce yourself"
       ],
       "response_templates": [
-        "I'm Dugtong Bot, your blood donation assistant! I can help you with:\n\n📊 View analytics and donor statistics\n🩸 Check blood type distribution\n👥 See donor registrations (pending/approved)\n🔔 Review notifications and alerts\n📈 Get real-time system data\n\nJust ask me about donors, registrations, or any data you need!"
+        "I'm Dugtong Bot, your intelligent blood donation management assistant! 🩸\n\nHere's what I can help you with:\n\n📊 **Analytics & Reports**\n   • View comprehensive donor statistics\n   • Track blood type distribution across all donors\n   • Monitor donation trends and patterns\n\n👥 **Donor Management**\n   • Check total registered donors\n   • See available vs unavailable donors\n   • Review donor registration status (pending/approved)\n   • Access donor contact information and details\n\n🔔 **Notifications & Alerts**\n   • View unread notifications\n   • Track system alerts and updates\n   • Monitor important announcements\n\n📈 **Real-Time Data**\n   • Get instant access to current system data\n   • View live updates on registrations\n   • Check municipality-wise donor distribution\n\nJust ask me anything like:\n• \"Show me donor statistics\"\n• \"How many O+ donors are available?\"\n• \"What's the registration status?\"\n• \"Give me a data summary\"\n\nI'm here to make blood donation management easier for you! 💪"
       ]
     },
     {
@@ -75,38 +92,74 @@
         "why",
         "question",
         "help",
-        "assist"
+        "assist",
+        "need",
+        "want",
+        "can you",
+        "could you",
+        "would you",
+        "show me",
+        "tell me",
+        "explain",
+        "describe"
       ],
       "response_templates": [
-        "I'd be happy to help you with that!",
-        "Sure thing! Let me see what I can do.",
-        "Absolutely! I'm here for that.",
-        "Great question! Let me think...",
-        "I'm glad you asked about that."
+        "I'd be happy to help you with that. Could you be more specific about what information you need? I can provide donor data, analytics, registration details, or system reports.",
+        "Absolutely. I'm here to assist. Let me know if you need:\n• Donor statistics and blood type data\n• Registration status updates\n• Notification summaries\n• Any other system information",
+        "I can help you find that information. Would you like me to pull up donor data, analytics, or specific reports?",
+        "I have access to comprehensive blood donation data. Tell me what specific information you're looking for, and I'll get it for you right away.",
+        "I can assist with various aspects of the blood donation system. What would you like to know about - donors, registrations, blood types, or notifications?",
+        "Let me help you with that. I can provide:\n• Current donor statistics\n• Blood type availability\n• Registration tracking\n• System analytics and trends",
+        "I'm equipped to answer questions about donors, blood types, registrations, and system data. What specific information do you need?",
+        "I can pull up any data you need from the blood donation system. Just let me know what you're looking for."
       ]
     },
     {
       "id": 6,
       "title": "Thank You Responses",
       "description": "How to respond when users say thank you",
-      "keywords": ["thank", "thanks", "appreciate"],
+      "keywords": ["thank", "thanks", "appreciate", "grateful", "thx", "ty"],
       "response_templates": [
-        "You're welcome! Is there anything else I can help with?",
-        "Happy to help! What else do you need?",
-        "My pleasure! Let me know if you need anything else."
+        "You're very welcome. I'm always here to help with blood donation management. Is there anything else you'd like to know?",
+        "Happy to help. Feel free to reach out anytime you need donor data, analytics, or system information.",
+        "My pleasure. That's what I'm here for. Don't hesitate to ask if you need more assistance with the system.",
+        "Glad I could assist. Remember, I'm available 24/7 for any blood donation data or reports you need.",
+        "You're welcome. I'm here whenever you need insights on donors, registrations, or system analytics.",
+        "Anytime. Let me know if you need anything else from the system.",
+        "No problem. I'm here to make your blood donation management easier.",
+        "You're welcome. Feel free to ask if you need more data or reports."
       ]
     },
     {
       "id": 7,
+      "title": "Farewell Responses",
+      "description": "How to respond when users say goodbye",
+      "keywords": ["bye", "goodbye", "see you", "later", "farewell", "take care", "gotta go", "gtg", "leaving", "exit"],
+      "response_templates": [
+        "Take care, and feel free to come back anytime you need help with blood donation management.",
+        "I'll be here whenever you need donor data or system insights. Have a great day.",
+        "Remember, I'm always available to help with analytics, donor information, and reports. Stay safe.",
+        "Don't hesitate to return if you need any blood donation system assistance.",
+        "I'm here 24/7 for all your blood donation management needs. Have a wonderful day.",
+        "Feel free to return whenever you need system data or reports.",
+        "I'll be ready to assist you anytime. Take care.",
+        "Come back whenever you need help with the blood donation system."
+      ]
+    },
+    {
+      "id": 8,
       "title": "Fallback Responses",
       "description": "Responses when the chatbot doesn't understand",
       "keywords": [],
       "response_templates": [
-        "I'm still learning, but I'm here to help in any way I can!",
-        "Hmm, let me see if I can assist with that.",
-        "I appreciate you reaching out. How else can I help?",
-        "I'm working on improving every day. What else would you like to know?",
-        "Thanks for your patience as I continue to learn and grow!"
+        "I'm not quite sure I understand that. Could you rephrase your question? I'm best at helping with:\n• Donor statistics and data\n• Blood type information\n• Registration status\n• System analytics and reports",
+        "I didn't quite catch that. I specialize in blood donation management. Try asking me about:\n• \"Show me donor data\"\n• \"What's the blood type distribution?\"\n• \"How many pending registrations?\"\n• \"Give me a system summary\"",
+        "I'm still learning to understand all types of questions. For now, I'm excellent at providing:\n• Comprehensive donor analytics\n• Blood type availability\n• Registration tracking\n• Notification summaries\n\nCould you ask about one of these areas?",
+        "I want to help, but I'm not sure what you're asking for. I'm most helpful with blood donation data. Try questions like:\n• \"Show me the latest statistics\"\n• \"How many donors do we have?\"\n• \"What's the registration status?\"",
+        "Could you clarify what you need? I can help with donor information, blood type data, registrations, and system analytics.",
+        "I'm not sure I understood that correctly. I specialize in:\n• Donor management data\n• Blood type statistics\n• Registration tracking\n• System reports and analytics\n\nWhat would you like to know?",
+        "Let me help you better. I can provide information about donors, blood types, registrations, and notifications. What are you looking for?",
+        "I'm designed to help with blood donation system data. Could you ask about donors, registrations, blood types, or system statistics?"
       ]
     }
   ],
