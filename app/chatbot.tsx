@@ -37,6 +37,9 @@ type MessageType = {
 const ADMIN_QUICK_PROMPTS = [
   'Summarize analytics',
   'How many donors do we have?',
+  'How many available donors per municipality?',
+  'How many male donors?',
+  'How many female donors?',
   'Show blood type distribution',
   'How many pending registrations?',
   'How many unread notifications?'
@@ -58,6 +61,9 @@ I can help you with:
 Try sending one of these:
 - "Summarize analytics"
 - "How many donors do we have?"
+- "How many available donors per municipality?"
+- "How many male donors?"
+- "How many female donors?"
 - "Show blood type distribution"
 - "How many pending registrations?"
 - "How many unread notifications?"`;
@@ -178,8 +184,22 @@ export default function ChatbotScreen() {
     const items = Array.isArray(donors?.items) ? donors.items : [];
     const map = new Map<string, any>();
     items.forEach((donor: any) => {
-      const id = donor?.id ? String(donor.id) : `${donor?.name || donor?.full_name || 'unknown'}-${donor?.contactNumber || donor?.contact_number || ''}`;
-      map.set(id, donor);
+      // Create a normalized donor object with all possible field name variations
+      const normalizedDonor = {
+        ...donor,
+        // Ensure sex field is available in multiple formats
+        sex: donor.sex || donor.Sex || donor.sex || donor.gender || donor.Gender || '',
+        // Ensure blood_type is available
+        blood_type: donor.blood_type || donor.bloodType || donor.BloodType || donor.bloodType || '',
+        // Ensure availability_status is available
+        availability_status: donor.availability_status || donor.availabilityStatus || donor.AvailabilityStatus || '',
+        // Ensure municipality is available
+        municipality: donor.municipality || donor.Municipality || donor.city || '',
+        // Ensure name is available
+        name: donor.name || donor.full_name || donor.fullName || donor.Name || '',
+      };
+      const id = donor?.id ? String(donor.id) : `${normalizedDonor.name || 'unknown'}-${donor?.contactNumber || donor?.contact_number || ''}`;
+      map.set(id, normalizedDonor);
     });
     return Array.from(map.values());
   };
@@ -270,6 +290,7 @@ Notifications Summary:
     const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
     const notifications = Array.isArray(data?.notifications) ? data.notifications : [];
 
+    // Calculate all donor statistics
     const availableDonors = donorList.filter((d: any) =>
       normalizeAvailabilityStatus(d?.availabilityStatus || d?.availability_status) === 'available'
     ).length;
@@ -278,41 +299,195 @@ Notifications Summary:
     ).length;
     const pendingRegistrations = registrations.filter((r: any) => r?.status === 'pending').length;
     const unreadNotifications = notifications.filter((n: any) => !n?.is_read).length;
+    
+    // Enhanced sex filtering - handle various cases and formats
+    const maleDonors = donorList.filter((d: any) => {
+      const sexValue = String(d?.sex || d?.Sex || d?.SEX || '').trim().toLowerCase();
+      return sexValue === 'male' || sexValue === 'm' || sexValue === 'male donor';
+    }).length;
+    
+    const femaleDonors = donorList.filter((d: any) => {
+      const sexValue = String(d?.sex || d?.Sex || d?.SEX || '').trim().toLowerCase();
+      return sexValue === 'female' || sexValue === 'f' || sexValue === 'female donor';
+    }).length;
 
-    if (lowerInput.includes('unread') && lowerInput.includes('notification')) {
-      return `There are currently ${unreadNotifications} unread notifications.`;
-    }
+    // Blood type distribution
+    const bloodTypeCounts: Record<string, number> = {};
+    donorList.forEach((donor: any) => {
+      const type = donor?.bloodType || donor?.blood_type || donor?.BloodType || 'Unknown';
+      bloodTypeCounts[type] = (bloodTypeCounts[type] || 0) + 1;
+    });
 
-    if (lowerInput.includes('pending') && lowerInput.includes('registration')) {
-      return `There are currently ${pendingRegistrations} pending donor registrations.`;
-    }
+    // Municipality counts
+    const municipalityCounts: Record<string, number> = {};
+    donorList.forEach((donor: any) => {
+      const municipality = donor?.municipality || donor?.Municipality || 'Unknown';
+      municipalityCounts[municipality] = (municipalityCounts[municipality] || 0) + 1;
+    });
 
-    if (lowerInput.includes('available') && lowerInput.includes('donor')) {
-      return `Currently, ${availableDonors} donors are marked as available.`;
-    }
-
-    if (lowerInput.includes('unavailable') && lowerInput.includes('donor')) {
-      return `Currently, ${unavailableDonors} donors are marked as unavailable.`;
-    }
-
+    // Check for "available donors per municipality" query FIRST (more specific)
     if (
-      (lowerInput.includes('how many') || lowerInput.includes('total')) &&
-      lowerInput.includes('donor')
+      (lowerInput.includes('available') || lowerInput.includes('available')) &&
+      (lowerInput.includes('municipality') || lowerInput.includes('city') || lowerInput.includes('location') || lowerInput.includes('area'))
     ) {
-      return `There are ${donorList.length} total donors in the system.`;
+      const counts: Record<string, number> = {};
+      donorList.forEach((d: any) => {
+        const isAvailable = normalizeAvailabilityStatus(d?.availabilityStatus || d?.availability_status) === 'available';
+        if (!isAvailable) return;
+        const municipality = (d?.municipality || d?.Municipality || 'Unknown').toString();
+        counts[municipality] = (counts[municipality] || 0) + 1;
+      });
+
+      const rows = Object.entries(counts)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([municipality, count]) => `- ${municipality}: ${count}`)
+        .join('\n');
+
+      return rows
+        ? `Available donors per municipality:\n${rows}`
+        : 'No available donors found by municipality.';
     }
 
-    if (lowerInput.includes('blood type') && (lowerInput.includes('distribution') || lowerInput.includes('summary'))) {
-      const bloodTypeCounts: Record<string, number> = {};
-      donorList.forEach((donor: any) => {
-        const type = donor?.bloodType || donor?.blood_type || 'Unknown';
-        bloodTypeCounts[type] = (bloodTypeCounts[type] || 0) + 1;
-      });
+    // Check for female donors query FIRST - must come before male because "female" contains "male"
+    if (
+      (lowerInput.includes('female') || lowerInput.includes('females') || lowerInput.includes('women')) && 
+      (lowerInput.includes('donor') || lowerInput.includes('donors'))
+    ) {
+      return `There are currently ${femaleDonors} female donor${femaleDonors !== 1 ? 's' : ''} in the system.`;
+    }
+
+    // Check for male donors query - must check NOT female to avoid false matches
+    if (
+      (lowerInput.includes('male') || lowerInput.includes('males') || lowerInput.includes('men')) && 
+      (lowerInput.includes('donor') || lowerInput.includes('donors')) &&
+      !lowerInput.includes('female') && !lowerInput.includes('women')
+    ) {
+      return `There are currently ${maleDonors} male donor${maleDonors !== 1 ? 's' : ''} in the system.`;
+    }
+
+    // Check for sex/gender distribution query
+    if (
+      (lowerInput.includes('sex') || lowerInput.includes('gender') || lowerInput.includes('male and female')) &&
+      (lowerInput.includes('donor') || lowerInput.includes('count') || lowerInput.includes('distribution'))
+    ) {
+      return `Donor counts by sex:\n• Male: ${maleDonors}\n• Female: ${femaleDonors}\n• Total: ${maleDonors + femaleDonors}`;
+    }
+
+    // Check for unread notifications query
+    if (lowerInput.includes('unread') && (lowerInput.includes('notification') || lowerInput.includes('notifications'))) {
+      return `There are currently ${unreadNotifications} unread notification${unreadNotifications !== 1 ? 's' : ''}.`;
+    }
+
+    // Check for pending registrations query
+    if (lowerInput.includes('pending') && (lowerInput.includes('registration') || lowerInput.includes('registrations'))) {
+      return `There are currently ${pendingRegistrations} pending donor registration${pendingRegistrations !== 1 ? 's' : ''}.`;
+    }
+
+    // Check for unavailable donors query - must check BEFORE available since "unavailable" contains "available"
+    if (
+      (lowerInput.includes('unavailable') || lowerInput.includes('not available')) && 
+      (lowerInput.includes('donor') || lowerInput.includes('donors'))
+    ) {
+      return `Currently, ${unavailableDonors} donor${unavailableDonors !== 1 ? 's' : ''} are marked as unavailable.`;
+    }
+
+    // Check for available donors query - must check AFTER unavailable
+    if (
+      lowerInput.includes('available') && 
+      !lowerInput.includes('unavailable') &&
+      (lowerInput.includes('donor') || lowerInput.includes('donors'))
+    ) {
+      return `Currently, ${availableDonors} donor${availableDonors !== 1 ? 's' : ''} are marked as available to donate.`;
+    }
+
+    // Check for total donors query - must check AFTER unavailable to avoid false matches
+    if (
+      (lowerInput.includes('how many') || (lowerInput.includes('total') && !lowerInput.includes('unavailable'))) &&
+      (lowerInput.includes('donor') || lowerInput.includes('donors'))
+    ) {
+      return `There are ${donorList.length} total donor${donorList.length !== 1 ? 's' : ''} in the system.`;
+    }
+
+    // Check for blood type distribution query
+    if (lowerInput.includes('blood type') && (lowerInput.includes('distribution') || lowerInput.includes('summary') || lowerInput.includes('breakdown'))) {
       const distribution = Object.entries(bloodTypeCounts)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([type, count]) => `${type}: ${count}`)
         .join(', ');
       return `Blood type distribution: ${distribution || 'No donor data available.'}`;
+    }
+
+    // Check for specific blood type query (e.g., "How many O+ donors?")
+    // Order matters: check longer patterns first to avoid substring matches
+    const bloodTypes = ['ab+', 'ab-', 'a+', 'a-', 'b+', 'b-', 'o+', 'o-', 'ab', 'a', 'b', 'o'];
+    for (const bt of bloodTypes) {
+      if (lowerInput.includes(bt) && (lowerInput.includes('donor') || lowerInput.includes('donors'))) {
+        const count = donorList.filter((d: any) => {
+          const type = String(d?.bloodType || d?.blood_type || '').toLowerCase();
+          // For single letters, be more precise to avoid matching wrong types
+          if (bt.length === 1) {
+            // Match only exact single blood types (a, b, ab, o) not followed by +/-
+            return type === bt || type === bt + '+' || type === bt + '-';
+          }
+          return type.includes(bt);
+        }).length;
+        const displayType = bt.length === 1 ? bt.toUpperCase() + '+/-' : bt.toUpperCase();
+        return `There ${count === 1 ? 'is' : 'are'} ${count} donor${count !== 1 ? 's' : ''} with blood type ${displayType}.`;
+      }
+    }
+
+    // Check for donors per municipality query
+    if (
+      (lowerInput.includes('municipality') || lowerInput.includes('city') || lowerInput.includes('location') || lowerInput.includes('area') || lowerInput.includes('barangay')) &&
+      (lowerInput.includes('donor') || lowerInput.includes('donors') || lowerInput.includes('how many'))
+    ) {
+      const rows = Object.entries(municipalityCounts)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([location, count]) => `- ${location}: ${count}`)
+        .join('\n');
+      return `Donors per municipality:\n${rows}`;
+    }
+
+    // Check for approved registrations
+    if (lowerInput.includes('approved') && (lowerInput.includes('registration') || lowerInput.includes('registrations'))) {
+      const approvedCount = registrations.filter((r: any) => r?.status === 'approved').length;
+      return `There are currently ${approvedCount} approved donor registration${approvedCount !== 1 ? 's' : ''}.`;
+    }
+
+    // Check for total registrations
+    if ((lowerInput.includes('total') || lowerInput.includes('how many')) && (lowerInput.includes('registration') || lowerInput.includes('registrations'))) {
+      return `There are ${registrations.length} total registration${registrations.length !== 1 ? 's' : ''} in the system.`;
+    }
+
+    // Check for total notifications
+    if ((lowerInput.includes('total') || lowerInput.includes('how many')) && (lowerInput.includes('notification') || lowerInput.includes('notifications'))) {
+      return `There are ${notifications.length} total notification${notifications.length !== 1 ? 's' : ''} in the system.`;
+    }
+
+    // Check for analytics/summary query
+    if (lowerInput.includes('analytics') || lowerInput.includes('summary') || lowerInput.includes('overview') || lowerInput.includes('report')) {
+      const distribution = Object.entries(bloodTypeCounts)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(', ');
+      
+      return `📊 System Analytics Summary:
+
+👥 Donors:
+• Total: ${donorList.length}
+• Available: ${availableDonors}
+• Unavailable: ${unavailableDonors}
+• Male: ${maleDonors}
+• Female: ${femaleDonors}
+• Blood Types: ${distribution || 'N/A'}
+
+📝 Registrations:
+• Total: ${registrations.length}
+• Pending: ${pendingRegistrations}
+
+🔔 Notifications:
+• Total: ${notifications.length}
+• Unread: ${unreadNotifications}`;
     }
 
     return null;
@@ -324,6 +499,18 @@ Notifications Summary:
     setIsTyping(true);
     // NEW: Set cannot receive messages state when starting API call
     setCannotReceiveMessages(true);
+
+    // CRITICAL: First check if this is a simple query that can be answered instantly
+    // This prevents AI from giving wrong answers for straightforward data questions
+    const liveData = await fetchLiveData();
+    const instantResponse = buildInstantDataResponse(input, liveData);
+    if (instantResponse) {
+      console.log('✅ Using instant response for query:', input.substring(0, 50));
+      setIsTyping(false);
+      setCannotReceiveMessages(false);
+      return instantResponse;
+    }
+    console.log('ℹ️ No instant response match, using AI for query:', input.substring(0, 50));
 
     // Retry configuration
     const maxRetries = 2;

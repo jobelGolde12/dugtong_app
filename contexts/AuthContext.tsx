@@ -10,6 +10,7 @@ import { USER_ROLES, UserRole, DEFAULT_ROLE } from '../constants/roles.constants
 // ==================== Types ====================
 
 interface DonorProfileData {
+  id: string;
   full_name: string;
   age: number;
   sex: string;
@@ -189,6 +190,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       let donorProfileData: DonorProfileData | null = null;
       if (role === USER_ROLES.DONOR) {
         donorProfileData = {
+          id: user.id,
           full_name: user.name || '',
           age: 0,
           sex: '',
@@ -206,6 +208,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           if (donor) {
             donorProfileData = {
+              id: donor.id,
               full_name: donor.name,
               age: donor.age,
               sex: donor.sex,

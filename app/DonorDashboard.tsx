@@ -8,7 +8,9 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -23,6 +25,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { USER_ROLES } from '../constants/roles.constants';
 
 interface DonorProfile {
+  id: string;
   full_name: string;
   age: number;
   sex: string;
@@ -43,6 +46,9 @@ export default function DonorDashboard() {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load donor data function
   const loadDonorData = useCallback(async () => {
@@ -141,6 +147,116 @@ export default function DonorDashboard() {
       setIsSending(false);
     }
   };
+
+  const handleUpdateAvailability = async (status: string) => {
+    if (!donorData || !user?.id) {
+      Alert.alert('Error', 'Unable to update availability. Please try again.');
+      return;
+    }
+
+    setIsUpdatingAvailability(true);
+    setShowAvailabilityModal(false);
+
+    try {
+      const { getAccessToken } = await import('../api/client');
+      const token = await getAccessToken();
+      console.log("DEBUG - Token present:", !!token, "Token:", token?.substring(0, 20));
+
+      const response = await fetch(`https://dugtung-next.vercel.app/api/donors/${donorData.id}/availability`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          availability_status: status,
+        }),
+      });
+
+      const result = await response.json();
+      console.log("DEBUG - Response status:", response.status, "Result:", result);
+
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to update availability (${response.status})`);
+      }
+
+      const updatedDonor = result.data || result;
+      setDonorData({
+        ...donorData,
+        availability: updatedDonor.availability_status || status,
+      });
+
+      Alert.alert('Success', `You are now ${status === 'available' ? 'available' : 'unavailable'} to donate.`);
+    } catch (error: any) {
+      console.error('Error updating availability:', error);
+      Alert.alert('Error', error.message || 'Failed to update availability. Please try again.');
+    } finally {
+      setIsUpdatingAvailability(false);
+    }
+  };
+
+  const handleDeleteProfile = () => {
+    Alert.alert(
+      'Delete Profile',
+      'Are you sure you want to delete your donor profile? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!donorData || !user?.id) {
+              Alert.alert('Error', 'Unable to delete profile. Please try again.');
+              return;
+            }
+
+            setIsDeleting(true);
+
+            try {
+              const { getAccessToken } = await import('../api/client');
+              const token = await getAccessToken();
+
+              const response = await fetch(`https://dugtung-next.vercel.app/api/donors/${donorData.id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+
+              const result = await response.json();
+
+              if (!response.ok) {
+                throw new Error(result.error || 'Failed to delete profile');
+              }
+
+              Alert.alert(
+                'Profile Deleted',
+                'Your donor profile has been deleted.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: async () => {
+                      await logout();
+                    },
+                  },
+                ]
+              );
+            } catch (error: any) {
+              console.error('Error deleting profile:', error);
+              Alert.alert('Error', error.message || 'Failed to delete profile. Please try again.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const availabilityOptions = [
+    { label: 'Available', value: 'available' },
+    { label: 'Unavailable', value: 'unavailable' },
+  ];
 
   // Show loading while data loads
   if (loading) {
@@ -404,6 +520,71 @@ export default function DonorDashboard() {
               </TouchableOpacity>
             </View>
 
+            {/* Availability Settings Card */}
+            <View style={styles.card}>
+              <View style={styles.cardTitleContainer}>
+                <Ionicons name="settings-outline" size={24} color="#6C63FF" />
+                <Text style={styles.sectionTitle}>Availability Settings</Text>
+              </View>
+              
+              <Text style={styles.messageDescription}>
+                Update your availability status to let administrators know when you can donate blood.
+              </Text>
+
+              <TouchableOpacity 
+                style={styles.availabilityButton}
+                onPress={() => setShowAvailabilityModal(true)}
+                disabled={isUpdatingAvailability}
+              >
+                {isUpdatingAvailability ? (
+                  <ActivityIndicator color="#6C63FF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons 
+                      name={donorData.availability === 'available' || donorData.availability === 'Available' 
+                        ? "checkmark-circle" 
+                        : "time-outline"} 
+                      size={20} 
+                      color="#6C63FF" 
+                    />
+                    <Text style={styles.availabilityButtonText}>
+                      {donorData.availability === 'available' || donorData.availability === 'Available'
+                        ? 'Available'
+                        : 'Unavailable'}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={20} color="#6C63FF" />
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Danger Zone Card */}
+            <View style={[styles.card, styles.dangerCard]}>
+              <View style={styles.cardTitleContainer}>
+                <Ionicons name="warning-outline" size={24} color="#EF4444" />
+                <Text style={[styles.sectionTitle, styles.dangerTitle]}>Danger Zone</Text>
+              </View>
+              
+              <Text style={styles.messageDescription}>
+                Permanently delete your donor profile. This action cannot be undone.
+              </Text>
+
+              <TouchableOpacity 
+                style={styles.deleteButton}
+                onPress={handleDeleteProfile}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.deleteButtonText}>Delete My Profile</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
             {/* Footer Note */}
             <View style={styles.footer}>
               <Ionicons name="shield-checkmark-outline" size={16} color="#94A3B8" />
@@ -412,6 +593,63 @@ export default function DonorDashboard() {
               </Text>
             </View>
           </ScrollView>
+
+          {/* Availability Modal */}
+          <Modal
+            visible={showAvailabilityModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowAvailabilityModal(false)}
+          >
+            <Pressable 
+              style={styles.modalOverlay}
+              onPress={() => setShowAvailabilityModal(false)}
+            >
+              <Pressable 
+                style={styles.modalContent}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Update Availability</Text>
+                  <TouchableOpacity 
+                    onPress={() => setShowAvailabilityModal(false)}
+                    style={styles.modalCloseButton}
+                  >
+                    <Ionicons name="close" size={24} color="#64748B" />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.modalDescription}>
+                  Select your current availability status:
+                </Text>
+
+                <View style={styles.modalOptions}>
+                  {availabilityOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.modalOption,
+                        donorData?.availability === option.value && styles.modalOptionSelected,
+                      ]}
+                      onPress={() => handleUpdateAvailability(option.value)}
+                    >
+                      <Ionicons 
+                        name={option.value === 'available' ? 'checkmark-circle' : 'time-outline'}
+                        size={24}
+                        color={donorData?.availability === option.value ? '#6C63FF' : '#64748B'}
+                      />
+                      <Text style={[
+                        styles.modalOptionText,
+                        donorData?.availability === option.value && styles.modalOptionTextSelected,
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
         </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
@@ -823,6 +1061,125 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     fontStyle: 'italic',
+  },
+  availabilityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  availabilityButtonText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginLeft: 12,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  dangerCard: {
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
+  },
+  dangerTitle: {
+    color: '#EF4444',
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalDescription: {
+    fontSize: 15,
+    color: '#64748B',
+    marginBottom: 20,
+    lineHeight: 22,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  modalOptions: {
+    gap: 12,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+  },
+  modalOptionSelected: {
+    borderColor: '#6C63FF',
+    backgroundColor: '#F5F3FF',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
+    marginLeft: 12,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  modalOptionTextSelected: {
+    color: '#6C63FF',
   },
 });
 
