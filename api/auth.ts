@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { clearTokens, getAccessToken, storeTokens } from "./client";
+import { clearTokens, getAccessToken, getRefreshToken, storeTokens } from "./client";
 import { UserRole } from "../constants/roles.constants";
 import { apiClient } from "../src/services/apiClient";
 
@@ -85,7 +85,11 @@ export const login = async (data: LoginRequest): Promise<LoginResponse> => {
  */
 export const logout = async (): Promise<LogoutResponse> => {
   try {
-    await apiClient.post<LogoutResponse>("/auth/logout", {});
+    const refreshToken = await getRefreshToken();
+    await apiClient.post<LogoutResponse>("/auth/logout", {
+      refresh_token: refreshToken ?? undefined,
+      all_devices: false,
+    });
   } catch (error) {
     console.error("Logout error:", error);
   } finally {

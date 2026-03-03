@@ -32,7 +32,8 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "jsEngine": "hermes",
-      "package": "com.anonymous.appproject"
+      "package": "com.anonymous.appproject",
+      "versionCode": 2
     },
     "web": {
       "output": "static",
@@ -61,9 +62,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "29c5a34a-9211-4f57-96af-e1bbd0c8a430"
+        "projectId": "d01c03d3-9e29-41f0-8f6c-4f92c686f6a9"
       }
     },
-    "owner": "leboj"
+    "owner": "jobelgolde"
   }
 }
