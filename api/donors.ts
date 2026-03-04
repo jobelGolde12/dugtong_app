@@ -58,7 +58,7 @@ export const donorApi = {
     if (availability) params.append("availability", availability);
     if (filter.searchQuery) params.append("search", filter.searchQuery);
     if (filter.page !== undefined) params.append("page", String(filter.page));
-    if (filter.page_size !== undefined) params.append("page_size", String(filter.page_size));
+    if (filter.page_size !== undefined) params.append("pageSize", String(Math.min(filter.page_size, 100)));
 
     const queryString = params.toString();
     const endpoint = `/donors${queryString ? `?${queryString}` : ""}`;
@@ -210,5 +210,19 @@ export const donorApi = {
 
   deleteDonor: async (id: string): Promise<void> => {
     await apiClient.delete(`/donors/${id}`);
+  },
+
+  approveRegistration: async (id: string): Promise<PendingDonorRegistration> => {
+    const response = await apiClient.patch<PendingDonorRegistration>(`/donor-registrations/${id}`, {
+      status: 'approved',
+    });
+    return response;
+  },
+
+  rejectRegistration: async (id: string): Promise<PendingDonorRegistration> => {
+    const response = await apiClient.patch<PendingDonorRegistration>(`/donor-registrations/${id}`, {
+      status: 'rejected',
+    });
+    return response;
   },
 };
