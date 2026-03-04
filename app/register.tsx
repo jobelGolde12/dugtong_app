@@ -700,13 +700,16 @@ export default function RegisterScreen() {
                 <TouchableOpacity 
                   style={[
                     styles.submitButton,
-                    isSubmitting && styles.submitButtonDisabled
+                    (isSubmitting || !agreedToPrivacyPolicy) && styles.submitButtonDisabled
                   ]} 
                   onPress={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !agreedToPrivacyPolicy}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.submitButtonText}>
+                  <Text style={[
+                    styles.submitButtonText,
+                    !agreedToPrivacyPolicy && styles.submitButtonTextDisabled
+                  ]}>
                     {isSubmitting ? 'Submitting...' : 'Submit Registration'}
                   </Text>
                 </TouchableOpacity>
@@ -962,6 +965,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  submitButtonTextDisabled: {
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   submitButtonDisabled: {
     backgroundColor: 'rgba(108, 117, 125, 0.8)',

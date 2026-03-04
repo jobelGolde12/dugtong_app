@@ -2,11 +2,19 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Donor } from '@/types/donor.types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { Alert, Animated, Clipboard, Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import { checkPhonePermission, openAppSettings, requestPhonePermission } from '../../lib/utils/permissions';
-import { getPermissionRequestCount, incrementPermissionRequestCount } from '../../lib/utils/storage';
-import PermissionRequestModal from './permissions/PermissionRequestModal';
-import SettingsRedirectModal from './permissions/SettingsRedirectModal';
+import {
+  Alert,
+  Animated,
+  Clipboard,
+  Image,
+  Linking,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
+} from 'react-native';
 
 // ========== Modern Animated Action Button ==========
 interface ActionButtonProps {
@@ -112,8 +120,6 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   const { colors, isDark } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const { width } = useWindowDimensions();
-  const [permissionModalVisible, setPermissionModalVisible] = useState(false);
-  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
   // Determine device size thresholds
   const isSmallDevice = width < 375;
@@ -136,133 +142,73 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
   const bloodTypeColor = getBloodTypeColor(donor.bloodType);
   const statusColor = donor.availabilityStatus === 'Available' ? '#10B981' : '#EF4444';
   const isAvailable = donor.availabilityStatus === 'Available';
-  const avatarUri = donor.avatar_data
-    ? donor.avatar_data.startsWith('data:')
-      ? donor.avatar_data
-      : `data:${donor.avatar_mime_type || 'image/jpeg'};base64,${donor.avatar_data}`
-    : null;
+    const avatarUri = donor.avatar_data
+      ? donor.avatar_data.startsWith('data:')
+        ? donor.avatar_data
+        : `data:${donor.avatar_mime_type || 'image/jpeg'};base64,${donor.avatar_data}`
+      : null;
 
-  const makeCall = () => {
-    const cleanNumber = donor.contactNumber.replace(/[^0-9+]/g, '');
-    let url = `tel:${cleanNumber}`;
-    if (Platform.OS === 'ios') {
-      url = `telprompt:${cleanNumber}`;
-    }
-
-    Linking.canOpenURL(url)
-      .then(supported => {
-        if (supported) {
-          Linking.openURL(url);
-        } else {
-          Alert.alert('Error', 'This device does not support making phone calls.');
-        }
-      })
-      .catch(err => console.error('An error occurred', err));
-  };
-  
-  const handleCall = async () => {
-    if (!donor.contactNumber) {
-      Alert.alert('Error', 'No phone number available for this donor.');
-      return;
-    }
-
-    const permissionStatus = await checkPhonePermission();
-
-    switch (permissionStatus) {
-      case 'granted':
-        makeCall();
-        break;
-      case 'undetermined':
-        setPermissionModalVisible(true);
-        break;
-      case 'denied':
-        const requestCount = await getPermissionRequestCount();
-        if (requestCount < 2) { // Show rationale once after first denial
-          setPermissionModalVisible(true);
-        } else {
-          setSettingsModalVisible(true);
-        }
-        break;
-      case 'blocked':
-        setSettingsModalVisible(true);
-        break;
-      case 'unavailable':
-        Alert.alert('Error', 'Phone call functionality is not available on this device.');
-        break;
-    }
-  };
-
-  const handleRequestPermission = async () => {
-    setPermissionModalVisible(false);
-    await incrementPermissionRequestCount();
-    const newStatus = await requestPhonePermission();
-    if (newStatus === 'granted') {
-      makeCall();
-    } else if (newStatus === 'blocked' || newStatus === 'denied') {
-      setSettingsModalVisible(true);
-    }
-  };
-
-  const handleOpenSettings = () => {
-    setSettingsModalVisible(false);
-    openAppSettings();
-  };
-
-  const handleCopyToClipboard = () => {
-    Clipboard.setString(donor.contactNumber);
-    Alert.alert('Copied', 'Phone number copied to clipboard.');
-  }
-
-  // Handle message action
+  // Handle message or call action
   const handleMessage = async () => {
     if (!donor.contactNumber) {
       Alert.alert('Error', 'No phone number available for this donor.');
       return;
     }
-    // Clean the contact number (remove dashes, spaces, etc.)
-    const cleanNumber = donor.contactNumber.replace(/[^0-9]/g, '');
-    const smsUrl = `sms:${cleanNumber}`;
-    try {
-      await Linking.openURL(smsUrl);
-    } catch (error) {
-      // Try alternative SMS URL with message field
-      try {
-        const smsWithMessageUrl = `sms:${cleanNumber}?body=`;
-        await Linking.openURL(smsWithMessageUrl);
-      } catch (fallbackError) {
-        console.error('Failed to open messaging app:', fallbackError);
-        // Try to copy number to clipboard as fallback
-        Clipboard.setString(cleanNumber);
-        Alert.alert(
-          'Messaging Unavailable',
-          'Could not open messaging app. Phone number has been copied to clipboard.'
-        );
-      }
-    }
+
+    const contactNum = donor.contactNumber;
+
+    Alert.alert(
+      'Contact Donor',
+      `How would you like to contact ${donor.name}?\n\n📞 ${contactNum}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Call',
+          onPress: () => {
+            const cleanNumber = contactNum.replace(/[^0-9+]/g, '');
+            let url = `tel:${cleanNumber}`;
+            if (Platform.OS === 'ios') {
+              url = `telprompt:${cleanNumber}`;
+            }
+            Linking.canOpenURL(url)
+              .then(supported => {
+                if (supported) {
+                  Linking.openURL(url);
+                } else {
+                  Alert.alert('Error', 'This device does not support making phone calls.');
+                }
+              })
+              .catch(err => console.error('An error occurred', err));
+          }
+        },
+        {
+          text: 'Message',
+          onPress: async () => {
+            const cleanNumber = contactNum.replace(/[^0-9]/g, '');
+            const smsUrl = `sms:${cleanNumber}`;
+            try {
+              await Linking.openURL(smsUrl);
+            } catch (error) {
+              try {
+                const smsWithMessageUrl = `sms:${cleanNumber}?body=`;
+                await Linking.openURL(smsWithMessageUrl);
+              } catch (fallbackError) {
+                console.error('Failed to open messaging app:', fallbackError);
+                Clipboard.setString(cleanNumber);
+                Alert.alert(
+                  'Messaging Unavailable',
+                  'Could not open messaging app. Phone number has been copied to clipboard.'
+                );
+              }
+            }
+          }
+        },
+      ]
+    );
   };
 
   return (
     <>
-      <PermissionRequestModal
-        visible={permissionModalVisible}
-        onClose={() => setPermissionModalVisible(false)}
-        onAllow={handleRequestPermission}
-        title="Allow Phone Calls"
-        message="To call donors directly from the app, please allow access to your phone."
-        iconName="call-outline"
-      />
-      <SettingsRedirectModal
-        visible={settingsModalVisible}
-        onClose={() => setSettingsModalVisible(false)}
-        onOpenSettings={handleOpenSettings}
-        title="Permission Denied"
-        message="To make calls, you need to enable phone permissions in your device settings. Alternatively, you can copy the number to your clipboard."
-      >
-        <TouchableOpacity style={styles.copyButton} onPress={handleCopyToClipboard}>
-          <Ionicons name="copy-outline" size={20} color={colors.primary} />
-          <Text style={[styles.copyButtonText, { color: colors.primary }]}>Copy Number</Text>
-        </TouchableOpacity>
-      </SettingsRedirectModal>
       <TouchableOpacity
         style={[
           styles.donorCard,
@@ -463,7 +409,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
           </View>
         </View>
 
-        {/* Expandable action buttons - Call & Message */}
+        {/* Expandable action buttons - Message or Call */}
         <Animated.View
           style={[
             styles.expandableSection,
@@ -476,7 +422,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, onPress }) => {
           <View style={styles.actionButtonsContainer}>
             <ActionButton
               icon="chatbubble"
-              label="Message"
+              label="Message or Call"
               variant="message"
               onPress={handleMessage}
               disabled={!isAvailable || !donor.contactNumber}
