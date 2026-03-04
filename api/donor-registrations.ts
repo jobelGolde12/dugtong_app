@@ -12,6 +12,7 @@ export interface DonorRegistrationResponse {
   avatar_mime_type?: string;
   municipality: string;
   availability_status: string;
+  accepted_privacy_policy?: number;
   last_donation_date?: string;
   notes?: string;
   status: "pending" | "approved" | "rejected";

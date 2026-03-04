@@ -107,6 +107,8 @@ export default function RegisterScreen() {
   const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreedToPrivacyPolicy, setAgreedToPrivacyPolicy] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions>({ width: 0, height: 0 });
@@ -248,6 +250,11 @@ export default function RegisterScreen() {
       }
     });
 
+    if (!agreedToPrivacyPolicy) {
+      Alert.alert('Agreement Required', 'You must agree to the Privacy Policy to register.');
+      return false;
+    }
+
     setErrors(newErrors);
     return isValid;
   };
@@ -301,6 +308,7 @@ export default function RegisterScreen() {
         email: formData.email.trim() || undefined,
         avatar_data: formData.avatarBase64 || undefined,
         avatar_mime_type: formData.avatarMimeType || undefined,
+        accepted_privacy_policy: agreedToPrivacyPolicy ? 1 : 0,
       };
 
       console.log('📝 Submitting donor registration:', registrationData);
@@ -671,6 +679,23 @@ export default function RegisterScreen() {
                   {errors.availabilityStatus ? <Text style={styles.errorText}>{errors.availabilityStatus}</Text> : null}
                 </View>
 
+                {/* Privacy Policy Checkbox */}
+                <View style={styles.checkboxContainer}>
+                  <TouchableOpacity 
+                    style={[styles.checkbox, agreedToPrivacyPolicy && styles.checkboxChecked]}
+                    onPress={() => setAgreedToPrivacyPolicy(!agreedToPrivacyPolicy)}
+                  >
+                    {agreedToPrivacyPolicy && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                  <Text style={styles.checkboxLabel}>
+                    I have read and agree to the{" "}
+                    <Text style={styles.linkText} onPress={() => setShowPrivacyModal(true)}>
+                      Privacy Policy and Terms of Use
+                    </Text>{" "}
+                    in accordance with the Data Privacy Act of 2012 (RA 10173).
+                  </Text>
+                </View>
+
                 {/* Submit Button */}
                 <TouchableOpacity 
                   style={[
@@ -718,6 +743,39 @@ export default function RegisterScreen() {
         }}
         onClose={() => setShowMunicipalityDropdown(false)}
       />
+
+      {/* Privacy Policy Modal */}
+      <Modal
+        visible={showPrivacyModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPrivacyModal(false)}
+      >
+        <View style={styles.policyModalOverlay}>
+          <View style={styles.policyModalContent}>
+            <Text style={styles.policyModalTitle}>Privacy Policy & User Agreement</Text>
+            <ScrollView style={styles.policyScrollView}>
+              <Text style={styles.policyText}>
+                By registering and using the DUGTONG (Dugo Ko, Tulong Ko) Mobile Application, the user agrees to the terms and conditions regarding the collection, use, and protection of personal information. This application is designed to help manage blood donor profiles and improve coordination of blood donation requests within Sorsogon Province.
+                {'\n\n'}
+                In accordance with the Data Privacy Act of 2012 (Republic Act No. 10173), the application collects only necessary personal information such as name, age, sex, blood type, contact number, location, and donor availability. The information collected will be used solely for blood donor profiling, donor matching, and emergency coordination purposes.
+                {'\n\n'}
+                All personal data stored in the system will be kept confidential and will only be accessed by authorized administrators responsible for managing donor information. The application implements basic security measures to protect user data and prevent unauthorized access. Personal information will not be sold, shared, or used for commercial purposes.
+                {'\n\n'}
+                By selecting "I Agree", the user confirms that they understand how their information will be collected and used within the DUGTONG application. The user also acknowledges that participation in the system is voluntary and that they may be contacted at any time of the day and also that they may request to update or remove their information from the system if necessary.
+                {'\n\n'}
+                The developers of the DUGTONG application are committed to protecting the privacy and security of all users while promoting responsible use of technology to support blood donation efforts in Sorsogon Province.
+              </Text>
+            </ScrollView>
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => setShowPrivacyModal(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1017,5 +1075,82 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 14,
     fontWeight: '500',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  checkboxChecked: {
+    backgroundColor: '#1E90FF',
+    borderColor: '#1E90FF',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    flex: 1,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  linkText: {
+    color: '#1E90FF',
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  policyModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  policyModalContent: {
+    backgroundColor: '#1E1E2E',
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  policyModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  policyScrollView: {
+    marginBottom: 15,
+  },
+  policyText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  closeButton: {
+    backgroundColor: '#1E90FF',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
